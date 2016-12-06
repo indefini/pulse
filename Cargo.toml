@@ -3,4 +3,16 @@ name = "pulse"
 version = "0.1.0"
 authors = ["chris <chris@indefini.org>"]
 
+[lib]
+name = "pulse"
+crate-type = ["dylib"]
+
 [dependencies]
+
+[dependencies.dormin]
+git = "https://github.com/indefini/dormin.git"
+
+[dependencies.rustc-serialize]
+git = "https://github.com/indefini/rustc-serialize.git"
+
+
