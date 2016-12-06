@@ -5,14 +5,23 @@ authors = ["chris <chris@indefini.org>"]
 
 [lib]
 name = "pulse"
-crate-type = ["dylib"]
+#crate-type = ["dylib"]
 
 [dependencies]
+uuid = {version ="0.3.1", features = [ "v4", "rustc-serialize" ] }
+libloading = "0.3"
+libc = "*"
 
 [dependencies.dormin]
 git = "https://github.com/indefini/dormin.git"
+#path = "/home/chris/code/dormin/"
+features = ["evas"]
 
 [dependencies.rustc-serialize]
 git = "https://github.com/indefini/rustc-serialize.git"
 
+[dependencies.joker-sys]
+git = "https://github.com/drasich/joker.git"
+#branch = "panel"
+#path = "/home/chris/code/joker/"
 
