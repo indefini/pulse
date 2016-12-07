@@ -293,9 +293,11 @@ static mut libi : Option<i32> = None;
 
 pub extern fn compile_test(data : *const c_void)
 {
-    //let wcb : & ui::WidgetCbData = unsafe {mem::transmute(data)};
-    //let action : &Action = unsafe {mem::transmute(wcb.widget)};
-    //let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
+    let wcb : & ui::WidgetCbData = unsafe {mem::transmute(data)};
+    let action : &Action = unsafe {mem::transmute(wcb.widget)};
+    let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
+    
+    println!("compile test!!!!!!!!!!!!!!!!!!!!");
     
     //let suf = unsafe { libi += 1; libi };
     let old = unsafe { libi };
@@ -348,14 +350,14 @@ pub extern fn compile_test(data : *const c_void)
             };
             println!("{}",fun());
 
-            let build_mesh : libloading::Symbol<unsafe extern fn()> = if let Ok(f) = lib.get(b"build_mesh") {
+            let build_mesh : libloading::Symbol<unsafe extern fn(&mut ui::WidgetContainer, Uuid)> = if let Ok(f) = lib.get(b"build_mesh2") {
                 f
             }
             else {
                 return;
             };
 
-            build_mesh();
+            //build_mesh(container, action.view_id);
         }
     });
 }
