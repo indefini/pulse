@@ -15,7 +15,6 @@ use std::str;
 use dormin::scene;
 use dormin::object;
 use ui::Window;
-use ui::Master;
 use ui;
 //use control::Control;
 use operation;

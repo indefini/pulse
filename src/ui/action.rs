@@ -12,7 +12,6 @@ use std::ffi::{CString, CStr};
 
 use dormin::{camera, object, scene};
 use ui::Window;
-use ui::Master;
 use ui::{ButtonCallback,EntryCallback};
 use ui;
 use dormin::resource;

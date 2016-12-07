@@ -13,7 +13,6 @@ use std::ffi::CString;
 use dormin::scene;
 use dormin::object;
 use ui::Window;
-use ui::Master;
 use ui::{RefMut,PropertyUser};
 use ui;
 

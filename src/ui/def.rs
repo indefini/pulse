@@ -1,6 +1,6 @@
 use libc::{c_char, c_void, c_int, c_uint, size_t};
 use std::mem;
-use std::sync::{RwLock, Arc};
+use std::sync::{RwLock, Arc, Mutex};
 use std::collections::{LinkedList};
 use std::ptr;
 use std::rc::{Rc,Weak};
@@ -165,14 +165,12 @@ extern {
         );
 
     pub fn init_callback_set(
-        //cb: extern fn(*mut Rc<RefCell<Master>>) -> (),
-        //master: *const Rc<RefCell<Master>>
         cb: extern fn(*mut c_void) -> (),
-        master: *const c_void
+        data: *const c_void
         ) -> ();
     pub fn exit_callback_set(
         cb: extern fn(*mut c_void) -> (),
-        master: *const c_void
+        data: *const c_void
         ) -> ();
 
     fn jk_list_wdg_new(win : *const Window, name : *const c_char) -> *const Evas_Object;
@@ -244,48 +242,22 @@ fn elm_object_text_set(
     unsafe { elm_object_part_text_set(obj, ptr::null(), text); }
 }
 
-pub struct Master
-{
-    pub resource : Rc<resource::ResourceGroup>,
-    views : LinkedList<Box<View>>,
-}
-
-impl Master
-{
-    fn _new(container : &mut Box<WidgetContainer>) -> Master
-    {
-        let resource = container.resource.clone();
-
-        let m = Master {
-            resource : resource,
-            views : LinkedList::new(),
-        };
-
-        m
-    }
-
-    pub fn new(container : &mut Box<WidgetContainer>) -> Rc<RefCell<Master>>
-    {
-        let m = Master::_new(container);
-        let mrc = Rc::new(RefCell::new(m));
-
-        mrc
-    }
-
-}
-
 pub extern fn init_cb(data: *mut c_void) -> () {
     let app_data : &AppCbData = unsafe {mem::transmute(data)};
-    //let master_rc : &Rc<RefCell<Master>> = unsafe {mem::transmute(data)};
-    let master_rc : &Rc<RefCell<Master>> = unsafe {mem::transmute(app_data.master)};
     let container : &mut Box<WidgetContainer> = unsafe {mem::transmute(app_data.container)};
-    let mut master = master_rc.borrow_mut();
 
+    let mut views = Vec::new();
     let wc = WindowConfig::load();
 
     for v in &wc.views {
-        let view = box View::new(master.resource.clone(), container,v.window.w,v.window.h, v.camera.clone());
-        master.views.push_back(view);
+        let view = box View::new(
+            container.resource.clone(),
+            container,
+            v.window.w,
+            v.window.h,
+            v.camera.clone());
+
+        views.push(view);
         if let Some(ref scene) = v.scene {
             container.set_scene(scene.as_str());
         }
@@ -327,7 +299,9 @@ pub extern fn init_cb(data: *mut c_void) -> () {
 
     }
 
-    while let Some(mut v) = master.views.pop_front() {
+    //while let Some(mut v) = Some(views.remove(0)) {
+    for v in &mut views {
+        let v : &mut Box<View> = v;
 
         let pc = wc.property.clone();
         let tc = if let Some(ref t) = wc.tree {
@@ -341,7 +315,8 @@ pub extern fn init_cb(data: *mut c_void) -> () {
         if let Some(w) = v.window {
             unsafe {
                 {
-                let view : *const c_void = mem::transmute(&*v);
+                //let view : *const c_void = mem::transmute(&*v);
+                let view : *const c_void = mem::transmute(&**v);
                 let wcb = ui::WidgetCbData::with_ptr(container, view);
 
                 ui::window_callback_set(
@@ -368,8 +343,15 @@ pub extern fn init_cb(data: *mut c_void) -> () {
                 }
             }
         }
+        /*
         container.views.push(v);
+        if views.is_empty() {
+            break;
+        }
+        */
     }
+
+    container.views = views;
 
     let path = CString::new("shader".as_bytes()).unwrap().as_ptr();
     unsafe { jk_monitor_add(file_changed, mem::transmute(container), path); }
@@ -537,26 +519,14 @@ impl WindowConfig {
 }
 
 pub extern fn exit_cb(data: *mut c_void) -> () {
-    //let master_rc : &Rc<RefCell<Master>> = unsafe {mem::transmute(data)};
-    //let master = master_rc.borrow();
 
     let app_data : &AppCbData = unsafe {mem::transmute(data)};
     let container : &mut Box<WidgetContainer> = unsafe {mem::transmute(app_data.container)};
-    //let master_rc : &Rc<RefCell<Master>> = unsafe {mem::transmute(app_data.master)};
-    //let master = master_rc.borrow();
 
     if let Some(ref s) = container.context.scene {
         println!("going to save: {}", s.borrow().name);
         s.borrow().save();
-        //old
-        //s.read().unwrap().save();
-        //s.read().unwrap().savetoml();
-        //s.borrow().savetoml();
     }
-
-    //TODO save window pos/size widgets pos/size
-    //save views
-    //save proerty
 
     let wc = WindowConfig::new(&*container);
     wc.save();
@@ -701,7 +671,38 @@ pub struct WidgetContainer
     pub visible_prop : HashMap<Uuid, Weak<Widget>>,
 
     pub anim : Option<*const Ecore_Animator>
+}
 
+pub struct State
+{
+    pub context : Box<context::Context>,
+    pub op_mgr : operation::OperationManager,
+    pub scenes : HashMap<String, Rc<RefCell<scene::Scene>>>,
+    pub resource : Rc<resource::ResourceGroup>,
+    pub factory : factory::Factory,
+    pub name : String,
+    //pub anim : Option<*const Ecore_Animator>
+}
+
+pub type StateRw = Arc<RwLock<State>>;
+pub type Arw<T> = Arc<RwLock<T>>;
+pub type Mx<T> = Arc<Mutex<T>>;
+
+//#[derive(Clone)]
+pub struct Core
+{
+    //pub state : Arw<State>,
+    //pub widgets : Arw<WidgetContainer> 
+    pub container : Box<ui::WidgetContainer>
+}
+
+impl Core {
+    fn new() -> Core {
+
+        Core {
+            container : box ui::WidgetContainer::new() 
+        }
+    }
 }
 
 pub struct ListWidget
@@ -1891,7 +1892,6 @@ impl WidgetCbData {
 
 pub struct AppCbData
 {
-    pub master : *const c_void,
     pub container : *const c_void
 }
 
@@ -1899,7 +1899,6 @@ impl Clone for AppCbData {
     fn clone(&self) -> AppCbData
     {
         AppCbData {
-            master : self.master,
             container : self.container
         }
     }

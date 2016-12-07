@@ -8,7 +8,6 @@ use std::rc::{Rc,Weak};
 use uuid;
 
 pub use self::def::{
-    Master,
     WidgetContainer,
     WidgetCbData,
     AppCbData,
