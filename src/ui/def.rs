@@ -315,8 +315,10 @@ pub extern fn init_cb(data: *mut c_void) -> () {
         //TODO remove from here?
         init_property(container, win, &pc);
         init_tree(container, win, &tc);
+        init_action(container, win, v.uuid);
+        container.list.create(win);
 
-        v.init(container, win);
+        v.init(win);
 
         if let Some(w) = v.window {
             unsafe {
@@ -414,6 +416,56 @@ fn init_tree(container : &mut Box<WidgetContainer>, win : *const Window, tree_co
     }
 
     container.tree = Some(t);
+}
+
+fn init_action(container : &mut Box<WidgetContainer>, win : *const Window, view_id : Uuid)
+{
+    let mut menu = box ui::Action::new(win, ui::action::Position::Top, view_id);
+
+    let a = box ui::Action::new(win, ui::action::Position::Bottom, view_id);
+    let command = box ui::Command::new(win);
+
+    let ad = ui::WidgetCbData::with_ptr(container, unsafe { mem::transmute(&*a)});
+
+    a.add_button("new scene", ui::action::scene_new, ad.clone());
+    a.add_button("add empty", ui::action::add_empty, ad.clone());
+    a.add_button(
+        "open game view",
+        ui::action::open_game_view,
+        ad.clone());
+    a.add_button(
+        "pause",
+        ui::action::pause_scene,
+        ad.clone());
+    a.add_button(
+        "play",
+        ui::action::play_scene,
+        ad.clone());
+
+    a.add_button(
+        "compile_test",
+        ui::action::compile_test,
+        ad.clone());
+
+    let name = match container.context.scene {
+        Some(ref s) => {
+            let sb = &*s.borrow();
+            sb.name.clone()
+        },
+        None => {
+            String::from("none")
+        }
+    };
+
+    menu.add_button(">", ui::action::scene_list, ad.clone());
+    menu.add_entry(String::from("scene"),&name, ui::action::scene_rename, ad.clone());
+    menu.add_button("+", ui::action::scene_new, ad.clone());
+
+    container.action = Some(a);
+    container.command = Some(command);
+    container.menu = Some(menu);
+
+    //container.list.create(w);
 }
 
 #[derive(RustcDecodable, RustcEncodable, Clone)]
