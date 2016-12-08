@@ -81,14 +81,14 @@ pub struct View
     pub height : i32,
     pub updating : Cell<bool>,
     pub loading_resource : Arc<Mutex<usize>>,
-    pub last_draw : usize
+    pub last_draw : usize,
 }
 
 impl View
 {
     pub fn new(
         resource : Rc<resource::ResourceGroup>,
-        container : &mut Box<ui::WidgetContainer>,
+        factory : &mut factory::Factory,
         w : i32,
         h : i32,
         camera : camera::Camera
@@ -105,7 +105,7 @@ impl View
         let camera = Rc::new(RefCell::new(camera));
 
 
-        let dragger = Rc::new(RefCell::new(dragger::DraggerManager::new(&container.factory, &*resource)));
+        let dragger = Rc::new(RefCell::new(dragger::DraggerManager::new(factory, &*resource)));
 
         let control = Rc::new(RefCell::new(
                 Control::new(
@@ -113,7 +113,7 @@ impl View
                     dragger.clone()
                     )));
 
-        let render = box Render::new(&container.factory, resource.clone(), camera.clone());
+        let render = box Render::new(factory, resource.clone(), camera.clone());
 
         let v = View {
             render : render,
@@ -131,7 +131,7 @@ impl View
             height : h,
             updating : Cell::new(false),
             loading_resource : Arc::new(Mutex::new(0)),
-            last_draw : 0
+            last_draw : 0,
         };
 
         return v;
@@ -140,29 +140,18 @@ impl View
     pub fn init(
         &mut self,
         container : &mut Box<ui::WidgetContainer>,
-        property_config : &ui::WidgetPanelConfig,
-        tree_config : &ui::WidgetConfig,
+        win : *const ui::Window,
         ) -> () {
-        let w = unsafe {ui::window_new(self.width,self.height)};
-        self.window = Some(w);
 
-        //let p = Rc::new(ui::PropertyList::new(w, property_config));
-        container.panel.config = property_config.clone();
-        container.panel.create(w);
+        self.window = Some(win);
 
-        let p = Rc::new(ui::PropertyBox::new(&*container.panel));//, property_config));
-        let mut t = box ui::Tree::new(w, tree_config);
+        container.list.create(win);
 
-        container.list.create(w);
+        let mut menu = box ui::Action::new(win, ui::action::Position::Top, self.uuid);
 
-        let mut menu = box ui::Action::new(w, ui::action::Position::Top, self.uuid);
+        let a = box ui::Action::new(win, ui::action::Position::Bottom, self.uuid);
+        let command = box ui::Command::new(win);
 
-        let a = box ui::Action::new(w, ui::action::Position::Bottom, self.uuid);
-        let command = box ui::Command::new(w);
-
-        let tsd = ui::WidgetCbData::with_ptr(container, unsafe { mem::transmute(&*t)});
-        //let pd = ui::WidgetCbData::with_ptr(container, unsafe { mem::transmute(&*p)});
-        let pd = ui::WidgetCbData::new_with_widget(container, p.clone());
         let ad = ui::WidgetCbData::with_ptr(container, unsafe { mem::transmute(&*a)});
 
         a.add_button("new scene", ui::action::scene_new, ad.clone());
@@ -185,43 +174,9 @@ impl View
             ui::action::compile_test,
             ad.clone());
 
-        unsafe {
-            ui::tree::tree_register_cb(
-                t.jk_tree,
-                mem::transmute(box tsd),
-                ui::tree::name_get,
-                ui::tree::item_selected,
-                ui::tree::can_expand,
-                ui::tree::expand,
-                ui::tree::selected,
-                ui::tree::unselected,
-                ui::tree::panel_move,
-                );
-        }
-
-        unsafe {
-            ui::property::jk_property_cb_register(
-                ui::property_box::property_box_cb_get(p.jk_property),
-                mem::transmute(box pd),
-                ui::property_list::changed_set_float,
-                ui::property_list::changed_set_string,
-                ui::property_list::changed_set_enum,
-                ui::property_list::register_change_string,
-                ui::property_list::register_change_float,
-                ui::property_list::register_change_enum,
-                ui::property_list::register_change_option,
-                ui::property_list::expand,
-                ui::property_list::contract,
-                ui::property::vec_add,
-                ui::property::vec_del);
-        }
-
         let name = match container.context.scene {
             Some(ref s) => {
-                //t.borrow_mut().set_scene(&*s.borrow());
                 let sb = &*s.borrow();
-                //menu.add_label(&sb.name);
-                t.set_scene(sb);
                 sb.name.clone()
             },
             None => {
@@ -233,15 +188,11 @@ impl View
         menu.add_entry(String::from("scene"),&name, ui::action::scene_rename, ad.clone());
         menu.add_button("+", ui::action::scene_new, ad.clone());
 
-        container.tree = Some(t);
-        container.property = Some(p.clone());
-        container.panel.widget = Some(p);
         container.action = Some(a);
         container.command = Some(command);
         container.menu = Some(menu);
 
         //container.list.create(w);
-
     }
 
     fn init_render(&mut self)
@@ -555,7 +506,7 @@ pub extern fn key_down(
                 return;
             },
             "p" => {
-                let p = &mut container.panel;
+                let p = &mut container.property;
                 let b = p.visible();
                 p.set_visible(!b);
                 return;

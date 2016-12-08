@@ -78,7 +78,7 @@ pub struct PropertyBox
 impl PropertyBox
 {
     pub fn new(
-        panel : &ui::WidgetPanel,
+        panel : &ui::WidgetPanel<PropertyBox>,
         ) -> PropertyBox
     {
         PropertyBox {

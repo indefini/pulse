@@ -252,7 +252,7 @@ pub extern fn init_cb(data: *mut c_void) -> () {
     for v in &wc.views {
         let view = box View::new(
             container.resource.clone(),
-            container,
+            &mut container.factory,
             v.window.w,
             v.window.h,
             v.camera.clone());
@@ -299,7 +299,6 @@ pub extern fn init_cb(data: *mut c_void) -> () {
 
     }
 
-    //while let Some(mut v) = Some(views.remove(0)) {
     for v in &mut views {
         let v : &mut Box<View> = v;
 
@@ -310,7 +309,14 @@ pub extern fn init_cb(data: *mut c_void) -> () {
         else {
             ui::WidgetConfig::new()
         };
-        v.init(container, &pc, &tc);
+
+        let win = unsafe {ui::window_new(v.width,v.height)};
+
+        //TODO remove from here?
+        init_property(container, win, &pc);
+        init_tree(container, win, &tc);
+
+        v.init(container, win);
 
         if let Some(w) = v.window {
             unsafe {
@@ -343,18 +349,71 @@ pub extern fn init_cb(data: *mut c_void) -> () {
                 }
             }
         }
-        /*
-        container.views.push(v);
-        if views.is_empty() {
-            break;
-        }
-        */
     }
 
     container.views = views;
 
     let path = CString::new("shader".as_bytes()).unwrap().as_ptr();
     unsafe { jk_monitor_add(file_changed, mem::transmute(container), path); }
+}
+
+fn init_property(container : &mut Box<WidgetContainer>, win : *const Window, pc : &WidgetPanelConfig)
+{
+    container.property.config = pc.clone();
+    container.property.create(win);
+
+    let p = Rc::new(ui::PropertyBox::new(&*container.property));
+    let pd = ui::WidgetCbData::new_with_widget(container, p.clone());
+
+    unsafe {
+        ui::property::jk_property_cb_register(
+            ui::property_box::property_box_cb_get(p.jk_property),
+            mem::transmute(box pd),
+            ui::property_list::changed_set_float,
+            ui::property_list::changed_set_string,
+            ui::property_list::changed_set_enum,
+            ui::property_list::register_change_string,
+            ui::property_list::register_change_float,
+            ui::property_list::register_change_enum,
+            ui::property_list::register_change_option,
+            ui::property_list::expand,
+            ui::property_list::contract,
+            ui::property::vec_add,
+            ui::property::vec_del);
+    }
+
+    container.property.widget = Some(p);
+}
+
+fn init_tree(container : &mut Box<WidgetContainer>, win : *const Window, tree_config : &WidgetConfig)
+{
+    let mut t = box ui::Tree::new(win, tree_config);
+    let tsd = ui::WidgetCbData::with_ptr(container, unsafe { mem::transmute(&*t)});
+
+    unsafe {
+        ui::tree::tree_register_cb(
+            t.jk_tree,
+            mem::transmute(box tsd),
+            ui::tree::name_get,
+            ui::tree::item_selected,
+            ui::tree::can_expand,
+            ui::tree::expand,
+            ui::tree::selected,
+            ui::tree::unselected,
+            ui::tree::panel_move,
+            );
+    }
+
+    match container.context.scene {
+        Some(ref s) => {
+            let sb = &*s.borrow();
+            t.set_scene(sb);
+        },
+        None => {
+        }
+    }
+
+    container.tree = Some(t);
 }
 
 #[derive(RustcDecodable, RustcEncodable, Clone)]
@@ -419,7 +478,7 @@ impl WindowConfig {
         let mut wc = WindowConfig {
             views : Vec::new(),
 
-            property : c.panel.config.clone(),
+            property : c.property.config.clone(),
             tree : match c.tree {
                 None => None,
                 Some(ref t) => Some(t.get_config())
@@ -552,10 +611,10 @@ pub trait Widget
     fn get_id(&self) -> Uuid;
 }
 
-pub struct WidgetPanel
+pub struct WidgetPanel<T>
 {
     pub config : WidgetPanelConfig,
-    pub widget : Option<Rc<PropertyBox>>,
+    pub widget : Option<Rc<T>>,
     pub eo : *const Evas_Object
 }
 
@@ -583,9 +642,9 @@ impl Default for WidgetPanelConfig
     }
 }
 
-impl WidgetPanel
+impl<T> WidgetPanel<T>
 {
-    pub fn new(config : WidgetPanelConfig, widget : Option<Rc<PropertyBox>>) -> WidgetPanel
+    pub fn new(config : WidgetPanelConfig, widget : Option<Rc<T>>) -> WidgetPanel<T>
     {
         WidgetPanel {
             config : config,
@@ -646,10 +705,7 @@ pub struct WidgetContainer
 {
     pub widgets : Vec<Box<Widget>>,
     pub tree : Option<Box<Tree>>,
-    //pub property : Option<Rc<PropertyList>>,
-    pub panel :  Box<WidgetPanel>,
-    pub property : Option<Rc<PropertyBox>>,
-    //pub property : Option<Rc<PropertyWidget>>,
+    pub property : Box<WidgetPanel<PropertyBox>>,
     pub command : Option<Box<Command>>,
     pub action : Option<Box<Action>>,
     views : Vec<Box<View>>,
@@ -786,8 +842,8 @@ impl WidgetContainer
         WidgetContainer {
             widgets : Vec::new(),
             tree : None,
-            panel : box WidgetPanel::new(WidgetPanelConfig::default(), None),
-            property : None,
+            property : box WidgetPanel::new(WidgetPanelConfig::default(), None),
+            //property : None,
             command : None,
             action : None,
             menu : None,
@@ -847,7 +903,7 @@ impl WidgetContainer
                     }
                 }
 
-                if let Some(ref p) = self.property {
+                if let Some(ref p) = self.property.widget {
                     //p.update_object(&*o.read().unwrap(), s);
                     if widget_origin != p.id {
                         p.update_object_property(&*o.read().unwrap(), name);
@@ -875,7 +931,7 @@ impl WidgetContainer
                         let ob = o.read().unwrap();
 
                         if *id == ob.id  {
-                            if let Some(ref mut p) = self.property {
+                            if let Some(ref mut p) = self.property.widget {
                                 if widget_origin != p.id {
                                     println!("hangle change, calling update objects");
                                     //p.update_object(&*ob, "");
@@ -897,7 +953,7 @@ impl WidgetContainer
                         let ob = o.read().unwrap();
 
                         if *id == ob.id  {
-                            if let Some(ref mut p) = self.property {
+                            if let Some(ref mut p) = self.property.widget {
                                 //if widget_origin != p.id 
 				{
                                     println!("update object property, this needs more info than just update the value, must indicate it is a vec change.
@@ -921,7 +977,7 @@ impl WidgetContainer
                         let ob = o.read().unwrap();
 
                         if *id == ob.id  {
-                            if let Some(ref mut p) = self.property {
+                            if let Some(ref mut p) = self.property.widget {
                                 if widget_origin != p.id {
                                     println!("update object property, this needs more info than just update the value, must indicate it is a vec change.
                                              so we dont remove and add all children again, and so the scroller doesnt make big jump");
@@ -938,7 +994,7 @@ impl WidgetContainer
                 if let Some(ref o) = sel {
                     let ob = o.read().unwrap();
                     if uuid == ob.id  {
-                        if let Some(ref mut p) = self.property {
+                        if let Some(ref mut p) = self.property.widget {
                             if widget_origin != p.id {
                                 p.update_object(&*ob, "");
                             }
@@ -982,7 +1038,7 @@ impl WidgetContainer
                 println!("selected changed");
 
                 if sel.is_empty() {
-                    if let Some(ref mut p) = self.property {
+                    if let Some(ref mut p) = self.property.widget {
                         if let Some(ref s) = self.context.scene {
                             //p.set_scene(&*s.borrow());
                             //p.set_prop_cell(s.clone(), "scene");
@@ -991,7 +1047,7 @@ impl WidgetContainer
                     }
                 }
                 else if sel.len() != 1 {
-                    if let Some(ref mut p) = self.property {
+                    if let Some(ref mut p) = self.property.widget {
                         if widget_origin != p.id {
                             p.set_nothing();
                         }
@@ -1002,7 +1058,7 @@ impl WidgetContainer
                 }
                 else {
                     if let Some(o) = sel.get(0) {
-                        if let Some(ref mut p) = self.property {
+                        if let Some(ref mut p) = self.property.widget {
                             if widget_origin != p.id {
                                 //p.set_object(&*o.read().unwrap());
                                 let pu = &*o.read().unwrap() as &PropertyUser;
@@ -1696,7 +1752,7 @@ impl WidgetContainer
             t.set_scene(&scene.borrow());
         }
 
-        if let Some(ref mut p) = self.property {
+        if let Some(ref mut p) = self.property.widget {
             p.set_nothing();
         }
 
@@ -2213,3 +2269,4 @@ fn check_mesh(name : &str, wc : &WidgetContainer, id : uuid::Uuid)
     }
 
 }
+
