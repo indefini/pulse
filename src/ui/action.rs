@@ -66,7 +66,8 @@ pub struct Action
     jk_action : *const JkAction,
     visible : bool,
     view_id : uuid::Uuid,
-    pub entries : HashMap<String, *const JkEntry>
+    pub entries : HashMap<String, *const JkEntry>,
+    pub closures : Vec<Box<Fn(&mut ui::WidgetContainer)>>
 }
 
 pub enum Position
@@ -91,7 +92,8 @@ impl Action
             },
             visible : true,
             view_id : view_id,
-            entries : HashMap::new()
+            entries : HashMap::new(),
+            closures : Vec::new()
         }
     }
 
@@ -120,6 +122,34 @@ impl Action
             b
         }
     }
+
+    pub fn add_button_closure<F:'static>(&mut self, name : &str, f : F) -> *const ui::Evas_Object
+        where F : Fn(&mut ui::WidgetContainer)
+    {
+        unsafe {
+            let b = action_button_new1(
+                self.jk_action,
+                CString::new(name.as_bytes()).unwrap().as_ptr());
+
+            let bf = Box::new(f);
+
+            self.closures.push(bf);
+
+            //let fp = do
+
+            //let mut data = data;
+            //data.object = Some(b);
+            
+            /*
+            btn_cb_set(b,
+                       //cb,
+                       std::ptr::null());
+                       //mem::transmute(box data));
+                       */
+            b
+        }
+    }
+
 
     pub fn add_button_ptr(
         &self,

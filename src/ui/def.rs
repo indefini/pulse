@@ -422,13 +422,14 @@ fn init_action(container : &mut Box<WidgetContainer>, win : *const Window, view_
 {
     let mut menu = box ui::Action::new(win, ui::action::Position::Top, view_id);
 
-    let a = box ui::Action::new(win, ui::action::Position::Bottom, view_id);
+    let mut a = box ui::Action::new(win, ui::action::Position::Bottom, view_id);
     let command = box ui::Command::new(win);
 
     let ad = ui::WidgetCbData::with_ptr(container, unsafe { mem::transmute(&*a)});
 
     a.add_button("new scene", ui::action::scene_new, ad.clone());
     a.add_button("add empty", ui::action::add_empty, ad.clone());
+    a.add_button_closure("add empty closure", move |container| ui::add_empty(container, view_id));
     a.add_button(
         "open game view",
         ui::action::open_game_view,
