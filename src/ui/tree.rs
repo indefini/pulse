@@ -323,7 +323,8 @@ pub extern fn selected(
 {
     let wcb : & ui::WidgetCbData = unsafe {mem::transmute(tsd)};
     let tree : &Tree = unsafe {mem::transmute(wcb.widget)};
-    let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
+    //let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
+    let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
 
     let o : &Arc<RwLock<object::Object>> = unsafe {
         mem::transmute(data)
@@ -340,7 +341,8 @@ pub extern fn unselected(
 {
     let wcb : & ui::WidgetCbData = unsafe {mem::transmute(tsd)};
     let tree : &Tree = unsafe {mem::transmute(wcb.widget)};
-    let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
+    //let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
+    let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
     //let tsd : &TreeSelectData = unsafe {mem::transmute(tsd)};
 
     /*

@@ -386,21 +386,24 @@ pub extern fn contract(
 }
 
 fn get_widget_data<'a>(widget_data : *const c_void) ->
-    (&'a mut ui::PropertyList, &'a mut Box<ui::WidgetContainer>)
+    //(&'a mut ui::PropertyList, &'a mut Box<ui::WidgetContainer>)
+    (&'a mut ui::PropertyList, &'a mut ui::WidgetContainer)
 {
     println!("GET WIDGET DATAAAAAAAAAAAAAAA, this is old so crash, use get_widget_data2");
 
     let wcb : & ui::WidgetCbData = unsafe {mem::transmute(widget_data)};
     //let p : &mut ui::PropertyList = unsafe {mem::transmute(wcb.widget)};
     let p : &mut Box<ui::PropertyList> = unsafe {mem::transmute(wcb.widget)};
-    let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
+    //let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
+    let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
 
     //(p, container)
     (&mut **p, container)
 }
 
 fn get_widget_data2<'a>(widget_data : *const c_void) ->
-    (Rc<ui::PropertyWidget>, &'a mut Box<ui::WidgetContainer>)
+    //(Rc<ui::PropertyWidget>, &'a mut Box<ui::WidgetContainer>)
+    (Rc<ui::PropertyWidget>, &'a mut ui::WidgetContainer)
 {
     let wcb : &ui::WidgetCbData = unsafe {mem::transmute(widget_data)};
     let p : Rc<ui::PropertyWidget> = if let Some(ref w) = wcb.widget2 {
@@ -411,7 +414,8 @@ fn get_widget_data2<'a>(widget_data : *const c_void) ->
     };
     //let p : &mut Box<ui::PropertyWidget> = unsafe {mem::transmute(wcb.widget)};
     //let p : *mut ui::PropertyWidget = unsafe {mem::transmute(wcb.widget)};
-    let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
+    //let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
+    let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
 
     (p, container)
 }

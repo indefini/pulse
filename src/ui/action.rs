@@ -67,7 +67,7 @@ pub struct Action
     visible : bool,
     view_id : uuid::Uuid,
     pub entries : HashMap<String, *const JkEntry>,
-    pub closures : Vec<Box<Fn(&mut ui::WidgetContainer)>>
+    pub closures : Vec<Box<Fn()>>
 }
 
 pub enum Position
@@ -124,7 +124,7 @@ impl Action
     }
 
     pub fn add_button_closure<F:'static>(&mut self, name : &str, f : F) -> *const ui::Evas_Object
-        where F : Fn(&mut ui::WidgetContainer)
+        where F : Fn()
     {
         unsafe {
             let b = action_button_new1(
@@ -207,7 +207,8 @@ pub extern fn add_empty(data : *const c_void)
 {
     let wcb : & ui::WidgetCbData = unsafe {mem::transmute(data)};
     let action : &Action = unsafe {mem::transmute(wcb.widget)};
-    let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
+    //let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
+    let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
 
     ui::add_empty(container, action.view_id);
 }
@@ -216,7 +217,8 @@ pub extern fn scene_new(data : *const c_void)
 {
     let wcb : & ui::WidgetCbData = unsafe {mem::transmute(data)};
     let action : &Action = unsafe {mem::transmute(wcb.widget)};
-    let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
+    //let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
+    let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
 
     ui::scene_new(container, action.view_id);
 }
@@ -225,9 +227,10 @@ pub extern fn scene_list(data : *const c_void)
 {
     let wcb : & ui::WidgetCbData = unsafe {mem::transmute(data)};
     let action : &Action = unsafe {mem::transmute(wcb.widget)};
-    let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
+    //let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
+    let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
 
-    ui::scene_list(container, action.view_id, wcb.object);
+    ui::scene_list(&wcb.container, action.view_id, wcb.object);
 }
 
 
@@ -235,7 +238,8 @@ pub extern fn scene_rename(data : *const c_void, name : *const c_char)
 {
     let wcb : & ui::WidgetCbData = unsafe {mem::transmute(data)};
     let action : &Action = unsafe {mem::transmute(wcb.widget)};
-    let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
+    //let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
+    let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
 
     let s = unsafe {CStr::from_ptr(name)}.to_str().unwrap();
 
@@ -247,7 +251,8 @@ pub extern fn open_game_view(data : *const c_void)
 {
     let wcb : & ui::WidgetCbData = unsafe {mem::transmute(data)};
     let action : &Action = unsafe {mem::transmute(wcb.widget)};
-    let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
+    //let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
+    let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
 
     if container.open_gameview() {
         return;
@@ -260,7 +265,7 @@ pub extern fn open_game_view(data : *const c_void)
         return;
     };
 
-    let gv = ui::create_gameview_window(wcb.container, camera, scene, &ui::WidgetConfig::new());
+    let gv = ui::create_gameview_window(wcb.container.clone(), camera, scene, &ui::WidgetConfig::new());
 
     container.set_gameview(gv);
 }
@@ -269,12 +274,14 @@ pub extern fn play_scene(data : *const c_void)
 {
     let wcb : & ui::WidgetCbData = unsafe {mem::transmute(data)};
     let action : &Action = unsafe {mem::transmute(wcb.widget)};
-    let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
+    //let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
+    let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
 
     if container.play_gameview() {
         if container.anim.is_none() {
             container.anim = Some( unsafe {
-                ui::ecore_animator_add(ui::update_play_cb, mem::transmute(wcb.container))
+                panic!("TODO : transmute is bad");
+                ui::ecore_animator_add(ui::update_play_cb, mem::transmute(wcb.container.clone()))
             });
         }
         return;
@@ -287,13 +294,14 @@ pub extern fn play_scene(data : *const c_void)
         return;
     };
 
-    let gv = ui::create_gameview_window(wcb.container, camera, scene, &ui::WidgetConfig::new());
+    let gv = ui::create_gameview_window(wcb.container.clone(), camera, scene, &ui::WidgetConfig::new());
     container.set_gameview(gv);
 
     //println!("ADDDDDDDD animator");
     if container.anim.is_none() {
         container.anim = Some( unsafe {
-            ui::ecore_animator_add(ui::update_play_cb, mem::transmute(wcb.container))
+            panic!("transmute is bad");
+            ui::ecore_animator_add(ui::update_play_cb, mem::transmute(wcb.container.clone()))
         });
     }
 }
@@ -302,7 +310,8 @@ pub extern fn pause_scene(data : *const c_void)
 {
     let wcb : & ui::WidgetCbData = unsafe {mem::transmute(data)};
     let action : &Action = unsafe {mem::transmute(wcb.widget)};
-    let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
+    //let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
+    let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
 
 
     if let Some(ref mut gv) = container.gameview {
@@ -324,7 +333,8 @@ pub extern fn compile_test(data : *const c_void)
 {
     let wcb : & ui::WidgetCbData = unsafe {mem::transmute(data)};
     let action : &Action = unsafe {mem::transmute(wcb.widget)};
-    let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
+    //let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
+    let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
     
     println!("compile test!!!!!!!!!!!!!!!!!!!!");
     
