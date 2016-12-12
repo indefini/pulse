@@ -38,6 +38,8 @@ use dormin::armature;
 use dormin::transform::Orientation;
 
 
+use util::Arw;
+
 #[repr(C)]
 pub struct JkPropertyList;
 
@@ -347,6 +349,7 @@ pub extern fn contract(
     data : *const c_void,
     parent : *const Elm_Object_Item) -> ()
 {
+    /*
     let (p,_) = get_widget_data(widget_cb_data);
 
     unsafe {
@@ -383,8 +386,10 @@ pub extern fn contract(
             }
         }
     }
+    */
 }
 
+/*
 fn get_widget_data<'a>(widget_data : *const c_void) ->
     //(&'a mut ui::PropertyList, &'a mut Box<ui::WidgetContainer>)
     (&'a mut ui::PropertyList, &'a mut ui::WidgetContainer)
@@ -400,10 +405,12 @@ fn get_widget_data<'a>(widget_data : *const c_void) ->
     //(p, container)
     (&mut **p, container)
 }
+*/
 
 fn get_widget_data2<'a>(widget_data : *const c_void) ->
     //(Rc<ui::PropertyWidget>, &'a mut Box<ui::WidgetContainer>)
-    (Rc<ui::PropertyWidget>, &'a mut ui::WidgetContainer)
+    //(Rc<ui::PropertyWidget>, &'a mut ui::WidgetContainer)
+    (Rc<ui::PropertyWidget>, Arw<ui::WidgetContainer>)
 {
     let wcb : &ui::WidgetCbData = unsafe {mem::transmute(widget_data)};
     let p : Rc<ui::PropertyWidget> = if let Some(ref w) = wcb.widget2 {
@@ -415,9 +422,10 @@ fn get_widget_data2<'a>(widget_data : *const c_void) ->
     //let p : &mut Box<ui::PropertyWidget> = unsafe {mem::transmute(wcb.widget)};
     //let p : *mut ui::PropertyWidget = unsafe {mem::transmute(wcb.widget)};
     //let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
-    let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
+    //let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
 
-    (p, container)
+    //(p, container)
+    (p, wcb.container.clone())
 }
 
 
@@ -447,6 +455,7 @@ fn changed_set<T : Any+Clone+PartialEq>(
     println!("changed_set : {}", path);
 
     let (p, container) = get_widget_data2(widget_data);
+    let container = &mut *container.write().unwrap();
 
     let change = match (old, action) {
         (Some(oldd), 1) => {
@@ -508,6 +517,7 @@ fn changed_enum<T : Any+Clone+PartialEq>(
     let path = &node.borrow().get_path();
 
     let (p, container) = get_widget_data2(widget_data);
+    let container = &mut *container.write().unwrap();
 
     let change = {
         /*
@@ -553,6 +563,8 @@ fn changed_option(
     new : &str
     )
 {
+    panic!("TODO");
+    /*
     let node : Weak<RefCell<ui::PropertyNode>> = unsafe {mem::transmute(property)};
     let node = if let Some(n) = node.upgrade() {
         n
@@ -594,6 +606,7 @@ fn changed_option(
     };
 
     container.handle_change(&change, p.id);
+    */
 }
 
 pub extern fn expand(
@@ -601,6 +614,7 @@ pub extern fn expand(
     data : *const c_void,
     parent : *const Elm_Object_Item) -> ()
 {
+    /*
     let datachar = data as *const i8;
     let s = unsafe {CStr::from_ptr(datachar).to_bytes()};
 
@@ -635,6 +649,7 @@ pub extern fn expand(
     else {
         println!("no current prop....... {}", path);
     }
+    */
 
 }
 

@@ -1,12 +1,16 @@
-use std::sync::{RwLock, Arc};
+use std::sync::{RwLock, Arc, Mutex};
 use std::fs;
 use std::mem;
 use std::ffi::{CString, CStr};
 use std::str;
 use libc::{c_void, c_int, size_t, c_char};
 
+
 use dormin::vec;
 use dormin::object;
+
+pub type Arw<T> = Arc<RwLock<T>>;
+pub type Mx<T> = Arc<Mutex<T>>;
 
 pub fn objects_center(objects : &[Arc<RwLock<object::Object>>]) -> vec::Vec3
 {

@@ -133,19 +133,16 @@ impl Action
 
             let bf = Box::new(f);
 
-            self.closures.push(bf);
+            //self.closures.push(bf);
 
-            //let fp = do
-
-            //let mut data = data;
-            //data.object = Some(b);
+            extern fn wrapper<F>(f : *const c_void)
+                where F: Fn() {
+                    let closure_ptr = f as *const F;
+                    let closure = unsafe { &*closure_ptr };
+                    return closure();
+                }
             
-            /*
-            btn_cb_set(b,
-                       //cb,
-                       std::ptr::null());
-                       //mem::transmute(box data));
-                       */
+            btn_cb_set(b, wrapper::<F>, Box::into_raw(bf) as *const c_void);
             b
         }
     }
@@ -274,14 +271,12 @@ pub extern fn play_scene(data : *const c_void)
 {
     let wcb : & ui::WidgetCbData = unsafe {mem::transmute(data)};
     let action : &Action = unsafe {mem::transmute(wcb.widget)};
-    //let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
     let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
 
     if container.play_gameview() {
         if container.anim.is_none() {
             container.anim = Some( unsafe {
-                panic!("TODO : transmute is bad");
-                ui::ecore_animator_add(ui::update_play_cb, mem::transmute(wcb.container.clone()))
+                ui::ecore_animator_add(ui::update_play_cb, Box::into_raw(box wcb.container.clone()) as *const c_void)
             });
         }
         return;
@@ -310,7 +305,6 @@ pub extern fn pause_scene(data : *const c_void)
 {
     let wcb : & ui::WidgetCbData = unsafe {mem::transmute(data)};
     let action : &Action = unsafe {mem::transmute(wcb.widget)};
-    //let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
     let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
 
 
@@ -333,7 +327,6 @@ pub extern fn compile_test(data : *const c_void)
 {
     let wcb : & ui::WidgetCbData = unsafe {mem::transmute(data)};
     let action : &Action = unsafe {mem::transmute(wcb.widget)};
-    //let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
     let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
     
     println!("compile test!!!!!!!!!!!!!!!!!!!!");

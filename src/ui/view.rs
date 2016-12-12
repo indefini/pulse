@@ -35,6 +35,7 @@ use control::WidgetUpdate;
 use dormin::scene;
 use dormin::component;
 use util;
+use util::Arw;
 use dormin::input;
 
 /*
@@ -264,7 +265,8 @@ pub extern fn mouse_down(
     //let view : &Box<View> = unsafe {mem::transmute(data)};
     let wcb : & ui::WidgetCbData = unsafe {mem::transmute(data)};
     let view : &View = unsafe {mem::transmute(wcb.widget)};
-    let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
+    //let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
+    let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
 
     let op_list = {
         let control_rc = view.control.clone();
@@ -299,7 +301,8 @@ pub extern fn mouse_up(
     //let view : &Box<View> = unsafe {mem::transmute(data)};
     let wcb : & ui::WidgetCbData = unsafe {mem::transmute(data)};
     let view : &View = unsafe {mem::transmute(wcb.widget)};
-    let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
+    //let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
+    let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
 
     let change = {
         let control_rc = view.control.clone();
@@ -325,7 +328,8 @@ pub extern fn mouse_move(
 {
     //let view : &Box<View> = unsafe {mem::transmute(data)};
     let wcb : & ui::WidgetCbData = unsafe {mem::transmute(data)};
-    let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
+    //let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
+    let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
     let view : &View = unsafe {mem::transmute(wcb.widget)};
     let control_rc = view.control.clone();
 
@@ -383,7 +387,8 @@ pub extern fn key_down(
     //let view : &Box<View> = unsafe {mem::transmute(data)};
     let wcb : & ui::WidgetCbData = unsafe {mem::transmute(data)};
     let view : &View = unsafe {mem::transmute(wcb.widget)};
-    let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
+    //let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
+    let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
 
     let change = {
         //let control_rc = view.control.clone();
@@ -521,7 +526,8 @@ fn create_repere(m : &mut mesh::Mesh, len : f64)
 pub extern fn init_cb(v : *mut View) -> () {
     let wcb : & ui::WidgetCbData = unsafe {mem::transmute(v)};
     let view : &mut View = unsafe {mem::transmute(wcb.widget)};
-    let container : &Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
+    //let container : &Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
+    let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
 
     return view.init_render();
 }
@@ -530,7 +536,8 @@ pub extern fn request_update_again(data : *const c_void) -> bool
 {
     let wcb : & ui::WidgetCbData = unsafe {mem::transmute(data)};
     let view : &mut View = unsafe {mem::transmute(wcb.widget)};
-    let container : &Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
+    //let container : &Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
+    let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
 
     if let Ok(lr) = view.loading_resource.try_lock() {
         if *lr == 0 {
@@ -546,7 +553,8 @@ pub extern fn draw_cb(v : *mut View) -> () {
 
     let wcb : & ui::WidgetCbData = unsafe {mem::transmute(v)};
     let view : &mut View = unsafe {mem::transmute(wcb.widget)};
-    let container : &Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
+    //let container : &Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
+    let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
 
     let draw_not_done = view.draw(&*container.context);
 
@@ -560,7 +568,8 @@ pub extern fn draw_cb(v : *mut View) -> () {
 pub extern fn resize_cb(v : *mut View, w : c_int, h : c_int) -> () {
     let wcb : & ui::WidgetCbData = unsafe {mem::transmute(v)};
     let view : &mut View = unsafe {mem::transmute(wcb.widget)};
-    let container : &Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
+    //let container : &Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
+    let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
 
     return view.resize(w, h);
 }
@@ -745,7 +754,9 @@ pub extern fn gv_resize_cb(v : *const c_void, w : c_int, h : c_int) {
 }
 
 pub extern fn gv_close_cb(data : *mut c_void) {
-    let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(data)};
+    //let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(data)};
+    let container : Box<Arw<ui::WidgetContainer>> = unsafe {mem::transmute(data)};
+    let container = &mut *container.write().unwrap();
     if let Some(ref mut gv) = container.gameview {
         gv.set_visible(false);
     }
