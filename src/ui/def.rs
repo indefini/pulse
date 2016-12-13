@@ -1289,14 +1289,7 @@ impl WidgetContainer
             _ => {}
         }
 
-        for view in &self.views {
-            view.request_update();
-        }
-
-        if let Some(ref gv) = self.gameview {
-            gv.request_update();
-        }
-
+        self.update_all_views();
     }
 
     pub fn handle_event(&mut self, event : ui::Event, widget_origin: uuid::Uuid)
@@ -1958,6 +1951,17 @@ impl WidgetContainer
             }
         }
     }
+
+    fn update_all_views(&mut self)
+    {
+        for view in &self.views {
+            view.request_update();
+        }
+
+        if let Some(ref gv) = self.gameview {
+            gv.request_update();
+        }
+    }
 }
 
 // TODO remove/rework
@@ -2279,6 +2283,7 @@ pub extern fn file_changed(
 
     let container : &mut ui::WidgetContainer = &mut *container_arw.write().unwrap();
 
+    let mut should_update_views = false;
     if s.ends_with(".frag") || s.ends_with(".vert") {
         println!("file changed : {}", s);
         let shader_manager = container.resource.shader_manager.borrow();
@@ -2308,10 +2313,14 @@ pub extern fn file_changed(
 
             if reload {
                 if shader.reload() {
-                    //TODO ask for view update
+                    should_update_views = true;
                 }
             }
         }
+    }
+
+    if should_update_views {
+        container.update_all_views();
     }
 }
 
