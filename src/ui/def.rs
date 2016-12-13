@@ -2266,7 +2266,6 @@ pub extern fn update_play_cb(container_data : *const c_void) -> bool
     container.update_play()
 }
 
-
 pub extern fn file_changed(
     data : *const c_void,
     path : *const c_char,
@@ -2277,6 +2276,7 @@ pub extern fn file_changed(
         let c = data as *const Arw<ui::WidgetContainer>;
         unsafe { &*c }
     };
+
     let container : &mut ui::WidgetContainer = &mut *container_arw.write().unwrap();
 
     if s.ends_with(".frag") || s.ends_with(".vert") {
@@ -2293,6 +2293,7 @@ pub extern fn file_changed(
                 println!("early return");
                 continue
             };
+
             let mut shader = shader_arc.write().unwrap();
 
             let mut reload = false;
@@ -2306,14 +2307,15 @@ pub extern fn file_changed(
             };
 
             if reload {
-                shader.reload();
+                if shader.reload() {
+                    //TODO ask for view update
+                }
             }
         }
     }
 }
 
 pub fn create_gameview_window(
-    //container : *const ui::WidgetContainer,
     container : Arw<ui::WidgetContainer>,
     camera : Rc<RefCell<camera::Camera>>,
     scene : Rc<RefCell<scene::Scene>>,
@@ -2321,21 +2323,22 @@ pub fn create_gameview_window(
     ) -> Box<ui::view::GameView>
 {
     let win = unsafe {
-        ui::jk_window_new(ui::view::gv_close_cb, mem::transmute( box container.clone()))
+        ui::jk_window_new(
+            ui::view::gv_close_cb,
+            mem::transmute( box container.clone()))
     };
 
     unsafe { evas_object_resize(win, config.w, config.h); }
 
-    //let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(container)};
     let container : &mut ui::WidgetContainer = &mut *container.write().unwrap();
 
-    ui::view::GameView::new(win, camera, scene, container.resource.clone(), config.clone())
-    
-    //println!("TODOTOTOTOTODODODODODOTOTODODO");
-    //let resource = Rc::new(resource::ResourceGroup::new());
-    //ui::view::GameView::new(win, camera, scene, resource, config.clone())
+    ui::view::GameView::new(
+        win,
+        camera,
+        scene,
+        container.resource.clone(),
+        config.clone())
 }
-
 
 fn check_mesh(name : &str, wc : &WidgetContainer, id : uuid::Uuid)
 {
