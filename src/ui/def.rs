@@ -56,8 +56,8 @@ pub type RustCb = extern fn(data : *mut c_void);
 pub type RenderFunc = extern fn(data : *const c_void);
 pub type ResizeFunc = extern fn(data : *const c_void, w : c_int, h : c_int);
 
-pub type RenderFuncTmp = extern fn(data : *mut View);
-pub type ResizeFuncTmp = extern fn(data : *mut View, w : c_int, h : c_int);
+pub type RenderFuncTmp = extern fn(data : *const c_void);
+pub type ResizeFuncTmp = extern fn(data : *const c_void, w : c_int, h : c_int);
 
 pub type PanelGeomFunc = extern fn(
     object : *const c_void,
@@ -166,11 +166,11 @@ extern {
         );
 
     pub fn init_callback_set(
-        cb: extern fn(*mut c_void) -> (),
+        cb: extern fn(*const c_void) -> (),
         data: *const c_void
         ) -> ();
     pub fn exit_callback_set(
-        cb: extern fn(*mut c_void) -> (),
+        cb: extern fn(*const c_void) -> (),
         data: *const c_void
         ) -> ();
 
@@ -243,8 +243,7 @@ fn elm_object_text_set(
     unsafe { elm_object_part_text_set(obj, ptr::null(), text); }
 }
 
-pub extern fn init_cb(data: *mut c_void) -> () {
-    //let app_data : &AppCbData = { let d = data as *const AppCbData; unsafe {&*d}};
+pub extern fn init_cb(data: *const c_void) -> () {
     let app_data : &AppCbData = unsafe { &*(data as *const AppCbData) };
     let container_arw = app_data.container.clone();
 
@@ -313,7 +312,8 @@ pub extern fn init_cb(data: *mut c_void) -> () {
         }
     }
 
-    for v in &mut views {
+    //for v in &mut views {
+    for (i,v) in views.iter_mut().enumerate() {
         let v : &mut Box<View> = v;
 
         let pc = wc.property.clone();
@@ -332,24 +332,22 @@ pub extern fn init_cb(data: *mut c_void) -> () {
         init_action(&container_arw, win, v.uuid);
 
         {
-        let container = &mut *app_data.container.write().unwrap();
-        container.list.create(win);
+        //let container = &mut *app_data.container.write().unwrap();
+        //container.list.create(win);
+
+        app_data.container.write().unwrap().list.create(win);
         }
 
         v.init(win);
 
         if let Some(w) = v.window {
             unsafe {
-                {
-                //let view : *const c_void = mem::transmute(&*v);
-                let view : *const c_void = mem::transmute(&**v);
-                let wcb = ui::WidgetCbData::with_ptr(&container_arw, view);
+                let wcb = ui::WidgetCbData::with_index(&container_arw, i);
 
+                //TODO clean Box::into_raw data
                 ui::window_callback_set(
                     w,
-                    mem::transmute(box wcb),
-                    //view
-                    //mem::transmute(v),
+                    Box::into_raw(box wcb) as *const c_void,
                     ui::view::mouse_down,
                     ui::view::mouse_up,
                     ui::view::mouse_move,
@@ -357,16 +355,15 @@ pub extern fn init_cb(data: *mut c_void) -> () {
                     ui::view::key_down
                     );
 
-                let wcb = ui::WidgetCbData::with_ptr(&container_arw, view);
+                let wcb = ui::WidgetCbData::with_index(&container_arw, i);
 
+                //TODO clean Box::into_raw data
                 tmp_func(
                     w,
-                    //view, //mem::transmute(&*v),
-                    mem::transmute(box wcb),
+                    Box::into_raw(box wcb) as *const c_void,
                     ui::view::init_cb,
                     ui::view::draw_cb,
                     ui::view::resize_cb);
-                }
             }
         }
     }
@@ -665,7 +662,7 @@ impl WindowConfig {
 
 }
 
-pub extern fn exit_cb(data: *mut c_void) -> ()
+pub extern fn exit_cb(data: *const c_void) -> ()
 {
     let app_data : &AppCbData = { let d = data as *const AppCbData; unsafe {&*d}};
     let container = &mut *app_data.container.write().unwrap();
@@ -796,7 +793,7 @@ pub struct WidgetContainer
     pub property : Box<WidgetPanel<PropertyBox>>,
     pub command : Option<Box<Command>>,
     pub action : Option<Box<Action>>,
-    views : Vec<Box<View>>,
+    pub views : Vec<Box<View>>,
     //pub context : Rc<RefCell<context::Context>>,
     pub context : Box<context::Context>,
     pub resource : Rc<resource::ResourceGroup>,
@@ -1973,6 +1970,7 @@ pub struct WidgetCbData
     pub widget : *const c_void,
     pub object : Option<*const Evas_Object>,
     pub widget2 : Option<Rc<PropertyWidget>>,
+    pub index : usize
 }
 
 impl Clone for WidgetCbData {
@@ -1983,6 +1981,7 @@ impl Clone for WidgetCbData {
             widget : self.widget,
             object : self.object,
             widget2 : self.widget2.clone(),
+            index : 0usize
         }
     }
 }
@@ -1996,6 +1995,19 @@ impl WidgetCbData {
             widget : widget,
             object : None,
             widget2 : None,
+            index : 0usize,
+        }
+    }
+
+    pub fn with_index(c : &Arw<WidgetContainer>, index : usize) -> WidgetCbData
+    {
+        println!("TODO free me");
+        WidgetCbData {
+            container : c.clone(),
+            widget : ptr::null(),
+            object : None,
+            widget2 : None,
+            index : index,
         }
     }
 
@@ -2007,6 +2019,7 @@ impl WidgetCbData {
             widget : ptr::null(),
             object : None,
             widget2 : Some(widget),
+            index : 0usize,
         }
     }
 
@@ -2018,7 +2031,8 @@ impl WidgetCbData {
             container : c.clone(),
             widget : widget,
             object : None,
-            widget2 : None
+            widget2 : None,
+            index : 0usize,
         }
     }
 
@@ -2029,7 +2043,8 @@ impl WidgetCbData {
             container : c.clone(),
             widget : widget,
             object : Some(object),
-            widget2 : None
+            widget2 : None,
+            index : 0usize,
         }
     }
 }
@@ -2044,6 +2059,14 @@ impl Clone for AppCbData {
     {
         AppCbData {
             container : self.container.clone()
+        }
+    }
+}
+
+impl AppCbData {
+    pub fn new() -> AppCbData {
+        AppCbData {
+            container : Arc::new(RwLock::new(WidgetContainer::new()))
         }
     }
 }

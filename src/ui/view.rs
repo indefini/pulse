@@ -262,17 +262,13 @@ pub extern fn mouse_down(
     timestamp : c_int
     )
 {
-    //let view : &Box<View> = unsafe {mem::transmute(data)};
-    let wcb : & ui::WidgetCbData = unsafe {mem::transmute(data)};
-    let view : &View = unsafe {mem::transmute(wcb.widget)};
-    //let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
+    let wcb : & ui::WidgetCbData = unsafe {&* (data as *const ui::WidgetCbData)};
     let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
 
     let op_list = {
-        let control_rc = view.control.clone();
+        let control_rc = container.views[wcb.index].control.clone();
 
         //println!("rust mouse down button {}, pos: {}, {}", button, x, y);
-        //let control_rc : &Rc<RefCell<Control>> = unsafe {mem::transmute(data)};
         let mut c = control_rc.borrow_mut();
         c.mouse_down(&*container.context, modifier, button,x,y,timestamp)
     };
@@ -284,8 +280,9 @@ pub extern fn mouse_down(
             c.save_scales();
             c.save_oris();
         }
-        view.handle_control_change(op);
-        container.handle_change(op, view.uuid);
+        container.views[wcb.index].handle_control_change(op);
+        let id = container.views[wcb.index].uuid;
+        container.handle_change(op, id);
     }
 }
 
@@ -298,25 +295,22 @@ pub extern fn mouse_up(
     timestamp : c_int
     )
 {
-    //let view : &Box<View> = unsafe {mem::transmute(data)};
-    let wcb : & ui::WidgetCbData = unsafe {mem::transmute(data)};
-    let view : &View = unsafe {mem::transmute(wcb.widget)};
-    //let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
+    let wcb : & ui::WidgetCbData = unsafe {&* (data as *const ui::WidgetCbData)};
     let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
 
     let change = {
-        let control_rc = view.control.clone();
+        let control_rc = container.views[wcb.index].control.clone();
         let mut c = control_rc.borrow_mut();
         c.mouse_up(&*container.context,button,x,y,timestamp)
     };
 
-    view.handle_control_change(&change);
-    container.handle_change(&change, view.uuid);
+    container.views[wcb.index].handle_control_change(&change);
+    let id = container.views[wcb.index].uuid;
+    container.handle_change(&change, id);
 }
 
 pub extern fn mouse_move(
     data : *const c_void,
-    //modifier : *const c_char,
     modifiers_flag : c_int,
     button : c_int,
     curx : c_int,
@@ -326,15 +320,11 @@ pub extern fn mouse_move(
     timestamp : c_int
     )
 {
-    //let view : &Box<View> = unsafe {mem::transmute(data)};
-    let wcb : & ui::WidgetCbData = unsafe {mem::transmute(data)};
-    //let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
+    let wcb : & ui::WidgetCbData = unsafe {&* (data as *const ui::WidgetCbData)};
     let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
-    let view : &View = unsafe {mem::transmute(wcb.widget)};
-    let control_rc = view.control.clone();
+    let control_rc = container.views[wcb.index].control.clone();
 
     let change_list = {
-        //let control_rc : &Rc<RefCell<Control>> = unsafe {mem::transmute(data)};
         let mut c = control_rc.borrow_mut();
         c.mouse_move(
             &*container.context,
@@ -347,9 +337,10 @@ pub extern fn mouse_move(
             timestamp)
     };
 
+    let id = container.views[wcb.index].uuid;
     for change in &change_list {
-        view.handle_control_change(change);
-        container.handle_change(change, view.uuid);
+        container.views[wcb.index].handle_control_change(change);
+        container.handle_change(change, id);
     }
 }
 
@@ -363,12 +354,10 @@ pub extern fn mouse_wheel(
     timestamp : c_int
     )
 {
-    //let view : &Box<View> = unsafe {mem::transmute(data)};
-    let wcb : & ui::WidgetCbData = unsafe {mem::transmute(data)};
-    let view : &View = unsafe {mem::transmute(wcb.widget)};
+    let wcb : & ui::WidgetCbData = unsafe {&* (data as *const ui::WidgetCbData)};
+    let view : &View = &*wcb.container.read().unwrap().views[wcb.index];
     let control_rc = view.control.clone();
 
-    //let control_rc : &Rc<RefCell<Control>> = unsafe {mem::transmute(data)};
     let c = control_rc.borrow_mut();
     c.mouse_wheel(modifiers_flag, direction, z, x, y, timestamp);
 
@@ -384,17 +373,10 @@ pub extern fn key_down(
     timestamp : c_int
     )
 {
-    //let view : &Box<View> = unsafe {mem::transmute(data)};
-    let wcb : & ui::WidgetCbData = unsafe {mem::transmute(data)};
-    let view : &View = unsafe {mem::transmute(wcb.widget)};
-    //let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
+    let wcb : & ui::WidgetCbData = unsafe {&* (data as *const ui::WidgetCbData)};
     let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
 
     let change = {
-        //let control_rc = view.control.clone();
-        //let control_rc : &Rc<RefCell<Control>> = unsafe {mem::transmute(data)};
-        //let mut c = control_rc.borrow_mut();
-
         let key_str = {
             let s = unsafe {CStr::from_ptr(key).to_bytes()};
             match str::from_utf8(s) {
@@ -468,19 +450,19 @@ pub extern fn key_down(
             },
             "c" => {
                 let center = vec::Vec3::zero();
-                let mut cam = view.camera.borrow_mut();
+                let mut cam = container.views[wcb.index].camera.borrow_mut();
                 let pos = center + cam.object.read().unwrap().orientation.rotate_vec3(&vec::Vec3::new(0f64,0f64,100f64));
                 cam.set_position(pos);
                 cam.set_center(&center);
-                view.request_update();
+                container.views[wcb.index].request_update();
                 return;
             },
             "f" => {
                 let center = util::objects_center(&container.context.selected);
-                let mut cam = view.camera.borrow_mut();
+                let mut cam = container.views[wcb.index].camera.borrow_mut();
                 let pos = center + cam.object.read().unwrap().orientation.rotate_vec3(&vec::Vec3::new(0f64,0f64,100f64));
                 cam.set_position(pos);
-                view.request_update();
+                container.views[wcb.index].request_update();
                 return;
             },
             _ => {
@@ -489,14 +471,15 @@ pub extern fn key_down(
         }
 
         {
-            let control_rc = view.control.clone();
+            let control_rc = container.views[wcb.index].control.clone();
             let mut c = control_rc.borrow_mut();
             c.key_down(modifier, keyname_str.as_ref(), key_str.as_ref(), timestamp)
         }
     };
 
-    view.handle_control_change(&change);
-    container.handle_change(&change, view.uuid);
+    container.views[wcb.index].handle_control_change(&change);
+    let id = container.views[wcb.index].uuid;
+    container.handle_change(&change, id);
 }
 
 
@@ -523,21 +506,19 @@ fn create_repere(m : &mut mesh::Mesh, len : f64)
 */
 
 
-pub extern fn init_cb(v : *mut View) -> () {
-    let wcb : & ui::WidgetCbData = unsafe {mem::transmute(v)};
-    let view : &mut View = unsafe {mem::transmute(wcb.widget)};
-    //let container : &Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
+pub extern fn init_cb(data : *const c_void) -> () {
+    let wcb : & ui::WidgetCbData = unsafe {&* (data as *const ui::WidgetCbData)};
     let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
+    let view = &mut container.views[wcb.index];
 
     return view.init_render();
 }
 
 pub extern fn request_update_again(data : *const c_void) -> bool
 {
-    let wcb : & ui::WidgetCbData = unsafe {mem::transmute(data)};
-    let view : &mut View = unsafe {mem::transmute(wcb.widget)};
-    //let container : &Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
+    let wcb : &ui::WidgetCbData = unsafe {&* (data as *const ui::WidgetCbData)};
     let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
+    let view = &mut container.views[wcb.index];
 
     if let Ok(lr) = view.loading_resource.try_lock() {
         if *lr == 0 {
@@ -549,27 +530,24 @@ pub extern fn request_update_again(data : *const c_void) -> bool
 }
 
 
-pub extern fn draw_cb(v : *mut View) -> () {
-
-    let wcb : & ui::WidgetCbData = unsafe {mem::transmute(v)};
-    let view : &mut View = unsafe {mem::transmute(wcb.widget)};
-    //let container : &Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
+pub extern fn draw_cb(data : *const c_void) -> ()
+{
+    let wcb : &ui::WidgetCbData = unsafe {&* (data as *const ui::WidgetCbData)};
     let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
 
-    let draw_not_done = view.draw(&*container.context);
+    let draw_not_done = container.views[wcb.index].draw(&*container.context);
 
     if draw_not_done {
         unsafe {
-            ui::ecore_animator_add(request_update_again, mem::transmute(wcb));
+            ui::ecore_animator_add(request_update_again, data);
         }
     }
 }
 
-pub extern fn resize_cb(v : *mut View, w : c_int, h : c_int) -> () {
-    let wcb : & ui::WidgetCbData = unsafe {mem::transmute(v)};
-    let view : &mut View = unsafe {mem::transmute(wcb.widget)};
-    //let container : &Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
+pub extern fn resize_cb(data : *const c_void, w : c_int, h : c_int) -> () {
+    let wcb : & ui::WidgetCbData = unsafe {&* (data as *const ui::WidgetCbData)};
     let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
+    let view = &mut container.views[wcb.index];
 
     return view.resize(w, h);
 }
