@@ -244,7 +244,8 @@ fn elm_object_text_set(
 }
 
 pub extern fn init_cb(data: *mut c_void) -> () {
-    let app_data : &AppCbData = unsafe {mem::transmute(data)};
+    //let app_data : &AppCbData = { let d = data as *const AppCbData; unsafe {&*d}};
+    let app_data : &AppCbData = unsafe { &*(data as *const AppCbData) };
     let container_arw = app_data.container.clone();
 
     let mut views = Vec::new();
@@ -664,9 +665,9 @@ impl WindowConfig {
 
 }
 
-pub extern fn exit_cb(data: *mut c_void) -> () {
-
-    let app_data : &AppCbData = unsafe {mem::transmute(data)};
+pub extern fn exit_cb(data: *mut c_void) -> ()
+{
+    let app_data : &AppCbData = { let d = data as *const AppCbData; unsafe {&*d}};
     let container = &mut *app_data.container.write().unwrap();
 
     if let Some(ref s) = container.context.scene {
