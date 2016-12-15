@@ -75,12 +75,12 @@ pub mod view;
 
 
 pub type ChangedFunc = extern fn(
-    object : *const c_void,
+    app : *const WidgetCbData,
     property : *const c_void,
     data : *const c_void);
 
 pub type RegisterChangeFunc = extern fn(
-    app : *const c_void,
+    app : *const WidgetCbData,
     property : *const c_void,
     old : *const c_void,
     new : *const c_void,

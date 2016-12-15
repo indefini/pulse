@@ -407,30 +407,18 @@ fn get_widget_data<'a>(widget_data : *const c_void) ->
 }
 */
 
-fn get_widget_data2<'a>(widget_data : *const c_void) ->
-    //(Rc<ui::PropertyWidget>, &'a mut Box<ui::WidgetContainer>)
-    //(Rc<ui::PropertyWidget>, &'a mut ui::WidgetContainer)
+fn get_widget_data2<'a>(widget_data : *const ui::WidgetCbData) ->
     (Rc<ui::PropertyWidget>, Arw<ui::WidgetContainer>)
 {
-    let wcb : &ui::WidgetCbData = unsafe {mem::transmute(widget_data)};
-    let p : Rc<ui::PropertyWidget> = if let Some(ref w) = wcb.widget2 {
-        w.clone()
-    }
-    else {
-        panic!("yopyop");
-    };
-    //let p : &mut Box<ui::PropertyWidget> = unsafe {mem::transmute(wcb.widget)};
-    //let p : *mut ui::PropertyWidget = unsafe {mem::transmute(wcb.widget)};
-    //let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
-    //let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
-
-    //(p, container)
-    (p, wcb.container.clone())
+    let wcb : &ui::WidgetCbData = unsafe { &*widget_data };
+    let container = wcb.container.read().unwrap();
+    let property = container.property.widget.as_ref().unwrap().clone();
+    (property, wcb.container.clone())
 }
 
 
 fn changed_set<T : Any+Clone+PartialEq>(
-    widget_data : *const c_void,
+    widget_data : *const ui::WidgetCbData,
     property : *const c_void,
     old : Option<&T>,
     new : &T,
@@ -501,7 +489,7 @@ fn changed_set<T : Any+Clone+PartialEq>(
 }
 
 fn changed_enum<T : Any+Clone+PartialEq>(
-    widget_data : *const c_void,
+    widget_data : *const ui::WidgetCbData,
     property : *const c_void,
     new : &T,
     )
@@ -557,7 +545,7 @@ fn changed_enum<T : Any+Clone+PartialEq>(
 }
 
 fn changed_option(
-    widget_cb_data : *const c_void,
+    widget_cb_data : *const ui::WidgetCbData,
     property : *const c_void,
     old : &str,
     new : &str
@@ -655,7 +643,7 @@ pub extern fn expand(
 
 
 pub extern fn changed_set_float(
-    app_data : *const c_void,
+    app_data : *const ui::WidgetCbData,
     property : *const c_void,
     data : *const c_void) {
 
@@ -666,7 +654,7 @@ pub extern fn changed_set_float(
 }
 
 pub extern fn changed_set_string(
-    app_data : *const c_void,
+    app_data : *const ui::WidgetCbData,
     property : *const c_void,
     data : *const c_void) {
 
@@ -682,14 +670,14 @@ pub extern fn changed_set_string(
 }
 
 pub extern fn changed_set_enum(
-    app_data : *const c_void,
+    app_data : *const ui::WidgetCbData,
     property : *const c_void,
     data : *const c_void) {
     println!("DOES NOT NO ANYTHING");
 }
 
 pub extern fn register_change_string(
-    app_data : *const c_void,
+    app_data : *const ui::WidgetCbData,
     property : *const c_void,
     old : *const c_void,
     new : *const c_void,
@@ -725,7 +713,7 @@ pub extern fn register_change_string(
 }
 
 pub extern fn register_change_float(
-    app_data : *const c_void,
+    app_data : *const ui::WidgetCbData,
     property : *const c_void,
     old : *const c_void,
     new : *const c_void,
@@ -744,7 +732,7 @@ pub extern fn register_change_float(
 }
 
 pub extern fn register_change_enum(
-    widget_cb_data : *const c_void,
+    widget_cb_data : *const ui::WidgetCbData,
     property : *const c_void,
     old : *const c_void,
     new : *const c_void,
@@ -780,7 +768,7 @@ pub extern fn register_change_enum(
 }
 
 pub extern fn register_change_option(
-    widget_cb_data : *const c_void,
+    widget_cb_data : *const ui::WidgetCbData,
     property : *const c_void,
     old : *const c_void,
     new : *const c_void,

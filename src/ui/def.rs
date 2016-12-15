@@ -225,14 +225,7 @@ extern {
 fn object_geometry_get(obj : *const Evas_Object) -> (i32, i32, i32, i32)
 {
     let (mut x, mut y, mut w, mut h) : (c_int, c_int, c_int, c_int) = (5,6,7,8);
-    //let (mut x, mut y, mut w, mut h) = (5,6,7,8);
-
-    println!("starrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr : {:?}", obj);
-
-    unsafe { evas_object_geometry_get(obj, mem::transmute(&mut x), &mut y, &mut w, &mut h); }
-
-    println!("caca : {:?}, {}, {}, {}, {}", obj, x, y, w, h);
-
+    unsafe { evas_object_geometry_get(obj, &mut x, &mut y, &mut w, &mut h); }
     (x, y, w, h)
 }
 
@@ -389,7 +382,7 @@ fn init_property(container : &Arw<WidgetContainer>, win : *const Window, pc : &W
     unsafe {
         ui::property::jk_property_cb_register(
             ui::property_box::property_box_cb_get(p.jk_property),
-            mem::transmute(box pd),
+            Box::into_raw(box pd) as *const c_void,
             ui::property_list::changed_set_float,
             ui::property_list::changed_set_string,
             ui::property_list::changed_set_enum,

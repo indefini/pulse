@@ -848,7 +848,7 @@ Option<&PropertyShow>
 }
 
 pub extern fn vec_add(
-    data : *const c_void,
+    data : *const ui::WidgetCbData,
     property : *const c_void,
     old : *const c_void,
     new : *const c_void,
@@ -871,7 +871,7 @@ pub extern fn vec_add(
 }
 
 pub extern fn vec_del(
-    data : *const c_void,
+    data : *const ui::WidgetCbData,
     property : *const c_void,
     old : *const c_void,
     new : *const c_void,
