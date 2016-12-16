@@ -38,6 +38,8 @@ use dormin::armature;
 use dormin::transform::Orientation;
 
 
+use util::Arw;
+
 #[repr(C)]
 pub struct JkPropertyList;
 
@@ -347,6 +349,7 @@ pub extern fn contract(
     data : *const c_void,
     parent : *const Elm_Object_Item) -> ()
 {
+    /*
     let (p,_) = get_widget_data(widget_cb_data);
 
     unsafe {
@@ -383,42 +386,39 @@ pub extern fn contract(
             }
         }
     }
+    */
 }
 
+/*
 fn get_widget_data<'a>(widget_data : *const c_void) ->
-    (&'a mut ui::PropertyList, &'a mut Box<ui::WidgetContainer>)
+    //(&'a mut ui::PropertyList, &'a mut Box<ui::WidgetContainer>)
+    (&'a mut ui::PropertyList, &'a mut ui::WidgetContainer)
 {
     println!("GET WIDGET DATAAAAAAAAAAAAAAA, this is old so crash, use get_widget_data2");
 
     let wcb : & ui::WidgetCbData = unsafe {mem::transmute(widget_data)};
     //let p : &mut ui::PropertyList = unsafe {mem::transmute(wcb.widget)};
     let p : &mut Box<ui::PropertyList> = unsafe {mem::transmute(wcb.widget)};
-    let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
+    //let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
+    let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
 
     //(p, container)
     (&mut **p, container)
 }
+*/
 
-fn get_widget_data2<'a>(widget_data : *const c_void) ->
-    (Rc<ui::PropertyWidget>, &'a mut Box<ui::WidgetContainer>)
+fn get_widget_data2<'a>(widget_data : *const ui::WidgetCbData) ->
+    (Rc<ui::PropertyWidget>, Arw<ui::WidgetContainer>)
 {
-    let wcb : &ui::WidgetCbData = unsafe {mem::transmute(widget_data)};
-    let p : Rc<ui::PropertyWidget> = if let Some(ref w) = wcb.widget2 {
-        w.clone()
-    }
-    else {
-        panic!("yopyop");
-    };
-    //let p : &mut Box<ui::PropertyWidget> = unsafe {mem::transmute(wcb.widget)};
-    //let p : *mut ui::PropertyWidget = unsafe {mem::transmute(wcb.widget)};
-    let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
-
-    (p, container)
+    let wcb : &ui::WidgetCbData = unsafe { &*widget_data };
+    let container = wcb.container.read().unwrap();
+    let property = container.property.widget.as_ref().unwrap().clone();
+    (property, wcb.container.clone())
 }
 
 
 fn changed_set<T : Any+Clone+PartialEq>(
-    widget_data : *const c_void,
+    widget_data : *const ui::WidgetCbData,
     property : *const c_void,
     old : Option<&T>,
     new : &T,
@@ -443,6 +443,7 @@ fn changed_set<T : Any+Clone+PartialEq>(
     println!("changed_set : {}", path);
 
     let (p, container) = get_widget_data2(widget_data);
+    let container = &mut *container.write().unwrap();
 
     let change = match (old, action) {
         (Some(oldd), 1) => {
@@ -488,7 +489,7 @@ fn changed_set<T : Any+Clone+PartialEq>(
 }
 
 fn changed_enum<T : Any+Clone+PartialEq>(
-    widget_data : *const c_void,
+    widget_data : *const ui::WidgetCbData,
     property : *const c_void,
     new : &T,
     )
@@ -504,6 +505,7 @@ fn changed_enum<T : Any+Clone+PartialEq>(
     let path = &node.borrow().get_path();
 
     let (p, container) = get_widget_data2(widget_data);
+    let container = &mut *container.write().unwrap();
 
     let change = {
         /*
@@ -543,12 +545,14 @@ fn changed_enum<T : Any+Clone+PartialEq>(
 }
 
 fn changed_option(
-    widget_cb_data : *const c_void,
+    widget_cb_data : *const ui::WidgetCbData,
     property : *const c_void,
     old : &str,
     new : &str
     )
 {
+    panic!("TODO");
+    /*
     let node : Weak<RefCell<ui::PropertyNode>> = unsafe {mem::transmute(property)};
     let node = if let Some(n) = node.upgrade() {
         n
@@ -590,6 +594,7 @@ fn changed_option(
     };
 
     container.handle_change(&change, p.id);
+    */
 }
 
 pub extern fn expand(
@@ -597,6 +602,7 @@ pub extern fn expand(
     data : *const c_void,
     parent : *const Elm_Object_Item) -> ()
 {
+    /*
     let datachar = data as *const i8;
     let s = unsafe {CStr::from_ptr(datachar).to_bytes()};
 
@@ -631,12 +637,13 @@ pub extern fn expand(
     else {
         println!("no current prop....... {}", path);
     }
+    */
 
 }
 
 
 pub extern fn changed_set_float(
-    app_data : *const c_void,
+    app_data : *const ui::WidgetCbData,
     property : *const c_void,
     data : *const c_void) {
 
@@ -647,7 +654,7 @@ pub extern fn changed_set_float(
 }
 
 pub extern fn changed_set_string(
-    app_data : *const c_void,
+    app_data : *const ui::WidgetCbData,
     property : *const c_void,
     data : *const c_void) {
 
@@ -663,14 +670,14 @@ pub extern fn changed_set_string(
 }
 
 pub extern fn changed_set_enum(
-    app_data : *const c_void,
+    app_data : *const ui::WidgetCbData,
     property : *const c_void,
     data : *const c_void) {
     println!("DOES NOT NO ANYTHING");
 }
 
 pub extern fn register_change_string(
-    app_data : *const c_void,
+    app_data : *const ui::WidgetCbData,
     property : *const c_void,
     old : *const c_void,
     new : *const c_void,
@@ -706,7 +713,7 @@ pub extern fn register_change_string(
 }
 
 pub extern fn register_change_float(
-    app_data : *const c_void,
+    app_data : *const ui::WidgetCbData,
     property : *const c_void,
     old : *const c_void,
     new : *const c_void,
@@ -725,7 +732,7 @@ pub extern fn register_change_float(
 }
 
 pub extern fn register_change_enum(
-    widget_cb_data : *const c_void,
+    widget_cb_data : *const ui::WidgetCbData,
     property : *const c_void,
     old : *const c_void,
     new : *const c_void,
@@ -761,7 +768,7 @@ pub extern fn register_change_enum(
 }
 
 pub extern fn register_change_option(
-    widget_cb_data : *const c_void,
+    widget_cb_data : *const ui::WidgetCbData,
     property : *const c_void,
     old : *const c_void,
     new : *const c_void,

@@ -848,7 +848,7 @@ Option<&PropertyShow>
 }
 
 pub extern fn vec_add(
-    data : *const c_void,
+    data : *const ui::WidgetCbData,
     property : *const c_void,
     old : *const c_void,
     new : *const c_void,
@@ -863,14 +863,15 @@ pub extern fn vec_add(
     };
 
     let wcb : & ui::WidgetCbData = unsafe {mem::transmute(data)};
-    let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
+    //let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
+    let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
 
     let change = container.request_operation_vec_add(node.clone());
     container.handle_change(&change, uuid::Uuid::nil());//p.id);
 }
 
 pub extern fn vec_del(
-    data : *const c_void,
+    data : *const ui::WidgetCbData,
     property : *const c_void,
     old : *const c_void,
     new : *const c_void,
@@ -885,7 +886,8 @@ pub extern fn vec_del(
     };
 
     let wcb : & ui::WidgetCbData = unsafe {mem::transmute(data)};
-    let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
+    //let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
+    let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
 
     let change = container.request_operation_vec_del(node);
     container.handle_change(&change, uuid::Uuid::nil());

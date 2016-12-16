@@ -41,6 +41,7 @@ use dragger;
 use dormin::property::{PropertyWrite,PropertyGet};
 use dormin::transform;
 use util;
+use util::Arw;
 
 #[repr(C)]
 pub struct Window;
@@ -55,8 +56,8 @@ pub type RustCb = extern fn(data : *mut c_void);
 pub type RenderFunc = extern fn(data : *const c_void);
 pub type ResizeFunc = extern fn(data : *const c_void, w : c_int, h : c_int);
 
-pub type RenderFuncTmp = extern fn(data : *mut View);
-pub type ResizeFuncTmp = extern fn(data : *mut View, w : c_int, h : c_int);
+pub type RenderFuncTmp = extern fn(data : *const c_void);
+pub type ResizeFuncTmp = extern fn(data : *const c_void, w : c_int, h : c_int);
 
 pub type PanelGeomFunc = extern fn(
     object : *const c_void,
@@ -165,11 +166,11 @@ extern {
         );
 
     pub fn init_callback_set(
-        cb: extern fn(*mut c_void) -> (),
+        cb: extern fn(*const c_void) -> (),
         data: *const c_void
         ) -> ();
     pub fn exit_callback_set(
-        cb: extern fn(*mut c_void) -> (),
+        cb: extern fn(*const c_void) -> (),
         data: *const c_void
         ) -> ();
 
@@ -224,14 +225,7 @@ extern {
 fn object_geometry_get(obj : *const Evas_Object) -> (i32, i32, i32, i32)
 {
     let (mut x, mut y, mut w, mut h) : (c_int, c_int, c_int, c_int) = (5,6,7,8);
-    //let (mut x, mut y, mut w, mut h) = (5,6,7,8);
-
-    println!("starrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr : {:?}", obj);
-
-    unsafe { evas_object_geometry_get(obj, mem::transmute(&mut x), &mut y, &mut w, &mut h); }
-
-    println!("caca : {:?}, {}, {}, {}, {}", obj, x, y, w, h);
-
+    unsafe { evas_object_geometry_get(obj, &mut x, &mut y, &mut w, &mut h); }
     (x, y, w, h)
 }
 
@@ -242,14 +236,15 @@ fn elm_object_text_set(
     unsafe { elm_object_part_text_set(obj, ptr::null(), text); }
 }
 
-pub extern fn init_cb(data: *mut c_void) -> () {
-    let app_data : &AppCbData = unsafe {mem::transmute(data)};
-    let container : &mut Box<WidgetContainer> = unsafe {mem::transmute(app_data.container)};
+pub extern fn init_cb(data: *const c_void) -> () {
+    let app_data : &AppCbData = unsafe { &*(data as *const AppCbData) };
+    let container_arw = app_data.container.clone();
 
     let mut views = Vec::new();
     let wc = WindowConfig::load();
 
     for v in &wc.views {
+        let container = &mut *container_arw.write().unwrap();
         let view = box View::new(
             container.resource.clone(),
             &mut container.factory,
@@ -278,7 +273,17 @@ pub extern fn init_cb(data: *mut c_void) -> () {
         }
     }
 
-    if let Some((camera, scene)) = container.can_create_gameview() {
+    let op_cam_scene = {
+        let container = &mut *container_arw.write().unwrap();
+        container.can_create_gameview()
+     };
+
+    let op_cam_scene = {
+        let container = &mut *container_arw.write().unwrap();
+        container.can_create_gameview()
+     };
+
+    if let Some((camera, scene)) = op_cam_scene {
         let gc = if let Some(gc) = wc.gameview {
             gc
         }
@@ -286,20 +291,22 @@ pub extern fn init_cb(data: *mut c_void) -> () {
             WidgetConfig::new()
         };
         let gv = create_gameview_window(
-            unsafe {mem::transmute(app_data.container)},
+            container_arw.clone(),
             camera,
             scene,
             &gc);
+
+        let container = &mut *container_arw.write().unwrap();
         container.set_gameview(gv);
 
         println!("ADDDDDDDD animator");
         unsafe {
             //ui::ecore_animator_add(ui::update_play_cb, mem::transmute(wcb.container));
         }
-
     }
 
-    for v in &mut views {
+    //for v in &mut views {
+    for (i,v) in views.iter_mut().enumerate() {
         let v : &mut Box<View> = v;
 
         let pc = wc.property.clone();
@@ -313,25 +320,27 @@ pub extern fn init_cb(data: *mut c_void) -> () {
         let win = unsafe {ui::window_new(v.width,v.height)};
 
         //TODO remove from here?
-        init_property(container, win, &pc);
-        init_tree(container, win, &tc);
-        init_action(container, win, v.uuid);
-        container.list.create(win);
+        init_property(&container_arw, win, &pc);
+        init_tree(&container_arw, win, &tc);
+        init_action(&container_arw, win, v.uuid);
+
+        {
+        //let container = &mut *app_data.container.write().unwrap();
+        //container.list.create(win);
+
+        app_data.container.write().unwrap().list.create(win);
+        }
 
         v.init(win);
 
         if let Some(w) = v.window {
             unsafe {
-                {
-                //let view : *const c_void = mem::transmute(&*v);
-                let view : *const c_void = mem::transmute(&**v);
-                let wcb = ui::WidgetCbData::with_ptr(container, view);
+                let wcb = ui::WidgetCbData::with_index(&container_arw, i);
 
+                //TODO clean Box::into_raw data
                 ui::window_callback_set(
                     w,
-                    mem::transmute(box wcb),
-                    //view
-                    //mem::transmute(v),
+                    Box::into_raw(box wcb) as *const c_void,
                     ui::view::mouse_down,
                     ui::view::mouse_up,
                     ui::view::mouse_move,
@@ -339,38 +348,41 @@ pub extern fn init_cb(data: *mut c_void) -> () {
                     ui::view::key_down
                     );
 
-                let wcb = ui::WidgetCbData::with_ptr(container, view);
+                let wcb = ui::WidgetCbData::with_index(&container_arw, i);
 
+                //TODO clean Box::into_raw data
                 tmp_func(
                     w,
-                    //view, //mem::transmute(&*v),
-                    mem::transmute(box wcb),
+                    Box::into_raw(box wcb) as *const c_void,
                     ui::view::init_cb,
                     ui::view::draw_cb,
                     ui::view::resize_cb);
-                }
             }
         }
     }
 
+    let container = &mut *container_arw.write().unwrap();
     container.views = views;
 
-    let path = CString::new("shader".as_bytes()).unwrap().as_ptr();
-    unsafe { jk_monitor_add(file_changed, mem::transmute(container), path); }
+    let path = CString::new("shader".as_bytes()).unwrap();
+    unsafe { jk_monitor_add(file_changed, Box::into_raw(box container_arw.clone()) as *const c_void, path.as_ptr()); }
 }
 
-fn init_property(container : &mut Box<WidgetContainer>, win : *const Window, pc : &WidgetPanelConfig)
+fn init_property(container : &Arw<WidgetContainer>, win : *const Window, pc : &WidgetPanelConfig)
 {
+    let container_arw = container.clone();
+    let container = &mut *container.write().unwrap();
+
     container.property.config = pc.clone();
     container.property.create(win);
 
     let p = Rc::new(ui::PropertyBox::new(&*container.property));
-    let pd = ui::WidgetCbData::new_with_widget(container, p.clone());
+    let pd = ui::WidgetCbData::new_with_widget(&container_arw, p.clone());
 
     unsafe {
         ui::property::jk_property_cb_register(
             ui::property_box::property_box_cb_get(p.jk_property),
-            mem::transmute(box pd),
+            Box::into_raw(box pd) as *const c_void,
             ui::property_list::changed_set_float,
             ui::property_list::changed_set_string,
             ui::property_list::changed_set_enum,
@@ -387,10 +399,13 @@ fn init_property(container : &mut Box<WidgetContainer>, win : *const Window, pc 
     container.property.widget = Some(p);
 }
 
-fn init_tree(container : &mut Box<WidgetContainer>, win : *const Window, tree_config : &WidgetConfig)
+fn init_tree(container : &Arw<WidgetContainer>, win : *const Window, tree_config : &WidgetConfig)
 {
+    let container_arw = container.clone();
+    let container = &mut *container.write().unwrap();
+
     let mut t = box ui::Tree::new(win, tree_config);
-    let tsd = ui::WidgetCbData::with_ptr(container, unsafe { mem::transmute(&*t)});
+    let tsd = ui::WidgetCbData::with_ptr(&container_arw, unsafe { mem::transmute(&*t)});
 
     unsafe {
         ui::tree::tree_register_cb(
@@ -418,18 +433,28 @@ fn init_tree(container : &mut Box<WidgetContainer>, win : *const Window, tree_co
     container.tree = Some(t);
 }
 
-fn init_action(container : &mut Box<WidgetContainer>, win : *const Window, view_id : Uuid)
+fn init_action(container : &Arw<WidgetContainer>, win : *const Window, view_id : Uuid)
 {
+    let container_arw = container.clone();
+    let container = &mut *container.write().unwrap();
+
     let mut menu = box ui::Action::new(win, ui::action::Position::Top, view_id);
 
     let mut a = box ui::Action::new(win, ui::action::Position::Bottom, view_id);
     let command = box ui::Command::new(win);
 
-    let ad = ui::WidgetCbData::with_ptr(container, unsafe { mem::transmute(&*a)});
+    let ad = ui::WidgetCbData::with_ptr(&container_arw, unsafe { mem::transmute(&*a)});
+
 
     a.add_button("new scene", ui::action::scene_new, ad.clone());
     a.add_button("add empty", ui::action::add_empty, ad.clone());
-    a.add_button_closure("add empty closure", move |container| ui::add_empty(container, view_id));
+    {
+    a.add_button_closure("add empty closure", move || {
+        println!("add button from closure!!!!!!!!!!!!, it's awesome !!!!!!!");
+        let cont = &mut *container_arw.write().unwrap();
+        ui::add_empty(cont, view_id);
+    });
+    }
     a.add_button(
         "open game view",
         ui::action::open_game_view,
@@ -630,10 +655,10 @@ impl WindowConfig {
 
 }
 
-pub extern fn exit_cb(data: *mut c_void) -> () {
-
-    let app_data : &AppCbData = unsafe {mem::transmute(data)};
-    let container : &mut Box<WidgetContainer> = unsafe {mem::transmute(app_data.container)};
+pub extern fn exit_cb(data: *const c_void) -> ()
+{
+    let app_data : &AppCbData = { let d = data as *const AppCbData; unsafe {&*d}};
+    let container = &mut *app_data.container.write().unwrap();
 
     if let Some(ref s) = container.context.scene {
         println!("going to save: {}", s.borrow().name);
@@ -761,7 +786,7 @@ pub struct WidgetContainer
     pub property : Box<WidgetPanel<PropertyBox>>,
     pub command : Option<Box<Command>>,
     pub action : Option<Box<Action>>,
-    views : Vec<Box<View>>,
+    pub views : Vec<Box<View>>,
     //pub context : Rc<RefCell<context::Context>>,
     pub context : Box<context::Context>,
     pub resource : Rc<resource::ResourceGroup>,
@@ -794,8 +819,6 @@ pub struct State
 }
 
 pub type StateRw = Arc<RwLock<State>>;
-pub type Arw<T> = Arc<RwLock<T>>;
-pub type Mx<T> = Arc<Mutex<T>>;
 
 //#[derive(Clone)]
 pub struct Core
@@ -1257,14 +1280,7 @@ impl WidgetContainer
             _ => {}
         }
 
-        for view in &self.views {
-            view.request_update();
-        }
-
-        if let Some(ref gv) = self.gameview {
-            gv.request_update();
-        }
-
+        self.update_all_views();
     }
 
     pub fn handle_event(&mut self, event : ui::Event, widget_origin: uuid::Uuid)
@@ -1926,89 +1942,124 @@ impl WidgetContainer
             }
         }
     }
+
+    fn update_all_views(&mut self)
+    {
+        for view in &self.views {
+            view.request_update();
+        }
+
+        if let Some(ref gv) = self.gameview {
+            gv.request_update();
+        }
+    }
 }
 
-//Send to c with mem::transmute(box data)  and free in c
+// TODO remove/rework
+//OLD : Send to c with mem::transmute(box data)  and free in c
 pub struct WidgetCbData
 {
-    pub container : *const WidgetContainer,
+    pub container : Arw<WidgetContainer>,
     pub widget : *const c_void,
     pub object : Option<*const Evas_Object>,
     pub widget2 : Option<Rc<PropertyWidget>>,
+    pub index : usize
 }
 
 impl Clone for WidgetCbData {
     fn clone(&self) -> WidgetCbData
     {
         WidgetCbData {
-            container : self.container,
+            container : self.container.clone(),
             widget : self.widget,
             object : self.object,
             widget2 : self.widget2.clone(),
+            index : 0usize
         }
     }
 }
 
 impl WidgetCbData {
-    //pub fn new(c : &Box<WidgetContainer>, widget : &Box<Widget>)
-    pub fn with_ptr(c : &Box<WidgetContainer>, widget : *const c_void) -> WidgetCbData
+    pub fn with_ptr(c : &Arw<WidgetContainer>, widget : *const c_void) -> WidgetCbData
     {
         println!("TODO free me");
         WidgetCbData {
-            container : unsafe {mem::transmute(c)},
-            //widget : unsafe { mem::transmute(box widget)},
+            container : c.clone(),
             widget : widget,
             object : None,
             widget2 : None,
+            index : 0usize,
         }
     }
 
-    pub fn new_with_widget(c : &Box<WidgetContainer>, widget : Rc<PropertyWidget> ) -> WidgetCbData
+    pub fn with_index(c : &Arw<WidgetContainer>, index : usize) -> WidgetCbData
     {
         println!("TODO free me");
         WidgetCbData {
-            container : unsafe {mem::transmute(c)},
-            //widget : unsafe { mem::transmute(box widget)},
+            container : c.clone(),
+            widget : ptr::null(),
+            object : None,
+            widget2 : None,
+            index : index,
+        }
+    }
+
+    pub fn new_with_widget(c : &Arw<WidgetContainer>, widget : Rc<PropertyWidget> ) -> WidgetCbData
+    {
+        println!("TODO free me");
+        WidgetCbData {
+            container : c.clone(),
             widget : ptr::null(),
             object : None,
             widget2 : Some(widget),
+            index : 0usize,
         }
     }
 
 
-    pub fn new(c : &WidgetContainer, widget : *const c_void) -> WidgetCbData
+    pub fn new(c : &Arw<WidgetContainer>, widget : *const c_void) -> WidgetCbData
     {
         println!("TODO free me");
         WidgetCbData {
-            container : unsafe {mem::transmute(c)},
+            container : c.clone(),
             widget : widget,
             object : None,
-            widget2 : None
+            widget2 : None,
+            index : 0usize,
         }
     }
 
-    pub fn with_ptr_obj(c : &Box<WidgetContainer>, widget : *const c_void, object : *const Evas_Object) -> WidgetCbData
+    pub fn with_ptr_obj(c : &Arw<WidgetContainer>, widget : *const c_void, object : *const Evas_Object) -> WidgetCbData
     {
         println!("TODO free me");
         WidgetCbData {
-            container : unsafe {mem::transmute(c)},
+            container : c.clone(),
             widget : widget,
             object : Some(object),
-            widget2 : None
+            widget2 : None,
+            index : 0usize,
         }
     }
 }
 
 pub struct AppCbData
 {
-    pub container : *const c_void
+    pub container : Arw<WidgetContainer>
 }
 
 impl Clone for AppCbData {
     fn clone(&self) -> AppCbData
     {
         AppCbData {
-            container : self.container
+            container : self.container.clone()
+        }
+    }
+}
+
+impl AppCbData {
+    pub fn new() -> AppCbData {
+        AppCbData {
+            container : Arc::new(RwLock::new(WidgetContainer::new()))
         }
     }
 }
@@ -2120,8 +2171,11 @@ pub fn scene_new(container : &mut WidgetContainer, view_id : Uuid)
     container.add_empty_scene(ss);
 }
 
-pub fn scene_list(container : &mut WidgetContainer, view_id : Uuid, obj : Option<*const Evas_Object>)
+pub fn scene_list(container : &Arw<WidgetContainer>, view_id : Uuid, obj : Option<*const Evas_Object>)
 {
+    let container_arw = container.clone();
+    let container = &mut *container.write().unwrap();
+
     let files = util::get_files_in_dir("scene");
     let filesstring : Vec<String> = files.iter().map(|x| String::from(x.to_str().unwrap())).collect();
 
@@ -2140,7 +2194,7 @@ pub fn scene_list(container : &mut WidgetContainer, view_id : Uuid, obj : Option
 
     //container.list.show_list(filesstring, x, y);
 
-    let listwd = ui::WidgetCbData::new(container, unsafe { mem::transmute(&*container.list)});
+    let listwd = ui::WidgetCbData::new(&container_arw, unsafe { mem::transmute(&*container.list)});
     container.list.set_fn(select_list, listwd);
 }
 
@@ -2148,7 +2202,7 @@ pub extern fn select_list(data : *const c_void, name : *const c_char)
 {
     let wcb : & ui::WidgetCbData = unsafe {mem::transmute(data)};
     let list : &ListWidget = unsafe {mem::transmute(wcb.widget)};
-    let container : &mut ui::WidgetContainer = unsafe {mem::transmute(wcb.container)};
+    let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
 
     let s = unsafe {CStr::from_ptr(name)}.to_str().unwrap();
     println!("selection ..........{},  {}", container.name, s);
@@ -2227,10 +2281,11 @@ pub fn scene_rename(container : &mut WidgetContainer, widget_id : Uuid, name : &
 
 pub extern fn update_play_cb(container_data : *const c_void) -> bool
 {
-    let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(container_data)};
+    let container_arw = container_data as *const Arw<ui::WidgetContainer>;
+    let container_ref = unsafe { &*container_arw };
+    let container = &mut container_ref.write().unwrap();
     container.update_play()
 }
-
 
 pub extern fn file_changed(
     data : *const c_void,
@@ -2238,8 +2293,14 @@ pub extern fn file_changed(
     event : i32)
 {
     let s = unsafe {CStr::from_ptr(path)}.to_str().unwrap();
-    let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(data)};
+    let container_arw : &Arw<ui::WidgetContainer> = {
+        let c = data as *const Arw<ui::WidgetContainer>;
+        unsafe { &*c }
+    };
 
+    let container : &mut ui::WidgetContainer = &mut *container_arw.write().unwrap();
+
+    let mut should_update_views = false;
     if s.ends_with(".frag") || s.ends_with(".vert") {
         println!("file changed : {}", s);
         let shader_manager = container.resource.shader_manager.borrow();
@@ -2254,6 +2315,7 @@ pub extern fn file_changed(
                 println!("early return");
                 continue
             };
+
             let mut shader = shader_arc.write().unwrap();
 
             let mut reload = false;
@@ -2267,30 +2329,42 @@ pub extern fn file_changed(
             };
 
             if reload {
-                shader.reload();
+                if shader.reload() {
+                    should_update_views = true;
+                }
             }
         }
+    }
+
+    if should_update_views {
+        container.update_all_views();
     }
 }
 
 pub fn create_gameview_window(
-    container : *const ui::WidgetContainer,
+    container : Arw<ui::WidgetContainer>,
     camera : Rc<RefCell<camera::Camera>>,
     scene : Rc<RefCell<scene::Scene>>,
     config : &WidgetConfig
     ) -> Box<ui::view::GameView>
 {
     let win = unsafe {
-        ui::jk_window_new(ui::view::gv_close_cb, mem::transmute(container))
+        ui::jk_window_new(
+            ui::view::gv_close_cb,
+            mem::transmute( box container.clone()))
     };
 
     unsafe { evas_object_resize(win, config.w, config.h); }
 
-    let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(container)};
+    let container : &mut ui::WidgetContainer = &mut *container.write().unwrap();
 
-    ui::view::GameView::new(win, camera, scene, container.resource.clone(), config.clone())
+    ui::view::GameView::new(
+        win,
+        camera,
+        scene,
+        container.resource.clone(),
+        config.clone())
 }
-
 
 fn check_mesh(name : &str, wc : &WidgetContainer, id : uuid::Uuid)
 {

@@ -98,7 +98,8 @@ pub extern fn add_empty(data : *const c_void, name : *const c_char)
     //let cd : &CommandData = unsafe {mem::transmute(data)};
     let wcb : & ui::WidgetCbData = unsafe {mem::transmute(data)};
     let v : &ui::View = unsafe {mem::transmute(wcb.widget)};
-    let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
+    //let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
+    let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
 
     ui::add_empty(container, v.uuid);
 }
@@ -147,7 +148,8 @@ pub extern fn remove_selected2(data : *const c_void, name : *const c_char)
 {
     let wcb : & ui::WidgetCbData = unsafe {mem::transmute(data)};
     let v : &ui::View = unsafe {mem::transmute(wcb.widget)};
-    let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
+    //let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
+    let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
 
     if v.control.borrow_state() != BorrowState::Unused {
         println!("control already borrowed, remove selected2 ");
@@ -165,7 +167,8 @@ pub extern fn copy_selected(data : *const c_void, name : *const c_char)
 {
     let wcb : & ui::WidgetCbData = unsafe {mem::transmute(data)};
     let v : &ui::View = unsafe {mem::transmute(wcb.widget)};
-    let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
+    //let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
+    let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
 
     if v.control.borrow_state() != BorrowState::Unused {
         println!("control already borrowed, copy selected ");
@@ -184,7 +187,8 @@ pub extern fn set_camera2(data : *const c_void, name : *const c_char)
 {
     let wcb : & ui::WidgetCbData = unsafe {mem::transmute(data)};
     let v : &ui::View = unsafe {mem::transmute(wcb.widget)};
-    let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
+    //let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
+    let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
 
     println!("commnd set camera");
     let change = container.set_scene_camera();
@@ -201,8 +205,9 @@ extern fn add_comp(data : *const c_void, name : *const c_char)
 
     let wcb : & ui::WidgetCbData = unsafe {mem::transmute(data)};
     let v : &ui::View = unsafe {mem::transmute(wcb.widget)};
-    let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
+//    let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
 
+    let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
 
     let change = container.add_component(s);
     v.handle_control_change(&change);
@@ -213,7 +218,8 @@ pub extern fn add_component(data : *const c_void, name : *const c_char)
 {
     let wcb : & ui::WidgetCbData = unsafe {mem::transmute(data)};
     let v : &ui::View = unsafe {mem::transmute(wcb.widget)};
-    let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
+    //let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
+    let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
 
 
     let s = unsafe {CStr::from_ptr(name).to_bytes()};
