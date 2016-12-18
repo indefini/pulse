@@ -410,7 +410,8 @@ fn init_tree(container : &Arw<WidgetContainer>, win : *const Window, tree_config
     unsafe {
         ui::tree::tree_register_cb(
             t.jk_tree,
-            mem::transmute(box tsd),
+            //mem::transmute(box tsd),
+            Box::into_raw(box tsd) as *const c_void,
             ui::tree::name_get,
             ui::tree::item_selected,
             ui::tree::can_expand,

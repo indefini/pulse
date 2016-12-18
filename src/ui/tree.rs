@@ -295,13 +295,9 @@ pub extern fn expand(
         mem::transmute(data)
     };
 
-    //let tsd : &TreeSelectData = unsafe {mem::transmute(tsd)};
-    //let t : &mut Tree = &mut **tsd.tree.borrow_mut();
-
-    let wcb : & ui::WidgetCbData = unsafe {mem::transmute(widget_cb_data)};
-    let t : &mut Tree = unsafe {mem::transmute(wcb.widget)};
-    //let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
-
+    let wcb : & ui::WidgetCbData = unsafe {&*(widget_cb_data as *const ui::WidgetCbData)};
+    let container = &mut *wcb.container.write().unwrap();
+    let t : &mut Tree = &mut *container.tree.as_mut().unwrap();
 
     println!("expanding ! {} ", o.read().unwrap().name);
     println!("expanding ! tree name {} ", t.name);
@@ -316,76 +312,38 @@ pub extern fn expand(
 }
 
 pub extern fn selected(
-    //tsd: *const TreeSelectData,
-    tsd: *const ui::WidgetCbData,
+    widget_cb_data: *const ui::WidgetCbData,
     data : *const c_void,
     parent : *const Elm_Object_Item) -> ()
 {
-    let wcb : & ui::WidgetCbData = unsafe {mem::transmute(tsd)};
-    let tree : &Tree = unsafe {mem::transmute(wcb.widget)};
-    //let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
-    let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
+    let wcb : & ui::WidgetCbData = unsafe {&*(widget_cb_data as *const ui::WidgetCbData)};
+    let container = &mut *wcb.container.write().unwrap();
+    let tree_id = container.tree.as_ref().unwrap().id;
 
     let o : &Arc<RwLock<object::Object>> = unsafe {
         mem::transmute(data)
     };
 
+
     println!("selected callback, TODO do the following in widget container 'handle' ");
-    container.handle_event(ui::Event::SelectObject(o.clone()), tree.id);
+    container.handle_event(ui::Event::SelectObject(o.clone()), tree_id);
 }
 
 pub extern fn unselected(
-    tsd: *const ui::WidgetCbData,
+    widget_cb_data: *const ui::WidgetCbData,
     data : *const c_void,
     parent : *const Elm_Object_Item) -> ()
 {
-    let wcb : & ui::WidgetCbData = unsafe {mem::transmute(tsd)};
-    let tree : &Tree = unsafe {mem::transmute(wcb.widget)};
-    //let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
-    let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
-    //let tsd : &TreeSelectData = unsafe {mem::transmute(tsd)};
-
-    /*
-    if tsd.tree.borrow_state() == BorrowState::Writing {
-        return;
-    }
-    */
+    let wcb : & ui::WidgetCbData = unsafe {&*(widget_cb_data as *const ui::WidgetCbData)};
+    let container = &mut *wcb.container.write().unwrap();
+    let tree_id = container.tree.as_ref().unwrap().id;
 
     let o : &Arc<RwLock<object::Object>> = unsafe {
         mem::transmute(data)
     };
 
     println!("TODO,unselect do the following in widget container 'handle'");
-    container.handle_event(ui::Event::UnselectObject(o.clone()), tree.id);
-
-    /*
-    let o = match tsd.control.borrow_state() {
-        BorrowState::Unused => {
-            {
-                let mut l = LinkedList::new();
-                l.push_back(o.read().unwrap().id.clone());
-                tsd.control.borrow_mut().unselect(&l);
-            }
-            tsd.control.borrow().get_selected_object()
-        },
-        _ => {
-            println!("already borrowed : mouse_up add_ob ->sel ->add_ob");
-            return;
-        }
-    };
-
-    match tsd.property.borrow_state() {
-        BorrowState::Unused => {
-            match o {
-                Some(ref o) =>
-                    tsd.property.borrow_mut().set_object(&*o.read().unwrap()),
-                None =>
-                    tsd.property.borrow_mut().set_nothing()
-            }
-        },
-        _ => { println!("property already borrowed : tree unsel ->add_ob"); return;}
-    };
-    */
+    container.handle_event(ui::Event::UnselectObject(o.clone()), tree_id);
 }
 
 impl ui::Widget for Tree
@@ -408,8 +366,9 @@ pub extern fn panel_move(
     x : c_int, y : c_int, w : c_int, h : c_int)
 {
     println!("panel geom !!!!!!!!! {}, {}, {}, {}", x, y, w, h);
-    let wcb : & ui::WidgetCbData = unsafe {mem::transmute(widget_cb_data)};
-    let mut t : &mut Tree = unsafe {mem::transmute(wcb.widget)};
+    let wcb : & ui::WidgetCbData = unsafe {&*(widget_cb_data as *const ui::WidgetCbData)};
+    let container = &mut *wcb.container.write().unwrap();
+    let t : &mut Tree = &mut *container.tree.as_mut().unwrap();
 
     t.config.x = x;
     t.config.y = y;
