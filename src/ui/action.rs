@@ -67,7 +67,6 @@ pub struct Action
     visible : bool,
     view_id : uuid::Uuid,
     pub entries : HashMap<String, *const JkEntry>,
-    pub closures : Vec<Box<Fn()>>
 }
 
 pub enum Position
@@ -93,22 +92,13 @@ impl Action
             visible : true,
             view_id : view_id,
             entries : HashMap::new(),
-            closures : Vec::new()
         }
     }
 
-    //pub fn add_button(&self, name : &str, cb : ButtonCallback, data : ActionData)
     pub fn add_button(&self, name : &str, cb : ButtonCallback, data : ui::WidgetCbData) -> *const ui::Evas_Object
     {
-        unsafe {
-            /*
-            action_button_new(
-                self.jk_action,
-                CString::new(name.as_bytes()).unwrap().as_ptr(),
-                mem::transmute(box data),
-                cb)
-                */
-
+        unsafe 
+        {
             let b = action_button_new1(
                 self.jk_action,
                 CString::new(name.as_bytes()).unwrap().as_ptr());
@@ -118,7 +108,7 @@ impl Action
 
             btn_cb_set(b,
                        cb,
-                       mem::transmute(box data));
+                       Box::into_raw(box data) as *const c_void);
             b
         }
     }
@@ -132,8 +122,6 @@ impl Action
                 CString::new(name.as_bytes()).unwrap().as_ptr());
 
             let bf = Box::new(f);
-
-            //self.closures.push(bf);
 
             extern fn wrapper<F>(f : *const c_void)
                 where F: Fn() {

@@ -405,12 +405,11 @@ fn init_tree(container : &Arw<WidgetContainer>, win : *const Window, tree_config
     let container = &mut *container.write().unwrap();
 
     let mut t = box ui::Tree::new(win, tree_config);
-    let tsd = ui::WidgetCbData::with_ptr(&container_arw, unsafe { mem::transmute(&*t)});
+    let tsd = ui::WidgetCbData::with_index(&container_arw, 0);
 
     unsafe {
         ui::tree::tree_register_cb(
             t.jk_tree,
-            //mem::transmute(box tsd),
             Box::into_raw(box tsd) as *const c_void,
             ui::tree::name_get,
             ui::tree::item_selected,
@@ -418,6 +417,7 @@ fn init_tree(container : &Arw<WidgetContainer>, win : *const Window, tree_config
             ui::tree::expand,
             ui::tree::selected,
             ui::tree::unselected,
+            //TODO remove panel_move
             ui::tree::panel_move,
             );
     }
