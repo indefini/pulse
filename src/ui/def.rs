@@ -788,10 +788,8 @@ pub struct WidgetContainer
     pub command : Option<Box<Command>>,
     pub action : Option<Box<Action>>,
     pub views : Vec<Box<View>>,
-    //pub context : Rc<RefCell<context::Context>>,
     pub context : Box<context::Context>,
     pub resource : Rc<resource::ResourceGroup>,
-    //control : Rc<RefCell<control::Control>>
     pub factory : factory::Factory,
     pub op_mgr : operation::OperationManager,
     pub gameview : Option<Box<GameView>>,
