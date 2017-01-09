@@ -84,7 +84,7 @@ pub enum Collision
 
 pub struct Dragger
 {
-    pub object : Arc<RwLock<object::Object>>,
+    object : Arc<RwLock<object::Object>>,
     pub ori : transform::Orientation,
     pub constraint : vec::Vec3,
     kind : Kind,

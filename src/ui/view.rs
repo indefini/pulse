@@ -34,6 +34,7 @@ use control::Control;
 use control::WidgetUpdate;
 use dormin::scene;
 use dormin::component;
+use dormin::component::mesh_render;
 use util;
 use util::Arw;
 use dormin::input;
@@ -182,8 +183,18 @@ impl View
             //println!("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~render finished");
         };
 
+        let mut cams = Vec::new();
+        for c in &scene.cameras {
+
+            let camo = create_camera_object_mesh(&*self.resource, "dance_cam");
+            //TODO set world cam position, rotation
+            //camo.position 
+            cams.push(Arc::new(RwLock::new(camo)));
+        }
+
         let not_loaded = self.render.draw(
             obs,
+            &cams,
             sel,
             &self.dragger.borrow().get_objects(),
             &finish,
@@ -756,3 +767,56 @@ extern fn gv_key_down(
     //unsafe { (*gv).input.add_key(keycode as u8); }
     gv.input.add_key(keycode as u8);
 }
+
+fn create_camera_object_mesh(
+    resource : &resource::ResourceGroup,
+    name : &str) -> object::Object
+{
+   // let mut cam = factory.create_object(name);
+        let mut cam = object::Object {
+            name : String::from(name),
+            id : uuid::Uuid::new_v4(),
+            mesh_render : None,
+            position : vec::Vec3::zero(),
+            //orientation : vec::Quat::identity(),
+            orientation : transform::Orientation::new_quat(),
+            //angles : vec::Vec3::zero(),
+            scale : vec::Vec3::one(),
+            children : Vec::new(),
+            parent : None,
+            //transform : box transform::Transform::new()
+            components : Vec::new(),
+            comp_data : Vec::new(),
+            comp_string : Vec::new(),
+            comp_lua : Vec::new(),
+        };
+
+
+    let mat = create_mat();
+
+    cam.mesh_render = Some(mesh_render::MeshRenderer::new_with_mat(
+        "model/camera.mesh",
+        mat,
+        resource));
+
+    cam
+}
+
+fn create_mat() -> Arc<RwLock<material::Material>>
+{
+    let mut mat : material::Material = Create::create("material/camera.mat");
+    mat.inittt();
+
+    if let Some(ref mut s) = mat.shader {
+        s.load_instant_no_manager();
+    }
+
+    mat.set_uniform_data(
+        "color",
+        shader::UniformData::Vec4(vec::Vec4::new(1f64,1f64,0f64,1f64)));
+
+    let matarc = Arc::new(RwLock::new(mat));
+
+    matarc
+}
+
