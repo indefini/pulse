@@ -186,9 +186,11 @@ impl View
         let mut cams = Vec::new();
         for c in &scene.cameras {
 
-            let camo = create_camera_object_mesh(&*self.resource, "dance_cam");
-            //TODO set world cam position, rotation
-            //camo.position 
+            let mut camo = create_camera_object_mesh(&*self.resource, "dance_cam");
+            let cb = c.borrow();
+            camo.position = cb.object.read().unwrap().world_position();
+            camo.orientation = transform::Orientation::new_with_quat(&cb.object.read().unwrap().world_orientation());
+            camo.scale = cb.object.read().unwrap().world_scale();
             cams.push(Arc::new(RwLock::new(camo)));
         }
 
