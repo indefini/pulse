@@ -171,6 +171,9 @@ impl Control
 
         let mut found_length = 0f64;
         let mut closest_obj = None;
+
+        //TODO collision for cameras.
+
         for o in &scene.borrow().objects {
             let ir = intersection::ray_object(&r, &*o.read().unwrap());
             if ir.hit {
