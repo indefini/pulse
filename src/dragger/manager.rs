@@ -335,7 +335,7 @@ fn create_dragger(
     dragger
 }
 
-fn create_mat(color : vec::Vec4, name : &str) -> Arc<RwLock<material::Material>>
+fn create_mat(color : vec::Vec4, name : &str) -> material::Material
 {
     let mut mat : material::Material = Create::create("material/dragger.mat");
     mat.inittt();
@@ -348,17 +348,14 @@ fn create_mat(color : vec::Vec4, name : &str) -> Arc<RwLock<material::Material>>
         "color",
         shader::UniformData::Vec4(color));
 
-    let matarc = Arc::new(RwLock::new(mat));
-
-    matarc
+    mat
 }
 
 fn create_mat_res(color : vec::Vec4, name : &str) -> resource::ResTT<material::Material>
 {
-    let matarc = create_mat(color, name);
+    let mat = create_mat(color, name);
 
-    let rs = resource::ResTest::ResData(matarc);
-    let mr = resource::ResTT::new_with_res("dragger_x_mat", rs);
+    let mr = resource::ResTT::new_with_res("dragger_x_mat", mat);
     //let mr = resource::ResTT::new_with_res(name, rs);
 
     mr

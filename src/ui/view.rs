@@ -818,7 +818,7 @@ fn create_mat() -> Arc<RwLock<material::Material>>
 
     mat.set_uniform_data(
         "color",
-        shader::UniformData::Vec4(vec::Vec4::new(0.1f64,1f64,0.1f64,0.2f64)));
+        shader::UniformData::Vec4(vec::Vec4::new(1.1f64,0f64,0.1f64,0.2f64)));
 
     let matarc = Arc::new(RwLock::new(mat));
 
