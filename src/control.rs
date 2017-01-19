@@ -41,6 +41,7 @@ pub struct Control
     state : State,
     dragger : Rc<RefCell<dragger::DraggerManager>>,
     mouse_start : Option<vec::Vec2>,
+    resource : Rc<resource::ResourceGroup>
 }
 
 impl Control
@@ -48,6 +49,7 @@ impl Control
     pub fn new(
         camera : Rc<RefCell<camera::Camera>>,
         dragger : Rc<RefCell<dragger::DraggerManager>>,
+        resource : Rc<resource::ResourceGroup>
         ) -> Control
     {
         Control {

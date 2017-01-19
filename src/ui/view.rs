@@ -111,7 +111,8 @@ impl View
         let control = Rc::new(RefCell::new(
                 Control::new(
                     camera.clone(),
-                    dragger.clone()
+                    dragger.clone(),
+                    resource.clone(),
                     )));
 
         let render = box Render::new(factory, resource.clone(), camera.clone());
