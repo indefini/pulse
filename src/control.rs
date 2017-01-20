@@ -58,8 +58,8 @@ impl Control
             //tree : None,
             state : State::Idle,
             dragger : dragger,
-
-            mouse_start : None
+            mouse_start : None,
+            resource : resource
         }
     }
 
@@ -89,7 +89,7 @@ impl Control
         let objs = context.selected.clone();
         if !objs.is_empty() {
             let click = self.dragger.borrow_mut().mouse_down(
-                &*self.camera.borrow(),button, x, y);
+                &*self.camera.borrow(),button, x, y, &*self.resource);
             if click {
                 self.state = State::Dragger;
                 list.push_back(operation::Change::DraggerClicked);
@@ -177,7 +177,7 @@ impl Control
         //TODO collision for cameras.
 
         for o in &scene.borrow().objects {
-            let ir = intersection::ray_object(&r, &*o.read().unwrap());
+            let ir = intersection::ray_object(&r, &*o.read().unwrap(), &*self.resource);
             if ir.hit {
                 let length = (ir.position - r.start).length2();
                 match closest_obj {
@@ -275,7 +275,7 @@ impl Control
                 };
 
                 let update =
-                    self.dragger.borrow_mut().mouse_move_hover(r, button) || button == 1;
+                    self.dragger.borrow_mut().mouse_move_hover(r, button, &*self.resource) || button == 1;
 
                 if button == 1 {
 
@@ -356,7 +356,7 @@ impl Control
                     let mut obvec = Vec::new();
                     let mut has_changed = false;
                     for o in &s.borrow().objects {
-                        let b = intersection::is_object_in_planes(planes.as_ref(), &*o.read().unwrap());
+                        let b = intersection::is_object_in_planes(planes.as_ref(), &*o.read().unwrap(), &*self.resource);
                         if b {
                             if !context.has_object(&*o.read().unwrap()) {
                                 has_changed = true;

@@ -93,7 +93,7 @@ pub struct Dragger
     collision : Collision,
     state : State,
     scale : f64,
-    id : uuid::Uuid
+    id : uuid::Uuid,
 }
 
 impl DraggerManager
@@ -121,13 +121,20 @@ impl DraggerManager
         dm
     }
 
-    pub fn mouse_down(&mut self, c : &camera::Camera, button : i32, x : i32, y : i32) -> bool
+    pub fn mouse_down(
+        &mut self,
+        c : &camera::Camera,
+        button : i32,
+        x : i32,
+        y : i32,
+        resource : &resource::ResourceGroup
+        ) -> bool
     {
         self.mouse_start.x = x as f64;
         self.mouse_start.y = y as f64;
         let r = c.ray_from_screen(x as f64, y as f64, 10000f64);
 
-        self.check_collision(r, button).is_some()
+        self.check_collision(r, button, resource).is_some()
     }
 
     pub fn mouse_up(&mut self, c : &camera::Camera, button : i32, x : i32, y : i32)
@@ -149,14 +156,18 @@ impl DraggerManager
         return op;
     }
 
-    pub fn check_collision(&mut self, r: geometry::Ray, button : i32) -> Option<uuid::Uuid>
+    pub fn check_collision(
+        &mut self,
+        r: geometry::Ray,
+        button : i32,
+        resource : &resource::ResourceGroup) -> Option<uuid::Uuid>
     {
         let mut found_length = 0f64;
         let mut closest_dragger = None;
         for dragger in &mut self.draggers[self.current_group] {
             let mut d = dragger.borrow_mut();
             d.set_state(State::Idle);
-            let (hit, len) = d.check_collision(&r, d.scale);
+            let (hit, len) = d.check_collision(&r, d.scale, resource);
             if hit {
                 if let None = closest_dragger {
                     closest_dragger = Some(dragger.clone());
@@ -219,9 +230,13 @@ impl DraggerManager
         }
     }
 
-    pub fn mouse_move_hover(&mut self, r: geometry::Ray, button : i32) -> bool
+    pub fn mouse_move_hover(
+        &mut self,
+        r: geometry::Ray,
+        button : i32,
+        resource : &resource::ResourceGroup) -> bool
     {
-        let result = self.check_collision(r, button);
+        let result = self.check_collision(r, button, resource);
 
         if let Some(id) = result {
             if let Some(focus) = self.dragger_focus {
@@ -385,7 +400,7 @@ impl Dragger
             collision : collision,
             state : State::Idle,
             scale : 1f64,
-            id : uuid::Uuid::new_v4()
+            id : uuid::Uuid::new_v4(),
         }
     }
 
@@ -418,7 +433,7 @@ impl Dragger
     {
         fn set_color(s : &Dragger, color : vec::Vec4){
             if let Some(mat) = s.object.write().unwrap().get_material() {
-                mat.write().unwrap().set_uniform_data(
+                mat.set_uniform_data(
                     "color",
                     shader::UniformData::Vec4(color));
             }
@@ -441,17 +456,18 @@ impl Dragger
         self.state = state;
     }
 
-    fn check_collision(&self, r : &geometry::Ray, s : f64) -> (bool, f64)
+    fn check_collision(&self, r : &geometry::Ray, s : f64, resource : &resource::ResourceGroup) -> (bool, f64)
     {
         let ob = self.object.read().unwrap();
         let position = ob.position;
         let rotation = ob.orientation.as_quat();
         let scale = vec::Vec3::new(s, s, s);
 
+        let mm = resource.mesh_manager.borrow();
         let mesh = match ob.mesh_render {
             None => return (false,0f64),
             Some(ref mr) => {
-                mr.mesh.read().unwrap()
+                mr.mesh.as_ref(&mm).unwrap()//.read().unwrap()
             },
         };
 
@@ -461,24 +477,24 @@ impl Dragger
         };
 
         let ir = intersection::intersection_ray_box(r, aabox, &position, &rotation, &scale);
-        //let ir = intersection::ray_object(r, &*o.read().unwrap());
         if ir.hit {
             let length = (ir.position - r.start).length2();
 
             //TODO 
+
             let m = match self.collision{
                 Collision::SpecialMesh(ref r) => {
-                    match r.resource {
-                        resource::ResTest::ResData(ref m) => {
-                            m
-                        },
-                        _ => { return (true, length); }
+                    if let Some(m) = r.as_ref(&*mm) {
+                        m
+                    }
+                    else {
+                        return (true, length);
                     }
                 },
                 _ => return (true, length)
             };
 
-            let ir = intersection::ray_mesh(r, &*m.read().unwrap(), &position, &rotation, &scale);
+            let ir = intersection::ray_mesh(r, m, &position, &rotation, &scale);
             if ir.hit {
                 let length = (ir.position - r.start).length2();
                 return (true, length);

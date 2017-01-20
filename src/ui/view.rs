@@ -583,6 +583,7 @@ pub struct GameView
     input : input::Input,
     pub config : ui::WidgetConfig,
     pub loading_resource : Arc<Mutex<usize>>,
+    resource : Rc<resource::ResourceGroup>,
 }
 
 
@@ -613,7 +614,7 @@ impl GameView {
         */
 
         //let render = box GameRender::new(factory, camera);
-        let render = box GameRender::new(camera, resource);
+        let render = box GameRender::new(camera, resource.clone());
 
         let mut v = box GameView {
             render : render,
@@ -624,7 +625,8 @@ impl GameView {
             glview : ptr::null(),
             input : input::Input::new(),
             config : config.clone(),
-            loading_resource : Arc::new(Mutex::new(0))
+            loading_resource : Arc::new(Mutex::new(0)),
+            resource : resource
             //camera : camera todo
         };
 
@@ -646,7 +648,7 @@ impl GameView {
 
     pub fn update(&mut self) -> bool {
         if self.state == 1 {
-            self.scene.borrow_mut().update(0.01f64, &self.input);
+            self.scene.borrow_mut().update(0.01f64, &self.input, &*self.resource);
             unsafe { jk_glview_request_update(self.glview); }
             self.input.clear();
             true
@@ -808,7 +810,7 @@ fn create_camera_object_mesh(
     cam
 }
 
-fn create_mat() -> Arc<RwLock<material::Material>>
+fn create_mat() -> material::Material
 {
     let mut mat : material::Material = Create::create("material/camera.mat");
     mat.inittt();
@@ -821,8 +823,6 @@ fn create_mat() -> Arc<RwLock<material::Material>>
         "color",
         shader::UniformData::Vec4(vec::Vec4::new(1.1f64,0f64,0.1f64,0.2f64)));
 
-    let matarc = Arc::new(RwLock::new(mat));
-
-    matarc
+    mat
 }
 
