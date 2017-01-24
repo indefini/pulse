@@ -2304,7 +2304,7 @@ pub extern fn file_changed(
         println!("file changed : {}", s);
         let mut shader_manager = container.resource.shader_manager.borrow_mut();
 
-        for shader in shader_manager.get_all_mut() {
+        for shader in shader_manager.loaded_iter_mut() {
             let mut reload = false;
             if let Some(ref vert) = shader.vert_path {
                 reload = vert == s;
