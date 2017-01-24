@@ -2302,21 +2302,9 @@ pub extern fn file_changed(
     let mut should_update_views = false;
     if s.ends_with(".frag") || s.ends_with(".vert") {
         println!("file changed : {}", s);
-        let shader_manager = container.resource.shader_manager.borrow();
+        let mut shader_manager = container.resource.shader_manager.borrow_mut();
 
-        for (name, res_arc) in &shader_manager.resources {
-            println!("shader resource name : {}", name);
-            let res = res_arc.read().unwrap();
-            let shader_arc = if let resource::ResTest::ResData(ref r) = *res {
-                r
-            }
-            else {
-                println!("early return");
-                continue
-            };
-
-            let mut shader = shader_arc.write().unwrap();
-
+        for shader in shader_manager.get_all_mut() {
             let mut reload = false;
             if let Some(ref vert) = shader.vert_path {
                 reload = vert == s;
