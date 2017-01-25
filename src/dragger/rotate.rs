@@ -112,7 +112,7 @@ pub fn create_rotation_draggers(factory : &factory::Factory, resource : &resourc
     let mesh = "model/dragger_rotate_quarter.mesh";
     let collider = "model/dragger_rotate_collider_quarter.mesh";
     let collider_mesh : resource::ResTT<mesh::Mesh> = 
-        resource::ResTT::new_instant(collider, &mut *factory.mesh_manager.write().unwrap());
+        factory.mesh_manager.write().unwrap().request_use_no_proc_tt(collider);
 
     let dragger_x = Dragger::new(
         factory,

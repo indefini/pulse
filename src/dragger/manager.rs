@@ -356,7 +356,7 @@ fn create_mat(color : vec::Vec4, name : &str) -> material::Material
     mat.inittt();
 
     if let Some(ref mut s) = mat.shader {
-        s.load_instant_no_manager();
+        s.create_instance();
     }
 
     mat.set_uniform_data(
@@ -369,9 +369,7 @@ fn create_mat(color : vec::Vec4, name : &str) -> material::Material
 fn create_mat_res(color : vec::Vec4, name : &str) -> resource::ResTT<material::Material>
 {
     let mat = create_mat(color, name);
-
-    let mr = resource::ResTT::new_with_res("dragger_x_mat", mat);
-    //let mr = resource::ResTT::new_with_res(name, rs);
+    let mr = resource::ResTT::new_with_instance("dragger_x_mat", mat);
 
     mr
 }

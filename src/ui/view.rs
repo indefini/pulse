@@ -816,7 +816,7 @@ fn create_mat() -> material::Material
     mat.inittt();
 
     if let Some(ref mut s) = mat.shader {
-        s.load_instant_no_manager();
+        s.create_instance();
     }
 
     mat.set_uniform_data(
