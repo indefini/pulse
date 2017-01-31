@@ -41,6 +41,7 @@ pub struct Control
     state : State,
     dragger : Rc<RefCell<dragger::DraggerManager>>,
     mouse_start : Option<vec::Vec2>,
+    resource : Rc<resource::ResourceGroup>
 }
 
 impl Control
@@ -48,6 +49,7 @@ impl Control
     pub fn new(
         camera : Rc<RefCell<camera::Camera>>,
         dragger : Rc<RefCell<dragger::DraggerManager>>,
+        resource : Rc<resource::ResourceGroup>
         ) -> Control
     {
         Control {
@@ -56,8 +58,8 @@ impl Control
             //tree : None,
             state : State::Idle,
             dragger : dragger,
-
-            mouse_start : None
+            mouse_start : None,
+            resource : resource
         }
     }
 
@@ -87,7 +89,7 @@ impl Control
         let objs = context.selected.clone();
         if !objs.is_empty() {
             let click = self.dragger.borrow_mut().mouse_down(
-                &*self.camera.borrow(),button, x, y);
+                &*self.camera.borrow(),button, x, y, &*self.resource);
             if click {
                 self.state = State::Dragger;
                 list.push_back(operation::Change::DraggerClicked);
@@ -173,9 +175,41 @@ impl Control
         let mut closest_obj = None;
 
         //TODO collision for cameras.
+        {
+        let mut mesh_manager = self.resource.mesh_manager.borrow_mut();
+        let cam_mesh = mesh_manager.get_or_create("model/camera.mesh");
+        for c in &scene.borrow().cameras {
+            println!("testing camera {}", c.borrow().id);
+            let cam = c.borrow();
+            let o = cam.object.read().unwrap();
+            let pos = o.world_position();
+            let ori = o.world_orientation();
+            let cam_scale = get_camera_scale(&*self.camera.borrow(), &o.get_world_matrix());
+            let scale = o.world_scale() * cam_scale;
+            let ir = intersection::ray_mesh(&r, cam_mesh, &pos, &ori, &scale);
+            if ir.hit {
+                println!("camera collision!!!!");
+                let length = (ir.position - r.start).length2();
+                /*
+                match closest_obj {
+                    None => {
+                        closest_obj = Some(o.clone());
+                        found_length = length;
+                    }
+                    Some(_) => {
+                        if length < found_length {
+                            closest_obj = Some(o.clone());
+                            found_length = length;
+                        }
+                    }
+                }
+                */
+            }
+        }
+        }
 
         for o in &scene.borrow().objects {
-            let ir = intersection::ray_object(&r, &*o.read().unwrap());
+            let ir = intersection::ray_object(&r, &*o.read().unwrap(), &*self.resource);
             if ir.hit {
                 let length = (ir.position - r.start).length2();
                 match closest_obj {
@@ -273,7 +307,7 @@ impl Control
                 };
 
                 let update =
-                    self.dragger.borrow_mut().mouse_move_hover(r, button) || button == 1;
+                    self.dragger.borrow_mut().mouse_move_hover(r, button, &*self.resource) || button == 1;
 
                 if button == 1 {
 
@@ -354,7 +388,7 @@ impl Control
                     let mut obvec = Vec::new();
                     let mut has_changed = false;
                     for o in &s.borrow().objects {
-                        let b = intersection::is_object_in_planes(planes.as_ref(), &*o.read().unwrap());
+                        let b = intersection::is_object_in_planes(planes.as_ref(), &*o.read().unwrap(), &*self.resource);
                         if b {
                             if !context.has_object(&*o.read().unwrap()) {
                                 has_changed = true;
@@ -502,3 +536,22 @@ pub trait WidgetUpdate {
         new : &Any);
 }
 
+
+use dormin::matrix;
+fn get_camera_scale(camera : &camera::Camera, world_matrix : &matrix::Matrix4) -> f64
+{
+    let cam_mat = camera.object.read().unwrap().get_world_matrix();
+    let projection = camera.get_perspective();
+    let cam_mat_inv = cam_mat.get_inverse();
+
+    let world_inv = &cam_mat_inv * world_matrix;
+
+    let mut tm = &projection * &world_inv;
+    tm = tm.transpose();
+
+    let zero = vec::Vec4::new(0f64,0f64,0f64,1f64);
+    let vw = &tm * zero;
+    let factor = 0.05f64;
+    let w = vw.w * factor;
+    w
+}
