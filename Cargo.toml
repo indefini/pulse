@@ -13,15 +13,16 @@ libloading = "0.3"
 libc = "*"
 
 [dependencies.dormin]
-git = "https://github.com/indefini/dormin.git"
-#path = "/home/chris/code/dormin/"
+#git = "https://github.com/indefini/dormin.git"
+path = "/home/chris/code/dormin/"
 features = ["evas"]
 
 [dependencies.rustc-serialize]
 git = "https://github.com/indefini/rustc-serialize.git"
 
 [dependencies.joker-sys]
-git = "https://github.com/drasich/joker.git"
+path = "/home/chris/code/joker"
+#git = "https://github.com/drasich/joker.git"
+#git = "ssh://git@gitlab.com/indefini/joker.git"
 #branch = "panel"
-#path = "/home/chris/code/joker/"
 

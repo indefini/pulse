@@ -257,7 +257,6 @@ impl PropertyWidget for PropertyBox
     fn add_option(&self, field : &str, is_some : bool) -> *const PropertyValue
     {
         panic!("TODO, add option");
-        ptr::null()
     }
 
     fn add_vec(&self, name : &str, len : usize)

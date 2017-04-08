@@ -431,7 +431,6 @@ impl NodeChildren {
                 }
                 else {
                     panic!("not an index : {}", v[0]);
-                    None
                 }
             },
             NodeChildren::Struct(ref m) => {

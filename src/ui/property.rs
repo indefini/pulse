@@ -243,7 +243,6 @@ impl<T : PropertyShow> PropertyShow for Rc<RefCell<T>> {
     fn get_property(&self, field : &str) -> Option<&PropertyShow>
     {
         panic!("panic to see if this is called");
-        None
     }
 
     fn update_property(&self, widget : &PropertyWidget, all_path: &str, path : Vec<String>)
