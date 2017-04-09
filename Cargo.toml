@@ -8,7 +8,7 @@ name = "pulse"
 #crate-type = ["dylib"]
 
 [dependencies]
-uuid = {version ="0.3.1", features = [ "v4", "rustc-serialize" ] }
+uuid = {version ="0.4", features = [ "serde", "v4", "rustc-serialize" ] }
 libloading = "0.3"
 libc = "*"
 
