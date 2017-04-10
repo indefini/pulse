@@ -95,7 +95,7 @@ pub type PropertyTreeFunc = extern fn(
 #[repr(C)]
 pub struct PropertyValue;
 
-#[derive(RustcDecodable, RustcEncodable, Clone)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct PropertyConfig
 {
     visible : bool,

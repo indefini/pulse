@@ -5,7 +5,9 @@
 extern crate dormin;
 extern crate uuid;
 extern crate libc;
-extern crate rustc_serialize;
+#[macro_use]
+extern crate serde_derive;
+extern crate serde_json;
 
 pub mod context;
 pub mod operation;

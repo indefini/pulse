@@ -11,7 +11,7 @@ use std::any::{Any};//, AnyRefExt};
 use std::path::Path;
 use std::fs;
 use std::fs::File;
-use rustc_serialize::{json, Encodable, Encoder, Decoder, Decodable};
+use serde_json;
 use std::io::{Read,Write};
 use std::ffi::{CString,CStr};
 use std::thread;
@@ -495,7 +495,7 @@ fn init_action(container : &Arw<WidgetContainer>, win : *const Window, view_id :
     //container.list.create(w);
 }
 
-#[derive(RustcDecodable, RustcEncodable, Clone)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct WidgetConfig
 {
     pub visible : bool,
@@ -533,7 +533,7 @@ impl WidgetConfig
 
 }
 
-#[derive(RustcDecodable, RustcEncodable, Clone)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct ViewConfig
 {
     window : WidgetConfig,
@@ -541,7 +541,7 @@ pub struct ViewConfig
     camera : camera::Camera,
 }
 
-#[derive(RustcDecodable, RustcEncodable, Clone)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct WindowConfig
 {
     views: Vec<ViewConfig>,
@@ -628,13 +628,7 @@ impl WindowConfig {
         //let path : &Path = self.name.as_ref();
         let path : &Path = Path::new("windowconf");
         let mut file = File::create(path).ok().unwrap();
-        let mut s = String::new();
-        {
-            let mut encoder = json::Encoder::new_pretty(&mut s);
-            let _ = self.encode(&mut encoder);
-        }
-
-        //let result = file.write(s.as_ref().as_bytes());
+        let s = serde_json::to_string_pretty(self).unwrap();
         let result = file.write(s.as_bytes());
     }
 
@@ -644,7 +638,7 @@ impl WindowConfig {
         let wc : WindowConfig = match File::open(&Path::new("windowconf")){
             Ok(ref mut f) => {
                 f.read_to_string(&mut file).unwrap();
-                json::decode(file.as_ref()).unwrap()
+                serde_json::from_str(&file).unwrap()
             },
             _ => {
                 WindowConfig::default()
@@ -697,7 +691,7 @@ pub struct WidgetPanel<T>
     pub eo : *const Evas_Object
 }
 
-#[derive(RustcDecodable, RustcEncodable, Clone)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct WidgetPanelConfig
 {
     visible : bool,

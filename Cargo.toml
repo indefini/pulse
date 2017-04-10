@@ -9,6 +9,9 @@ name = "pulse"
 
 [dependencies]
 uuid = {version ="0.4", features = [ "serde", "v4", "rustc-serialize" ] }
+serde = "0.9"
+serde_derive = "0.9"
+serde_json = "0.9"
 libloading = "0.3"
 libc = "*"
 
@@ -16,9 +19,6 @@ libc = "*"
 #git = "https://github.com/indefini/dormin.git"
 path = "/home/chris/code/dormin/"
 features = ["evas"]
-
-[dependencies.rustc-serialize]
-git = "https://github.com/indefini/rustc-serialize.git"
 
 [dependencies.joker-sys]
 path = "/home/chris/code/joker"
