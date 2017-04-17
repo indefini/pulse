@@ -812,12 +812,7 @@ fn create_camera_object_mesh(
 
 fn create_mat() -> material::Material
 {
-    let mut mat : material::Material = Create::create("material/camera.mat");
-    mat.inittt();
-
-    if let Some(ref mut s) = mat.shader {
-        s.create_instance();
-    }
+    let mut mat = material::Material::new_from_file("material/camera.mat");
 
     mat.set_uniform_data(
         "color",

@@ -352,12 +352,7 @@ fn create_dragger(
 
 fn create_mat(color : vec::Vec4, name : &str) -> material::Material
 {
-    let mut mat : material::Material = Create::create("material/dragger.mat");
-    mat.inittt();
-
-    if let Some(ref mut s) = mat.shader {
-        s.create_instance();
-    }
+    let mut mat = material::Material::new_from_file("material/dragger.mat");
 
     mat.set_uniform_data(
         "color",
