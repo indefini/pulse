@@ -361,14 +361,6 @@ fn create_mat(color : vec::Vec4, name : &str) -> material::Material
     mat
 }
 
-fn create_mat_res(color : vec::Vec4, name : &str) -> resource::ResTT<material::Material>
-{
-    let mat = create_mat(color, name);
-    let mr = resource::ResTT::new_with_instance("dragger_x_mat", mat);
-
-    mr
-}
-
 impl Dragger
 {
     pub fn new(
