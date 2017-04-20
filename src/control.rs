@@ -65,7 +65,7 @@ impl Control
 
     pub fn mouse_down(
             &mut self,
-            context : &context::Context,
+            context : &context::ContextOld,
             modifier : i32,
             button : i32,
             x : i32,
@@ -101,7 +101,7 @@ impl Control
 
     pub fn mouse_up(
             &mut self,
-            context : &context::Context,
+            context : &context::ContextOld,
             button : i32,
             x : i32,
             y : i32,
@@ -236,7 +236,7 @@ impl Control
         return operation::Change::ChangeSelected(v);
     }
 
-    fn rotate_camera(&mut self, context : &context::Context, x : f64, y : f64)
+    fn rotate_camera(&mut self, context : &context::ContextOld, x : f64, y : f64)
     {
         self.state = State::CameraRotation;
 
@@ -280,7 +280,7 @@ impl Control
 
     pub fn mouse_move(
         &mut self,
-        context : &context::Context,
+        context : &context::ContextOld,
         mod_flag : i32,
         button : i32,
         curx : i32,

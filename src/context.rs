@@ -9,73 +9,41 @@ use std::sync::{RwLock, Arc};
 use std::rc::Rc;
 use std::cell::{RefCell, BorrowState};
 
-pub struct Context
+pub type ContextOld = Context<Rc<RefCell<scene::Scene>>, Arc<RwLock<object::Object>>>;
+
+pub struct Context<S, O>
 {
-    pub selected : Vec<Arc<RwLock<object::Object>>>,
-    pub scene : Option<Rc<RefCell<scene::Scene>>>,
-    pub saved_positions : Vec<vec::Vec3>,
-    pub saved_scales : Vec<vec::Vec3>,
-    pub saved_oris : Vec<transform::Orientation>
+    pub selected : Vec<O>,
+    pub scene : Option<S>,
 }
 
-impl Context
+
+impl<S : Clone, O> Context<S,O>
 {
-    pub fn new() -> Context
+    pub fn new() -> Context<S, O>
     {
         Context {
             selected: Vec::new(),
             scene : None,
-            saved_positions : Vec::new(),
-            saved_scales : Vec::new(),
-            saved_oris : Vec::new()
         }
     }
 
-    pub fn set_scene(&mut self, scene : Rc<RefCell<scene::Scene>>)
+    pub fn set_scene(&mut self, scene : S)
     {
         self.scene = Some(scene);
         self.selected.clear();
     }
 
-    pub fn get_scene(&self) -> Option<Rc<RefCell<scene::Scene>>>
+    pub fn get_scene(&self) -> Option<S>
     {
         self.scene.clone()
     }
 
-    pub fn save_positions(&mut self)
-    {
-        self.saved_positions.clear();
-        for o in &self.selected {
-            self.saved_positions.push(o.read().unwrap().position);
-        }
-    }
+}
 
-    pub fn save_scales(&mut self)
-    {
-        self.saved_scales.clear();
-        for o in &self.selected {
-            self.saved_scales.push(o.read().unwrap().scale);
-        }
-    }
 
-    pub fn save_oris(&mut self)
-    {
-        self.saved_oris.clear();
-        for o in &self.selected {
-            self.saved_oris.push(o.read().unwrap().orientation);
-        }
-    }
-
-    pub fn get_selected_ids(&self) -> LinkedList<uuid::Uuid>
-    {
-        let mut list = LinkedList::new();
-        for o in &self.selected {
-            list.push_back(o.read().unwrap().id.clone());
-        }
-
-        list
-    }
-
+impl Context<Rc<RefCell<scene::Scene>>,Arc<RwLock<object::Object>>>
+{
     pub fn get_vec_selected_ids(&self) -> Vec<uuid::Uuid>
     {
         let mut v = Vec::with_capacity(self.selected.len());
@@ -132,7 +100,7 @@ impl Context
     {
         for o in &self.selected {
             if *id == o.read().unwrap().id {
-                return true;
+               return true;
             }
         }
 
@@ -143,7 +111,7 @@ impl Context
     {
         for o in &self.selected {
             if ob.id == o.read().unwrap().id {
-                return true;
+               return true;
             }
         }
 

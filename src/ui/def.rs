@@ -782,7 +782,7 @@ pub struct WidgetContainer
     pub command : Option<Box<Command>>,
     pub action : Option<Box<Action>>,
     pub views : Vec<Box<View>>,
-    pub context : Box<context::Context>,
+    pub context : Box<context::ContextOld>,
     pub resource : Rc<resource::ResourceGroup>,
     pub factory : factory::Factory,
     pub op_mgr : operation::OperationManager,
@@ -797,12 +797,18 @@ pub struct WidgetContainer
 
     pub visible_prop : HashMap<Uuid, Weak<Widget>>,
 
-    pub anim : Option<*const Ecore_Animator>
+    pub anim : Option<*const Ecore_Animator>,
+
+    //TODO remove from here
+    pub saved_positions : Vec<vec::Vec3>,
+    pub saved_scales : Vec<vec::Vec3>,
+    pub saved_oris : Vec<transform::Orientation>
+
 }
 
 pub struct State
 {
-    pub context : Box<context::Context>,
+    pub context : Box<context::ContextOld>,
     pub op_mgr : operation::OperationManager,
     pub scenes : HashMap<String, Rc<RefCell<scene::Scene>>>,
     pub resource : Rc<resource::ResourceGroup>,
@@ -927,8 +933,11 @@ impl WidgetContainer
             name : String::from("yoplaboum"),
             scenes : HashMap::new(),
             visible_prop : HashMap::new(),
-            anim : None
+            anim : None,
 
+            saved_positions : Vec::new(),
+            saved_scales : Vec::new(),
+            saved_oris : Vec::new()
         }
     }
 
@@ -1182,7 +1191,7 @@ impl WidgetContainer
                     match *op {
                         dragger::Operation::Translation(v) => {
                             let prop = vec!["position".to_owned()];
-                            let cxpos = context.saved_positions.clone();
+                            let cxpos = self.saved_positions.clone();
                             let mut saved_positions = Vec::with_capacity(cxpos.len());
                             for p in &cxpos {
                                 saved_positions.push((box *p ) as Box<Any>);
@@ -1200,7 +1209,7 @@ impl WidgetContainer
                         },
                         dragger::Operation::Scale(v) => {
                             let prop = vec!["scale".to_owned()];
-                            let cxsc = context.saved_scales.clone();
+                            let cxsc = self.saved_scales.clone();
                             let mut saved_scales = Vec::with_capacity(cxsc.len());
                             for p in &cxsc {
                                 saved_scales.push((box *p ) as Box<Any>);
@@ -1218,7 +1227,7 @@ impl WidgetContainer
                         },
                         dragger::Operation::Rotation(q) => {
                             let prop = vec!["orientation".to_owned(), "*".to_owned()];
-                            let cxoris = context.saved_oris.clone();
+                            let cxoris = self.saved_oris.clone();
                             let mut saved_oris = Vec::with_capacity(cxoris.len());
                             for p in &cxoris {
                                 saved_oris.push((box *p ) as Box<Any>);
@@ -1715,7 +1724,7 @@ impl WidgetContainer
         &mut self,
         translation : vec::Vec3) -> operation::Change
     {
-        let sp = self.context.saved_positions.clone();
+        let sp = self.saved_positions.clone();
         let obs = self.get_selected_objects();
 
         let mut i = 0;
@@ -1732,7 +1741,7 @@ impl WidgetContainer
         &mut self,
         scale : vec::Vec3) -> operation::Change
     {
-        let sp = self.context.saved_scales.clone();
+        let sp = self.saved_scales.clone();
         let obs = self.get_selected_objects();
 
         let mut i = 0;
@@ -1749,7 +1758,7 @@ impl WidgetContainer
         &mut self,
         rotation : vec::Quat) -> operation::Change
     {
-        let so = self.context.saved_oris.clone();
+        let so = self.saved_oris.clone();
         let obs = self.get_selected_objects();
 
         let mut i = 0;
@@ -1946,6 +1955,23 @@ impl WidgetContainer
             gv.request_update();
         }
     }
+
+    //TODO remove
+    pub fn save_positions(&mut self)
+    {
+        self.saved_positions = self.context.selected.iter().map(|o| o.read().unwrap().position).collect();
+    }
+
+    pub fn save_scales(&mut self)
+    {
+        self.saved_scales = self.context.selected.iter().map(|o| o.read().unwrap().scale).collect();
+    }
+
+    pub fn save_oris(&mut self)
+    {
+        self.saved_oris = self.context.selected.iter().map(|o| o.read().unwrap().orientation).collect();
+    }
+
 }
 
 // TODO remove/rework

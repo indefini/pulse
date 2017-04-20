@@ -151,7 +151,7 @@ impl View
         self.render.init();
     }
 
-    fn draw(&mut self, context : &context::Context) -> bool
+    fn draw(&mut self, context : &context::ContextOld) -> bool
     {
         let scene = match context.scene {
             Some(ref s) => s.borrow(),
@@ -295,10 +295,10 @@ pub extern fn mouse_down(
 
     for op in &op_list {
         if let operation::Change::DraggerClicked = *op {
-            let c = &mut container.context;;
-            c.save_positions();
-            c.save_scales();
-            c.save_oris();
+            //let c = &mut container.context;;
+            container.save_positions();
+            container.save_scales();
+            container.save_oris();
         }
         container.views[wcb.index].handle_control_change(op);
         let id = container.views[wcb.index].uuid;
