@@ -8,23 +8,38 @@ use std::collections::{LinkedList};
 use std::sync::{RwLock, Arc};
 use std::rc::Rc;
 use std::cell::{RefCell, BorrowState};
+use std::marker::PhantomData;
 
-pub type ContextOld = Context<Rc<RefCell<scene::Scene>>, Arc<RwLock<object::Object>>>;
+pub type ContextOld = Context<Rc<RefCell<scene::Scene>>, Arc<RwLock<object::Object>>, uuid::Uuid>;
 
-pub struct Context<S, O>
+trait ToId<I> {
+    fn to_id(&self) -> I;
+}
+
+impl ToId<uuid::Uuid> for Arc<RwLock<object::Object>>
+{
+    fn to_id(&self) -> uuid::Uuid 
+    {
+        self.read().unwrap().id
+    }
+}
+
+pub struct Context<S, O, I>
 {
     pub selected : Vec<O>,
     pub scene : Option<S>,
+    phantom : PhantomData<I>
 }
 
 
-impl<S : Clone, O> Context<S,O>
+impl<S : Clone, O, I> Context<S,O,I>
 {
-    pub fn new() -> Context<S, O>
+    pub fn new() -> Context<S, O, I>
     {
         Context {
             selected: Vec::new(),
             scene : None,
+            phantom : PhantomData
         }
     }
 
@@ -41,26 +56,25 @@ impl<S : Clone, O> Context<S,O>
 
 }
 
-
-impl Context<Rc<RefCell<scene::Scene>>,Arc<RwLock<object::Object>>>
+impl<S, O : ToId<I> + Clone, I : Eq> Context<S, O, I>
 {
-    pub fn get_vec_selected_ids(&self) -> Vec<uuid::Uuid>
+    pub fn get_vec_selected_ids(&self) -> Vec<I>
     {
         let mut v = Vec::with_capacity(self.selected.len());
         for o in &self.selected {
-            v.push(o.read().unwrap().id.clone());
+            v.push(o.to_id());
         }
 
         v
     }
 
-    pub fn remove_objects_by_id(&mut self, ids : Vec<uuid::Uuid>)
+    pub fn remove_objects_by_id(&mut self, ids : Vec<I>)
     {
         let mut new_list = Vec::new();
         for o in &self.selected {
             let mut not_found = true;
             for id in &ids {
-                if *id == o.read().unwrap().id {
+                if *id == o.to_id() {
                     not_found = false;
                     break;
                 }
@@ -73,33 +87,10 @@ impl Context<Rc<RefCell<scene::Scene>>,Arc<RwLock<object::Object>>>
         self.selected = new_list;
     }
 
-    pub fn add_objects_by_id(&mut self, ids : Vec<uuid::Uuid>)
-    {
-        for id in &ids {
-            let mut found = false;
-            for o in &self.selected {
-                if *id == o.read().unwrap().id {
-                    found = true;
-                    break;
-                }
-            }
-            if !found {
-                if let Some(ref s) = self.scene {
-                    for so in &s.borrow().objects {
-                        if *id == so.read().unwrap().id {
-                            self.selected.push(so.clone());
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    pub fn has_object_with_id(&self, id : &uuid::Uuid) -> bool
+    pub fn has_object_with_id(&self, id : &I) -> bool
     {
         for o in &self.selected {
-            if *id == o.read().unwrap().id {
+            if *id == o.to_id() {
                return true;
             }
         }
@@ -107,10 +98,10 @@ impl Context<Rc<RefCell<scene::Scene>>,Arc<RwLock<object::Object>>>
         false
     }
 
-    pub fn has_object(&self, ob : &object::Object) -> bool
+    pub fn has_object(&self, ob : O) -> bool
     {
         for o in &self.selected {
-            if ob.id == o.read().unwrap().id {
+            if ob.to_id() == o.to_id() {
                return true;
             }
         }

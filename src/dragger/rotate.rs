@@ -23,7 +23,8 @@ use dragger::manager::{
     DraggerGroup,
     Kind,
     Collision,
-    Dragger
+    Dragger,
+    create_dragger
 };
 
 pub struct RotationOperation
@@ -115,10 +116,7 @@ pub fn create_rotation_draggers(factory : &factory::Factory, resource : &resourc
         resource.mesh_manager.borrow_mut().request_use_no_proc_tt(collider);
 
     let dragger_x = Dragger::new(
-        factory,
-        resource,
-        "rotate_x",
-        mesh,
+        create_dragger(factory, resource, "rotate_x", mesh, red),
         vec::Vec3::new(1f64,0f64,0f64),
         transform::Orientation::Quat(vec::Quat::new_axis_angle_deg(
                 vec::Vec3::new(0f64,1f64,0f64), -90f64)),
@@ -128,10 +126,7 @@ pub fn create_rotation_draggers(factory : &factory::Factory, resource : &resourc
         );
 
     let dragger_y = Dragger::new(
-        factory,
-        resource,
-        "rotate_y",
-        mesh,
+        create_dragger(factory, resource, "rotate_y", mesh, green),
         vec::Vec3::new(0f64,1f64,0f64),
         transform::Orientation::Quat(vec::Quat::new_axis_angle_deg(
                 vec::Vec3::new(1f64,0f64,0f64), 90f64)), 
@@ -141,10 +136,7 @@ pub fn create_rotation_draggers(factory : &factory::Factory, resource : &resourc
         );
 
     let dragger_z = Dragger::new(
-        factory,
-        resource,
-        "rotate_z",
-        mesh,
+        create_dragger(factory, resource, "rotate_z", mesh, blue),
         vec::Vec3::new(0f64,0f64,1f64),
         transform::Orientation::Quat(vec::Quat::identity()), 
         Kind::Rotate,

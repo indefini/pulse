@@ -806,6 +806,7 @@ pub struct WidgetContainer
 
 }
 
+/* TODO
 pub struct State
 {
     pub context : Box<context::ContextOld>,
@@ -818,6 +819,7 @@ pub struct State
 }
 
 pub type StateRw = Arc<RwLock<State>>;
+*/
 
 //#[derive(Clone)]
 pub struct Core
@@ -1810,7 +1812,7 @@ impl WidgetContainer
             }).clone()
     }
 
-    pub fn set_scene(&mut self, name : &str)
+    fn set_scene(&mut self, name : &str)
     {
         let scene = self.get_or_load_scene(name);
 

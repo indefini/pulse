@@ -390,7 +390,7 @@ impl Control
                     for o in &s.borrow().objects {
                         let b = intersection::is_object_in_planes(planes.as_ref(), &*o.read().unwrap(), &*self.resource);
                         if b {
-                            if !context.has_object(&*o.read().unwrap()) {
+                            if !context.has_object(o.clone()) {
                                 has_changed = true;
                             }
                             obvec.push(o.clone());
@@ -468,47 +468,6 @@ impl Control
 
         return operation::Change::DraggerChange;
     }
-
-    /*
-    pub fn add_empty(&mut self, name : &str) -> Arc<RwLock<object::Object>>
-    {
-        let mut o = self.factory.borrow_mut().create_object(name);
-        println!("TODO add mesh");
-        //o.mesh_render = Some(mesh_render::MeshRender::new("model/skeletonmesh.mesh","material/simple.mat"));
-        {
-            let c = self.camera.borrow();
-            let c = c.object.read().unwrap();
-            o.position = c.position + c.orientation.rotate_vec3(&vec::Vec3::new(0f64,0f64,-100f64));
-        }
-
-        let ao =  Arc::new(RwLock::new(o));
-
-        let mut list = LinkedList::new();
-        list.push_back(ao.clone());
-        self.select(list);
-
-        let s = if let Some(ref s) = self.context.borrow_mut().scene {
-            s.clone()
-            //let mut s = s.write().unwrap();
-            //s.objects.push_back(ao.clone());
-        }
-        else {
-            return ao;
-        };
-
-        let mut vec = Vec::new();
-        vec.push(ao.clone());
-
-        let vs = Vec::new();
-        self.request_operation(
-            vs,
-            operation::OperationData::SceneAddObjects(s.clone(),vec)
-            );
-
-        ao
-
-    }o*/
-
 }
 
 fn join_string(path : &[String]) -> String

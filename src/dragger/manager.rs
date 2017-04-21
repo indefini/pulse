@@ -31,7 +31,7 @@ use dragger::{
     create_rotation_draggers
 };
 
-pub type DraggerGroup = Vec<Rc<RefCell<Dragger>>>;
+pub type DraggerGroup = Vec<Rc<RefCell<DraggerOld>>>;
 
 pub struct DraggerManager
 {
@@ -82,9 +82,12 @@ pub enum Collision
     SpecialMesh(resource::ResTT<mesh::Mesh>)
 }
 
-pub struct Dragger
+type DraggerOld = Dragger<Arc<RwLock<object::Object>>>;
+
+pub struct Dragger<O>
 {
-    object : Arc<RwLock<object::Object>>,
+    //object : Arc<RwLock<object::Object>>,
+    object : O,
     pub ori : transform::Orientation,
     pub constraint : vec::Vec3,
     kind : Kind,
@@ -332,12 +335,12 @@ impl DraggerManager
 
 }
 
-fn create_dragger(
+pub fn create_dragger(
     factory : &factory::Factory,
     resource : &resource::ResourceGroup,
     name : &str,
     mesh : &str,
-    color : vec::Vec4) -> object::Object
+    color : vec::Vec4) -> Arc<RwLock<object::Object>>
 {
     let mut dragger = factory.create_object(name);
     let mat = create_mat(color, name);
@@ -347,7 +350,7 @@ fn create_dragger(
         mat,
         resource));
 
-    dragger
+    Arc::new(RwLock::new(dragger))
 }
 
 fn create_mat(color : vec::Vec4, name : &str) -> material::Material
@@ -361,22 +364,19 @@ fn create_mat(color : vec::Vec4, name : &str) -> material::Material
     mat
 }
 
-impl Dragger
+impl<O> Dragger<O>
 {
     pub fn new(
-        factory : &factory::Factory,
-        resource : &resource::ResourceGroup,
-        name : &str,
-        mesh : &str,
+        object : O,
         constraint : vec::Vec3,
         ori : transform::Orientation,
         kind : Kind,
         color : vec::Vec4,
         collision : Collision
-        ) -> Dragger
+        ) -> Dragger<O>
     {
         Dragger {
-            object : Arc::new(RwLock::new(create_dragger(factory, resource, name, mesh, color))),
+            object : object,
             constraint : constraint,
             ori : ori,
             kind : kind,
@@ -396,7 +396,13 @@ impl Dragger
     {
         
     }
+}
 
+impl Dragger<Arc<RwLock<object::Object>>>
+{
+    //TODO
+    // We change object transform and object material (color)
+    
     fn scale_to_camera_data(
         &mut self,
         cam_mat_inv : &matrix::Matrix4,
@@ -416,7 +422,7 @@ impl Dragger
 
     fn set_state(&mut self, state : State)
     {
-        fn set_color(s : &Dragger, color : vec::Vec4){
+        fn set_color(s : &DraggerOld, color : vec::Vec4){
             if let Some(mat) = s.object.write().unwrap().get_material() {
                 mat.set_uniform_data(
                     "color",
