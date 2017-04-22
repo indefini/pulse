@@ -18,6 +18,7 @@ use std::thread;
 
 use uuid::Uuid;
 
+use dormin;
 use dormin::intersection;
 use dormin::resource;
 use dormin::geometry;
@@ -42,6 +43,9 @@ use dormin::property::{PropertyWrite,PropertyGet};
 use dormin::transform;
 use util;
 use util::Arw;
+use dormin::render;
+
+static SCENE_SUFFIX: &'static str = ".scene";
 
 #[repr(C)]
 pub struct Window;
@@ -49,8 +53,6 @@ pub struct Window;
 pub struct Evas_Object;
 #[repr(C)]
 pub struct Ecore_Animator;
-#[repr(C)]
-pub struct JkGlview;
 
 pub type RustCb = extern fn(data : *mut c_void);
 pub type RenderFunc = extern fn(data : *const c_void);
@@ -113,7 +115,7 @@ extern {
         draw : RenderFunc,
         resize : ResizeFunc,
         key : KeyDownFunc
-        ) -> *const JkGlview;
+        ) -> *const ui::JkGlview;
     pub fn jk_window_request_update(win : *const Window);
 
     pub fn tmp_func(
@@ -245,32 +247,28 @@ pub extern fn init_cb(data: *const c_void) -> () {
 
     for v in &wc.views {
         let container = &mut *container_arw.write().unwrap();
+
+        let dragger = Rc::new(RefCell::new(dragger::DraggerManager::new(&container.data.factory, &*container.data.resource)));
+        let camera = Rc::new(RefCell::new(v.camera.clone()));
+        let render = box render::Render::new(&container.data.factory, container.data.resource.clone(), camera.clone());
+
         let view = box View::new(
-            container.resource.clone(),
-            &mut container.factory,
+            container.data.resource.clone(),
+            dragger,
+            render,
             v.window.w,
             v.window.h,
-            v.camera.clone());
+            camera);
 
         views.push(view);
-        if let Some(ref scene) = v.scene {
-            container.set_scene(scene.as_str());
+        let scene = if let Some(ref scene) = v.scene {
+            container.data.get_or_load_scene(scene.as_str())
         }
         else {
-            if container.scenes.is_empty() {
-                let files = util::get_files_in_dir("scene");
-                if files.is_empty() {
-                    scene_new(container, uuid::Uuid::nil());
-                }
-                else {
-                    container.set_scene(files[0].to_str().unwrap());
-                }
-            }
-            else {
-                let first_key = container.scenes.keys().nth(0).unwrap().clone();
-                container.set_scene(first_key.as_str());
-            }
-        }
+            container.data.get_or_load_any_scene()
+        };
+        
+        container.set_scene(scene);
     }
 
     let op_cam_scene = {
@@ -773,7 +771,6 @@ extern fn panel_move(
     config.h = h;
 }
 
-
 pub struct WidgetContainer
 {
     pub widgets : Vec<Box<Widget>>,
@@ -783,15 +780,11 @@ pub struct WidgetContainer
     pub action : Option<Box<Action>>,
     pub views : Vec<Box<View>>,
     pub context : Box<context::ContextOld>,
-    pub resource : Rc<resource::ResourceGroup>,
-    pub factory : factory::Factory,
     pub op_mgr : operation::OperationManager,
     pub gameview : Option<Box<GameView>>,
     pub menu : Option<Box<Action>>,
 
     pub list : Box<ListWidget>,
-
-    pub scenes : HashMap<String, Rc<RefCell<scene::Scene>>>,
 
     pub name : String,
 
@@ -799,11 +792,77 @@ pub struct WidgetContainer
 
     pub anim : Option<*const Ecore_Animator>,
 
+    pub data : Data<Rc<RefCell<scene::Scene>>>,
+
     //TODO remove from here
     pub saved_positions : Vec<vec::Vec3>,
     pub saved_scales : Vec<vec::Vec3>,
     pub saved_oris : Vec<transform::Orientation>
 
+}
+
+pub struct Data<S>
+{
+    pub factory : factory::Factory,
+    pub resource : Rc<resource::ResourceGroup>,
+    pub scenes : HashMap<String, S>,
+
+    pub worlds : HashMap<String, Box<dormin::world::World>>,
+}
+
+impl Data<Rc<RefCell<scene::Scene>>> {
+    fn new() -> Data<Rc<RefCell<scene::Scene>>> {
+        Data {
+            factory : factory::Factory::new(),
+            resource : Rc::new(resource::ResourceGroup::new()),
+            scenes : HashMap::new(),
+
+            worlds : HashMap::new(),
+        }
+    }
+
+    pub fn add_empty_scene(&mut self, name : String) -> Rc<RefCell<scene::Scene>>
+    {
+        self.scenes.entry(name.clone()).or_insert(
+            {
+                let ns = self.factory.create_scene(name.as_str());
+                Rc::new(RefCell::new(ns))
+            }).clone()
+    }
+
+    pub fn get_or_load_scene(&mut self, name : &str) -> Rc<RefCell<scene::Scene>>
+    {
+        self.scenes.entry(String::from(name)).or_insert(
+            {
+                let mut ns = scene::Scene::new_from_file(name, &*self.resource);
+
+                if let None = ns.camera {
+                    let mut cam = self.factory.create_camera();
+                    cam.pan(&vec::Vec3::new(-100f64,20f64,100f64));
+                    cam.lookat(vec::Vec3::new(0f64,5f64,0f64));
+                    ns.camera = Some(Rc::new(RefCell::new(cam)));
+                }
+
+                Rc::new(RefCell::new(ns))
+            }).clone()
+    }
+
+    fn get_or_load_any_scene(&mut self) -> Rc<RefCell<scene::Scene>>  {
+        if self.scenes.is_empty() {
+            let files = util::get_files_in_dir("scene");
+            if files.is_empty() {
+                let s = create_scene_name(String::from("scene/new.scene"));
+                self.add_empty_scene(s)
+            }
+            else {
+                self.get_or_load_scene(files[0].to_str().unwrap())
+            }
+        }
+        else {
+            let first_key = self.scenes.keys().nth(0).unwrap().clone();
+            self.get_or_load_scene(first_key.as_str())
+        }
+    }
 }
 
 /* TODO
@@ -927,15 +986,15 @@ impl WidgetContainer
             views : Vec::new(),
             //context : Rc::new(RefCell::new(context::Context::new())),
             context : box context::Context::new(),
-            resource : Rc::new(resource::ResourceGroup::new()),
-            factory : factory::Factory::new(),
+            //factory : factory::Factory::new(),
             op_mgr : operation::OperationManager::new(),
             gameview : None,
             list : box ListWidget { object : None, entries : Vec::new() },
             name : String::from("yoplaboum"),
-            scenes : HashMap::new(),
             visible_prop : HashMap::new(),
             anim : None,
+
+            data : Data::new(),
 
             saved_positions : Vec::new(),
             saved_scales : Vec::new(),
@@ -978,7 +1037,7 @@ impl WidgetContainer
                         let omr = ob.get_comp_data_value::<component::mesh_render::MeshRender>();
                         if let Some(ref mr) = omr {
                             ob.mesh_render =
-                                Some(component::mesh_render::MeshRenderer::with_mesh_render(mr,&self.resource));
+                                Some(component::mesh_render::MeshRenderer::with_mesh_render(mr,&self.data.resource));
                         }
                     }
                 }
@@ -1097,7 +1156,7 @@ impl WidgetContainer
                             let omr = ob.get_comp_data_value::<component::mesh_render::MeshRender>();
                             if let Some(ref mr) = omr {
                                 ob.mesh_render =
-                                    Some(component::mesh_render::MeshRenderer::with_mesh_render(mr,&self.resource));
+                                    Some(component::mesh_render::MeshRenderer::with_mesh_render(mr,&self.data.resource));
                             }
                     }
                 }
@@ -1581,7 +1640,7 @@ impl WidgetContainer
         for o in &list {
             //vec.push(o.clone());
             let ob = o.read().unwrap();
-            vec.push(Arc::new(RwLock::new(self.factory.copy_object(&*ob))));
+            vec.push(Arc::new(RwLock::new(self.data.factory.copy_object(&*ob))));
             let parent_id = if let Some(ref p) = ob.parent {
                 p.read().unwrap().id
             }
@@ -1784,65 +1843,6 @@ impl WidgetContainer
         None
     }
 
-    pub fn add_empty_scene(&mut self, name : String)
-    {
-        let scene = self.scenes.entry(name.clone()).or_insert(
-            {
-                let ns = self.factory.create_scene(name.as_str());
-                Rc::new(RefCell::new(ns))
-            }).clone();
-
-        self._set_scene(scene);
-    }
-
-    pub fn get_or_load_scene(&mut self, name : &str) -> Rc<RefCell<scene::Scene>>
-    {
-        self.scenes.entry(String::from(name)).or_insert(
-            {
-                let mut ns = scene::Scene::new_from_file(name, &*self.resource);
-
-                if let None = ns.camera {
-                    let mut cam = self.factory.create_camera();
-                    cam.pan(&vec::Vec3::new(-100f64,20f64,100f64));
-                    cam.lookat(vec::Vec3::new(0f64,5f64,0f64));
-                    ns.camera = Some(Rc::new(RefCell::new(cam)));
-                }
-
-                Rc::new(RefCell::new(ns))
-            }).clone()
-    }
-
-    fn set_scene(&mut self, name : &str)
-    {
-        let scene = self.get_or_load_scene(name);
-
-        self._set_scene(scene);
-    }
-
-    fn _set_scene(&mut self, scene : Rc<RefCell<scene::Scene>>)
-    {
-        if let Some(ref mut t) = self.tree {
-            t.set_scene(&scene.borrow());
-        }
-
-        if let Some(ref mut p) = self.property.widget {
-            p.set_nothing();
-        }
-
-        if let Some(ref mut m) = self.menu {
-            if let Entry::Occupied(en) = m.entries.entry(String::from("scene")) {
-                elm_object_text_set(
-                    unsafe {mem::transmute(*en.get())},
-                    CString::new(scene.borrow().name.as_str()).unwrap().as_ptr());
-            }
-        }
-
-        self.context.set_scene(scene);
-
-        for view in &self.views {
-            view.request_update();
-        }
-    }
 
     pub fn play_gameview(&mut self) -> bool
     {
@@ -1877,7 +1877,7 @@ impl WidgetContainer
 
         let scene = if let Some(ref s) = self.context.scene {
             let scene = s.clone();
-            scene.borrow_mut().init_components(&self.resource);
+            scene.borrow_mut().init_components(&self.data.resource);
             scene
         }
         else {
@@ -1972,6 +1972,31 @@ impl WidgetContainer
     pub fn save_oris(&mut self)
     {
         self.saved_oris = self.context.selected.iter().map(|o| o.read().unwrap().orientation).collect();
+    }
+
+    pub fn set_scene(&mut self, scene : Rc<RefCell<scene::Scene>>)
+    {
+        if let Some(ref mut t) = self.tree {
+            t.set_scene(&scene.borrow());
+        }
+
+        if let Some(ref mut p) = self.property.widget {
+            p.set_nothing();
+        }
+
+        if let Some(ref mut m) = self.menu {
+            if let Entry::Occupied(en) = m.entries.entry(String::from("scene")) {
+                elm_object_text_set(
+                    unsafe {mem::transmute(*en.get())},
+                    CString::new(scene.borrow().name.as_str()).unwrap().as_ptr());
+            }
+        }
+
+        self.context.set_scene(scene);
+
+        for view in &self.views {
+            view.request_update();
+        }
     }
 
 }
@@ -2115,7 +2140,7 @@ pub fn add_empty(container : &mut WidgetContainer, view_id : Uuid)
 {
     println!("add empty");
 
-    let mut o = container.factory.create_object("new object");
+    let mut o = container.data.factory.create_object("new object");
 
     let position = if let Some(v) = container.find_view(view_id) {
         let (p,q) = v.get_camera_transform();
@@ -2156,14 +2181,14 @@ pub fn add_empty(container : &mut WidgetContainer, view_id : Uuid)
     }
 }
 
-pub fn scene_new(container : &mut WidgetContainer, view_id : Uuid)
+pub fn create_scene_name_with_context(context : &context::ContextOld)
+    -> String
 {
-    let suffix = ".scene";
-    let newname = match container.context.scene {
+    let newname = match context.scene {
         Some(ref sc) => {
             let s = sc.borrow();
-            let old = if s.name.ends_with(suffix) {
-                let i = s.name.len() - suffix.len();
+            let old = if s.name.ends_with(SCENE_SUFFIX) {
+                let i = s.name.len() - SCENE_SUFFIX.len();
                 let (yep,_) = s.name.split_at(i);
                 yep
             }
@@ -2175,22 +2200,28 @@ pub fn scene_new(container : &mut WidgetContainer, view_id : Uuid)
         None => String::from("scene/new.scene")
     };
 
-    let mut i = 0i32;
-    let mut ss = newname.clone();
-    loop {
-        ss.push_str(format!("{:03}",i).as_str());
-        ss.push_str(suffix);
+    create_scene_name(newname)
+}
 
-        if let Err(_) = fs::metadata(ss.as_str()) {
+pub fn create_scene_name(name : String) -> String
+{
+    let mut i = 0i32;
+    let mut s = name.clone();
+    loop {
+        s.push_str(format!("{:03}",i).as_str());
+        s.push_str(SCENE_SUFFIX);
+
+        if let Err(_) = fs::metadata(s.as_str()) {
             break;
         }
 
         i = i+1;
-        ss = newname.clone();
+        s = name.clone();
     }
 
-    container.add_empty_scene(ss);
+    s
 }
+
 
 pub fn scene_list(container : &Arw<WidgetContainer>, view_id : Uuid, obj : Option<*const Evas_Object>)
 {
@@ -2240,7 +2271,8 @@ pub extern fn select_list(data : *const c_void, name : *const c_char)
     */
 
     //container.set_scene(scene);
-    container.set_scene(s);
+    let scene = container.data.get_or_load_scene(s);
+    container.set_scene(scene);
 }
 
 fn must_update(p : &ui::PropertyShow, path : &str) -> Vec<ui::ShouldUpdate>
@@ -2324,7 +2356,7 @@ pub extern fn file_changed(
     let mut should_update_views = false;
     if s.ends_with(".frag") || s.ends_with(".vert") {
         println!("file changed : {}", s);
-        let mut shader_manager = container.resource.shader_manager.borrow_mut();
+        let mut shader_manager = container.data.resource.shader_manager.borrow_mut();
 
         for shader in shader_manager.loaded_iter_mut() {
             let mut reload = false;
@@ -2355,11 +2387,11 @@ pub fn create_gameview_window(
     camera : Rc<RefCell<camera::Camera>>,
     scene : Rc<RefCell<scene::Scene>>,
     config : &WidgetConfig
-    ) -> Box<ui::view::GameView>
+    ) -> Box<ui::gameview::GameView>
 {
     let win = unsafe {
         ui::jk_window_new(
-            ui::view::gv_close_cb,
+            ui::gameview::gv_close_cb,
             mem::transmute( box container.clone()))
     };
 
@@ -2367,11 +2399,11 @@ pub fn create_gameview_window(
 
     let container : &mut ui::WidgetContainer = &mut *container.write().unwrap();
 
-    ui::view::GameView::new(
+    ui::gameview::GameView::new(
         win,
         camera,
         scene,
-        container.resource.clone(),
+        container.data.resource.clone(),
         config.clone())
 }
 
@@ -2396,7 +2428,7 @@ fn check_mesh(name : &str, wc : &WidgetContainer, id : uuid::Uuid)
             let omr = ob.get_comp_data_value::<component::mesh_render::MeshRender>();
             if let Some(ref mr) = omr {
                 ob.mesh_render =
-                    Some(component::mesh_render::MeshRenderer::with_mesh_render(mr,&wc.resource));
+                    Some(component::mesh_render::MeshRenderer::with_mesh_render(mr,&wc.data.resource));
             }
             else {
                 ob.mesh_render = None;

@@ -7,6 +7,9 @@ use std::cell::RefCell;
 use std::rc::{Rc,Weak};
 use uuid;
 
+#[repr(C)]
+pub struct JkGlview;
+
 pub use self::def::{
     WidgetContainer,
     WidgetCbData,
@@ -27,14 +30,13 @@ pub use self::def::{
     Window,
     window_new,
     Evas_Object,
-    JkGlview,
     jk_window_new,
     jk_window_request_update,
     jk_glview_new,
     window_callback_set,
 
     add_empty,
-    scene_new,
+    create_scene_name_with_context,
     scene_list,
     scene_rename,
 
@@ -61,7 +63,8 @@ pub use self::property_box::{PropertyBox,JkPropertyBox};
 //pub use self::property::{JkPropertyList};
 pub use self::property::{make_vec_from_str,find_property_show,JkPropertyCb};
 
-pub use self::view::{View, GameView, gv_close_cb};
+pub use self::view::{View};
+pub use self::gameview::{GameView, gv_close_cb};
 
 mod tree;
 mod action;
@@ -71,6 +74,7 @@ pub mod property;
 pub mod property_box;
 pub mod property_list;
 pub mod view;
+pub mod gameview;
 //pub mod dragger;
 
 
@@ -543,4 +547,7 @@ impl NodeChildren {
     }
 }
 
+extern {
+   pub fn jk_glview_request_update(glview : *const JkGlview);
+}
 
