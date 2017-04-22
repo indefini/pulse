@@ -36,7 +36,6 @@ pub use self::def::{
     window_callback_set,
 
     add_empty,
-    create_scene_name_with_context,
     scene_list,
     scene_rename,
 

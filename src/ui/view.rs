@@ -262,15 +262,15 @@ pub extern fn mouse_down(
 
         //println!("rust mouse down button {}, pos: {}, {}", button, x, y);
         let mut c = control_rc.borrow_mut();
-        c.mouse_down(&*container.context, modifier, button,x,y,timestamp)
+        c.mouse_down(&*container.state.context, modifier, button,x,y,timestamp)
     };
 
     for op in &op_list {
         if let operation::Change::DraggerClicked = *op {
             //let c = &mut container.context;;
-            container.save_positions();
-            container.save_scales();
-            container.save_oris();
+            container.state.save_positions();
+            container.state.save_scales();
+            container.state.save_oris();
         }
         container.views[wcb.index].handle_control_change(op);
         let id = container.views[wcb.index].uuid;
@@ -293,7 +293,7 @@ pub extern fn mouse_up(
     let change = {
         let control_rc = container.views[wcb.index].control.clone();
         let mut c = control_rc.borrow_mut();
-        c.mouse_up(&*container.context,button,x,y,timestamp)
+        c.mouse_up(&*container.state.context,button,x,y,timestamp)
     };
 
     container.views[wcb.index].handle_control_change(&change);
@@ -319,7 +319,7 @@ pub extern fn mouse_move(
     let change_list = {
         let mut c = control_rc.borrow_mut();
         c.mouse_move(
-            &*container.context,
+            &*container.state.context,
             modifiers_flag,
             button,
             curx,
@@ -450,7 +450,7 @@ pub extern fn key_down(
                 return;
             },
             "f" => {
-                let center = util::objects_center(&container.context.selected);
+                let center = util::objects_center(&container.state.context.selected);
                 let mut cam = container.views[wcb.index].camera.borrow_mut();
                 let pos = center + cam.object.read().unwrap().orientation.rotate_vec3(&vec::Vec3::new(0f64,0f64,100f64));
                 cam.set_position(pos);
@@ -527,7 +527,7 @@ pub extern fn draw_cb(data : *const c_void) -> ()
     let wcb : &ui::WidgetCbData = unsafe {&* (data as *const ui::WidgetCbData)};
     let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
 
-    let draw_not_done = container.views[wcb.index].draw(&*container.context);
+    let draw_not_done = container.views[wcb.index].draw(&*container.state.context);
 
     if draw_not_done {
         unsafe {

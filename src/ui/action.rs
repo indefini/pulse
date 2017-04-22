@@ -16,6 +16,7 @@ use ui::{ButtonCallback,EntryCallback};
 use ui;
 use dormin::resource;
 use uuid;
+use data;
 
 #[repr(C)]
 pub struct JkAction;
@@ -205,7 +206,7 @@ pub extern fn scene_new(data : *const c_void)
     //let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
     let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
 
-    let name = ui::create_scene_name_with_context(&*container.context);
+    let name = data::create_scene_name_with_context(&*container.state.context);
     let scene = container.data.get_or_load_scene(&name);
     container.set_scene(scene);
 }

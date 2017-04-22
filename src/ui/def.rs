@@ -44,6 +44,7 @@ use dormin::transform;
 use util;
 use util::Arw;
 use dormin::render;
+use data::Data;
 
 static SCENE_SUFFIX: &'static str = ".scene";
 
@@ -420,7 +421,7 @@ fn init_tree(container : &Arw<WidgetContainer>, win : *const Window, tree_config
             );
     }
 
-    match container.context.scene {
+    match container.state.context.scene {
         Some(ref s) => {
             let sb = &*s.borrow();
             t.set_scene(sb);
@@ -472,7 +473,7 @@ fn init_action(container : &Arw<WidgetContainer>, win : *const Window, view_id :
         ui::action::compile_test,
         ad.clone());
 
-    let name = match container.context.scene {
+    let name = match container.state.context.scene {
         Some(ref s) => {
             let sb = &*s.borrow();
             sb.name.clone()
@@ -576,7 +577,7 @@ impl WindowConfig {
                     h : v.height,
                     visible : true
                 },
-                scene : match c.context.scene {
+                scene : match c.state.context.scene {
                     Some(ref s) => {
                         Some(s.borrow().name.clone())
                     },
@@ -653,7 +654,7 @@ pub extern fn exit_cb(data: *const c_void) -> ()
     let app_data : &AppCbData = { let d = data as *const AppCbData; unsafe {&*d}};
     let container = &mut *app_data.container.write().unwrap();
 
-    if let Some(ref s) = container.context.scene {
+    if let Some(ref s) = container.state.context.scene {
         println!("going to save: {}", s.borrow().name);
         s.borrow().save();
     }
@@ -773,13 +774,11 @@ extern fn panel_move(
 
 pub struct WidgetContainer
 {
-    pub widgets : Vec<Box<Widget>>,
     pub tree : Option<Box<Tree>>,
     pub property : Box<WidgetPanel<PropertyBox>>,
     pub command : Option<Box<Command>>,
     pub action : Option<Box<Action>>,
     pub views : Vec<Box<View>>,
-    pub context : Box<context::ContextOld>,
     pub op_mgr : operation::OperationManager,
     pub gameview : Option<Box<GameView>>,
     pub menu : Option<Box<Action>>,
@@ -794,97 +793,52 @@ pub struct WidgetContainer
 
     pub data : Data<Rc<RefCell<scene::Scene>>>,
 
-    //TODO remove from here
-    pub saved_positions : Vec<vec::Vec3>,
-    pub saved_scales : Vec<vec::Vec3>,
-    pub saved_oris : Vec<transform::Orientation>
+    pub state : State
 
 }
 
-pub struct Data<S>
-{
-    pub factory : factory::Factory,
-    pub resource : Rc<resource::ResourceGroup>,
-    pub scenes : HashMap<String, S>,
-
-    pub worlds : HashMap<String, Box<dormin::world::World>>,
-}
-
-impl Data<Rc<RefCell<scene::Scene>>> {
-    fn new() -> Data<Rc<RefCell<scene::Scene>>> {
-        Data {
-            factory : factory::Factory::new(),
-            resource : Rc::new(resource::ResourceGroup::new()),
-            scenes : HashMap::new(),
-
-            worlds : HashMap::new(),
-        }
-    }
-
-    pub fn add_empty_scene(&mut self, name : String) -> Rc<RefCell<scene::Scene>>
-    {
-        self.scenes.entry(name.clone()).or_insert(
-            {
-                let ns = self.factory.create_scene(name.as_str());
-                Rc::new(RefCell::new(ns))
-            }).clone()
-    }
-
-    pub fn get_or_load_scene(&mut self, name : &str) -> Rc<RefCell<scene::Scene>>
-    {
-        self.scenes.entry(String::from(name)).or_insert(
-            {
-                let mut ns = scene::Scene::new_from_file(name, &*self.resource);
-
-                if let None = ns.camera {
-                    let mut cam = self.factory.create_camera();
-                    cam.pan(&vec::Vec3::new(-100f64,20f64,100f64));
-                    cam.lookat(vec::Vec3::new(0f64,5f64,0f64));
-                    ns.camera = Some(Rc::new(RefCell::new(cam)));
-                }
-
-                Rc::new(RefCell::new(ns))
-            }).clone()
-    }
-
-    fn get_or_load_any_scene(&mut self) -> Rc<RefCell<scene::Scene>>  {
-        if self.scenes.is_empty() {
-            let files = util::get_files_in_dir("scene");
-            if files.is_empty() {
-                let s = create_scene_name(String::from("scene/new.scene"));
-                self.add_empty_scene(s)
-            }
-            else {
-                self.get_or_load_scene(files[0].to_str().unwrap())
-            }
-        }
-        else {
-            let first_key = self.scenes.keys().nth(0).unwrap().clone();
-            self.get_or_load_scene(first_key.as_str())
-        }
-    }
-}
-
-/* TODO
 pub struct State
 {
     pub context : Box<context::ContextOld>,
-    pub op_mgr : operation::OperationManager,
-    pub scenes : HashMap<String, Rc<RefCell<scene::Scene>>>,
-    pub resource : Rc<resource::ResourceGroup>,
-    pub factory : factory::Factory,
-    pub name : String,
-    //pub anim : Option<*const Ecore_Animator>
+    //pub op_mgr : operation::OperationManager,
+    
+    pub saved_positions : Vec<vec::Vec3>,
+    pub saved_scales : Vec<vec::Vec3>,
+    pub saved_oris : Vec<transform::Orientation>
 }
 
-pub type StateRw = Arc<RwLock<State>>;
-*/
+impl State {
+    fn new() -> State
+    {
+        State {
+            context : box context::Context::new(),
+            saved_positions : Vec::new(),
+            saved_scales : Vec::new(),
+            saved_oris : Vec::new()
+        }
+    }
+
+    //TODO remove
+    pub fn save_positions(&mut self)
+    {
+        self.saved_positions = self.context.selected.iter().map(|o| o.read().unwrap().position).collect();
+    }
+
+    pub fn save_scales(&mut self)
+    {
+        self.saved_scales = self.context.selected.iter().map(|o| o.read().unwrap().scale).collect();
+    }
+
+    pub fn save_oris(&mut self)
+    {
+        self.saved_oris = self.context.selected.iter().map(|o| o.read().unwrap().orientation).collect();
+    }
+}
 
 //#[derive(Clone)]
 pub struct Core
 {
     //pub state : Arw<State>,
-    //pub widgets : Arw<WidgetContainer> 
     pub container : Box<ui::WidgetContainer>
 }
 
@@ -976,7 +930,6 @@ impl WidgetContainer
     pub fn new() -> WidgetContainer
     {
         WidgetContainer {
-            widgets : Vec::new(),
             tree : None,
             property : box WidgetPanel::new(WidgetPanelConfig::default(), None),
             //property : None,
@@ -984,8 +937,6 @@ impl WidgetContainer
             action : None,
             menu : None,
             views : Vec::new(),
-            //context : Rc::new(RefCell::new(context::Context::new())),
-            context : box context::Context::new(),
             //factory : factory::Factory::new(),
             op_mgr : operation::OperationManager::new(),
             gameview : None,
@@ -995,10 +946,8 @@ impl WidgetContainer
             anim : None,
 
             data : Data::new(),
+            state : State::new()
 
-            saved_positions : Vec::new(),
-            saved_scales : Vec::new(),
-            saved_oris : Vec::new()
         }
     }
 
@@ -1162,7 +1111,7 @@ impl WidgetContainer
                 }
             },
             operation::Change::ChangeSelected(ref list) => {
-                self.context.selected = list.clone();
+                self.state.context.selected = list.clone();
                 self.handle_change(&operation::Change::SelectedChange, widget_origin);
             },
             operation::Change::SelectedChange => {
@@ -1170,7 +1119,7 @@ impl WidgetContainer
 
                 if let Some(ref mut t) = self.tree {
                     if widget_origin != t.id {
-                        let ids = self.context.get_vec_selected_ids();
+                        let ids = self.state.context.get_vec_selected_ids();
                         t.select_objects(ids);
                     }
                 }
@@ -1178,7 +1127,7 @@ impl WidgetContainer
 
                 if sel.is_empty() {
                     if let Some(ref mut p) = self.property.widget {
-                        if let Some(ref s) = self.context.scene {
+                        if let Some(ref s) = self.state.context.scene {
                             //p.set_scene(&*s.borrow());
                             //p.set_prop_cell(s.clone(), "scene");
                             p.set_current(RefMut::Cell(s.clone()), "scene");
@@ -1215,7 +1164,7 @@ impl WidgetContainer
             operation::Change::SceneRemove(ref id, ref parents, ref obs) => {
                 {
                     println!("container, sceneremove!!!!!!!!");
-                    self.context.remove_objects_by_id(obs.clone());
+                    self.state.context.remove_objects_by_id(obs.clone());
                 }
                 if let Some(ref mut t) = self.tree {
                     if widget_origin != t.id {
@@ -1248,11 +1197,11 @@ impl WidgetContainer
             },
             operation::Change::DraggerOperation(ref op) => {
                 let (prop, operation) = {
-                    let context = &self.context;;
+                    let context = &self.state.context;;
                     match *op {
                         dragger::Operation::Translation(v) => {
                             let prop = vec!["position".to_owned()];
-                            let cxpos = self.saved_positions.clone();
+                            let cxpos = self.state.saved_positions.clone();
                             let mut saved_positions = Vec::with_capacity(cxpos.len());
                             for p in &cxpos {
                                 saved_positions.push((box *p ) as Box<Any>);
@@ -1270,7 +1219,7 @@ impl WidgetContainer
                         },
                         dragger::Operation::Scale(v) => {
                             let prop = vec!["scale".to_owned()];
-                            let cxsc = self.saved_scales.clone();
+                            let cxsc = self.state.saved_scales.clone();
                             let mut saved_scales = Vec::with_capacity(cxsc.len());
                             for p in &cxsc {
                                 saved_scales.push((box *p ) as Box<Any>);
@@ -1288,7 +1237,7 @@ impl WidgetContainer
                         },
                         dragger::Operation::Rotation(q) => {
                             let prop = vec!["orientation".to_owned(), "*".to_owned()];
-                            let cxoris = self.saved_oris.clone();
+                            let cxoris = self.state.saved_oris.clone();
                             let mut saved_oris = Vec::with_capacity(cxoris.len());
                             for p in &cxoris {
                                 saved_oris.push((box *p ) as Box<Any>);
@@ -1370,7 +1319,7 @@ impl WidgetContainer
 
     pub fn get_selected_object(&self) -> Option<Arc<RwLock<object::Object>>>
     {
-        match self.context.selected.get(0) {
+        match self.state.context.selected.get(0) {
             Some(o) => return Some(o.clone()),
             None => {
                 println!("view get selected objects, no objects selected");
@@ -1381,7 +1330,7 @@ impl WidgetContainer
 
     fn get_scene(&self) -> Option<Rc<RefCell<scene::Scene>>>
     {
-        match self.context.scene {
+        match self.state.context.scene {
             Some(ref s) => Some(s.clone()),
             None => None
         }
@@ -1399,7 +1348,7 @@ impl WidgetContainer
 
     fn get_selected_objects(&self) -> &Vec<Arc<RwLock<object::Object>>>
     {
-        &self.context.selected
+        &self.state.context.selected
     }
 
     pub fn request_operation(
@@ -1717,7 +1666,7 @@ impl WidgetContainer
     {
         //TODO same as the code at the end of mouse_up, so factorize
         println!("TODO check: is this find by id ok? : control will try to find object by id, .................select is called ");
-        let c = &mut self.context;
+        let c = &mut self.state.context;
 
         //c.selected.clear();
 
@@ -1741,7 +1690,7 @@ impl WidgetContainer
 
     fn unselect(&mut self, ids : &LinkedList<Uuid>)
     {
-        let c = &mut self.context;
+        let c = &mut self.state.context;
 
         let scene = match c.scene {
             Some(ref s) => s.clone(),
@@ -1785,7 +1734,7 @@ impl WidgetContainer
         &mut self,
         translation : vec::Vec3) -> operation::Change
     {
-        let sp = self.saved_positions.clone();
+        let sp = self.state.saved_positions.clone();
         let obs = self.get_selected_objects();
 
         let mut i = 0;
@@ -1802,7 +1751,7 @@ impl WidgetContainer
         &mut self,
         scale : vec::Vec3) -> operation::Change
     {
-        let sp = self.saved_scales.clone();
+        let sp = self.state.saved_scales.clone();
         let obs = self.get_selected_objects();
 
         let mut i = 0;
@@ -1819,7 +1768,7 @@ impl WidgetContainer
         &mut self,
         rotation : vec::Quat) -> operation::Change
     {
-        let so = self.saved_oris.clone();
+        let so = self.state.saved_oris.clone();
         let obs = self.get_selected_objects();
 
         let mut i = 0;
@@ -1875,7 +1824,7 @@ impl WidgetContainer
             return None;
         }
 
-        let scene = if let Some(ref s) = self.context.scene {
+        let scene = if let Some(ref s) = self.state.context.scene {
             let scene = s.clone();
             scene.borrow_mut().init_components(&self.data.resource);
             scene
@@ -1928,7 +1877,6 @@ impl WidgetContainer
 
         if let Some(w) = self.visible_prop.get(&pid) {
 
-            //for w in &self.widgets {
             if let Some(w) = w.upgrade() {
                 if w.get_id() == widget_id {
                     println!("same id as the widget so get out (but right now the continue is commented)");
@@ -1958,22 +1906,6 @@ impl WidgetContainer
         }
     }
 
-    //TODO remove
-    pub fn save_positions(&mut self)
-    {
-        self.saved_positions = self.context.selected.iter().map(|o| o.read().unwrap().position).collect();
-    }
-
-    pub fn save_scales(&mut self)
-    {
-        self.saved_scales = self.context.selected.iter().map(|o| o.read().unwrap().scale).collect();
-    }
-
-    pub fn save_oris(&mut self)
-    {
-        self.saved_oris = self.context.selected.iter().map(|o| o.read().unwrap().orientation).collect();
-    }
-
     pub fn set_scene(&mut self, scene : Rc<RefCell<scene::Scene>>)
     {
         if let Some(ref mut t) = self.tree {
@@ -1992,7 +1924,7 @@ impl WidgetContainer
             }
         }
 
-        self.context.set_scene(scene);
+        self.state.context.set_scene(scene);
 
         for view in &self.views {
             view.request_update();
@@ -2152,7 +2084,7 @@ pub fn add_empty(container : &mut WidgetContainer, view_id : Uuid)
 
     o.position = position;
 
-    let s = if let Some(ref s) = container.context.scene {
+    let s = if let Some(ref s) = container.state.context.scene {
         s.clone()
     }
     else {
@@ -2180,48 +2112,6 @@ pub fn add_empty(container : &mut WidgetContainer, view_id : Uuid)
         container.handle_change(op, view_id);
     }
 }
-
-pub fn create_scene_name_with_context(context : &context::ContextOld)
-    -> String
-{
-    let newname = match context.scene {
-        Some(ref sc) => {
-            let s = sc.borrow();
-            let old = if s.name.ends_with(SCENE_SUFFIX) {
-                let i = s.name.len() - SCENE_SUFFIX.len();
-                let (yep,_) = s.name.split_at(i);
-                yep
-            }
-            else {
-                s.name.as_ref()
-            };
-            String::from(old)
-        },
-        None => String::from("scene/new.scene")
-    };
-
-    create_scene_name(newname)
-}
-
-pub fn create_scene_name(name : String) -> String
-{
-    let mut i = 0i32;
-    let mut s = name.clone();
-    loop {
-        s.push_str(format!("{:03}",i).as_str());
-        s.push_str(SCENE_SUFFIX);
-
-        if let Err(_) = fs::metadata(s.as_str()) {
-            break;
-        }
-
-        i = i+1;
-        s = name.clone();
-    }
-
-    s
-}
-
 
 pub fn scene_list(container : &Arw<WidgetContainer>, view_id : Uuid, obj : Option<*const Evas_Object>)
 {
@@ -2305,7 +2195,7 @@ fn must_update(p : &ui::PropertyShow, path : &str) -> Vec<ui::ShouldUpdate>
 pub fn scene_rename(container : &mut WidgetContainer, widget_id : Uuid, name : &str)
 {
 
-    let s = if let Some(ref s) = container.context.scene {
+    let s = if let Some(ref s) = container.state.context.scene {
         s.clone()
     }
     else {
