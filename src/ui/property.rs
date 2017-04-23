@@ -865,7 +865,7 @@ pub extern fn vec_add(
     //let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
     let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
 
-    let change = container.request_operation_vec_add(node.clone());
+    let change = container.state.request_operation_vec_add(node.clone());
     container.handle_change(&change, uuid::Uuid::nil());//p.id);
 }
 

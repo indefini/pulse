@@ -449,7 +449,7 @@ fn changed_set<T : Any+Clone+PartialEq>(
         (Some(oldd), 1) => {
             //if let Some(ref cur) = *p.current.borrow() {
             if let Some(ref cur) = p.get_current() {
-                container.request_operation_property_old_new(
+                container.state.request_operation_property_old_new(
                     (*cur).clone(),
                     path,
                     box oldd.clone(),
@@ -472,9 +472,9 @@ fn changed_set<T : Any+Clone+PartialEq>(
             if let Some(ref cur) = p.get_current() {
                 match *cur {
                     RefMut::Arc(ref a) =>
-                        container.request_direct_change_property(&mut *a.write().unwrap(),path,new),
+                        container.state.request_direct_change_property(&mut *a.write().unwrap(),path,new),
                         RefMut::Cell(ref c) =>
-                            container.request_direct_change_property(&mut *c.borrow_mut(),path,new)
+                            container.state.request_direct_change_property(&mut *c.borrow_mut(),path,new)
                 }
             }
             //container.request_direct_change(path, new)
@@ -523,7 +523,7 @@ fn changed_enum<T : Any+Clone+PartialEq>(
             };
 
             if let Some(old) = option {
-                container.request_operation_property_old_new_dontcheckequal(
+                container.state.request_operation_property_old_new_dontcheckequal(
                     (*cur).clone(),
                     path,
                     old,

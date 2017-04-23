@@ -198,6 +198,132 @@ impl State {
         operation::Change::DirectChange("orientation/*".to_owned())
     }
 
+    pub fn request_operation_property_old_new_dontcheckequal(
+        &mut self,
+        property : ui::RefMut<ui::PropertyUser>,
+        name : &str,
+        old : Box<Any>,
+        new : Box<Any>) -> operation::Change
+    {
+        let op = operation::OldNew::new(
+            property,
+            String::from(name),
+            old,
+            new
+            );
+
+        let change = self.op_mgr.add_with_trait(box op);
+        change
+    }
+
+    pub fn request_operation_property_old_new<T : Any+PartialEq>(
+        &mut self,
+        property : ui::RefMut<ui::PropertyUser>,
+        name : &str,
+        old : Box<T>,
+        new : Box<T>) -> operation::Change
+    {
+        if *old == *new {
+            return operation::Change::None;
+        }
+
+        match (&*old as &Any).downcast_ref::<f64>() {
+            Some(v) => println!("****************     {}",*v),
+            None => {println!("cannot downcast");}
+        }
+
+        match (&*new as &Any).downcast_ref::<f64>() {
+            Some(v) => println!("****************  nnnnnew    {}",*v),
+            None => {println!("cannot downcast");}
+        }
+
+        let op = operation::OldNew::new(
+            property,
+            String::from(name),
+            old,
+            new
+            );
+
+        let change = self.op_mgr.add_with_trait(box op);
+        change
+    }
+
+    pub fn request_direct_change_property(
+        &mut self,
+        property : &mut ui::PropertyUser,
+        name : &str,
+        new : &Any) -> operation::Change
+    {
+        println!("call from here 00 : {}", name);
+        property.test_set_property_hier(name, new);
+        operation::Change::DirectChange(String::from(name))
+    }
+
+    /*
+    pub fn request_operation_option_to_none(
+        &mut self,
+        property : ui::RefMut<ui::PropertyUser>,
+        path : &str,
+        old : Box<Any>,
+        )
+        -> operation::Change
+    {
+        let op = operation::ToNone::new(
+            property,
+            String::from(path),
+            old);
+
+        let change = self.op_mgr.add_with_trait(box op);
+        change
+    }
+
+    pub fn request_operation_option_to_some(
+        &mut self,
+        property : ui::RefMut<ui::PropertyUser>,
+        name : &str) -> operation::Change
+    {
+        let op = operation::ToSome::new(
+            property,
+            String::from(name));
+
+        let change = self.op_mgr.add_with_trait(box op);
+        change
+    }
+    */
+
+    pub fn request_operation_vec_add(
+        &mut self,
+        node : Rc<RefCell<ui::PropertyNode>>)
+        -> operation::Change
+    {
+        let nodeb = node.borrow();
+        let path = &nodeb.get_path();
+        println!("$$$$$$$$$$$$$$$$request operation add vec : {}", path);
+        let v: Vec<&str> = path.split('/').collect();
+
+        let mut vs = Vec::new();
+        for i in &v
+        {
+            vs.push(i.to_string());
+        }
+
+        let index = match v[v.len()-1].parse::<usize>() {
+            Ok(index) => {
+                vs.pop();
+                index
+            },
+            _ => 0
+        };
+
+            println!("AFTER counts : {}, {}", Rc::strong_count(&node), Rc::weak_count(&node));
+
+        self.request_operation(
+            vs,
+            operation::OperationData::VecAdd(index)
+            )
+
+    }
+
 
 }
 
