@@ -157,7 +157,7 @@ pub extern fn remove_selected2(data : *const c_void, name : *const c_char)
     }
 
     //let mut control = v.control.borrow_mut();
-    let change = container.remove_selected_objects();
+    let change = container.state.remove_selected_objects();
 
     v.handle_control_change(&change);
     container.handle_change(&change, v.uuid);

@@ -340,7 +340,7 @@ impl PropertyNode
         self.children.del_node(field)
     }
 
-    fn get_path(&self) -> String
+    pub fn get_path(&self) -> String
     {
         let mut path = String::new();
         if let Some(ref p) = self.parent {

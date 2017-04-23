@@ -888,7 +888,7 @@ pub extern fn vec_del(
     //let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
     let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
 
-    let change = container.request_operation_vec_del(node);
+    let change = container.state.request_operation_vec_del(node);
     container.handle_change(&change, uuid::Uuid::nil());
 }
 

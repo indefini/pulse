@@ -45,6 +45,7 @@ use util;
 use util::Arw;
 use dormin::render;
 use data::Data;
+use state::State;
 
 static SCENE_SUFFIX: &'static str = ".scene";
 
@@ -772,69 +773,6 @@ extern fn panel_move(
     config.h = h;
 }
 
-pub struct WidgetContainer
-{
-    pub tree : Option<Box<Tree>>,
-    pub property : Box<WidgetPanel<PropertyBox>>,
-    pub command : Option<Box<Command>>,
-    pub action : Option<Box<Action>>,
-    pub views : Vec<Box<View>>,
-    pub op_mgr : operation::OperationManager,
-    pub gameview : Option<Box<GameView>>,
-    pub menu : Option<Box<Action>>,
-
-    pub list : Box<ListWidget>,
-
-    pub name : String,
-
-    pub visible_prop : HashMap<Uuid, Weak<Widget>>,
-
-    pub anim : Option<*const Ecore_Animator>,
-
-    pub data : Data<Rc<RefCell<scene::Scene>>>,
-
-    pub state : State
-
-}
-
-pub struct State
-{
-    pub context : Box<context::ContextOld>,
-    //pub op_mgr : operation::OperationManager,
-    
-    pub saved_positions : Vec<vec::Vec3>,
-    pub saved_scales : Vec<vec::Vec3>,
-    pub saved_oris : Vec<transform::Orientation>
-}
-
-impl State {
-    fn new() -> State
-    {
-        State {
-            context : box context::Context::new(),
-            saved_positions : Vec::new(),
-            saved_scales : Vec::new(),
-            saved_oris : Vec::new()
-        }
-    }
-
-    //TODO remove
-    pub fn save_positions(&mut self)
-    {
-        self.saved_positions = self.context.selected.iter().map(|o| o.read().unwrap().position).collect();
-    }
-
-    pub fn save_scales(&mut self)
-    {
-        self.saved_scales = self.context.selected.iter().map(|o| o.read().unwrap().scale).collect();
-    }
-
-    pub fn save_oris(&mut self)
-    {
-        self.saved_oris = self.context.selected.iter().map(|o| o.read().unwrap().orientation).collect();
-    }
-}
-
 //#[derive(Clone)]
 pub struct Core
 {
@@ -924,6 +862,24 @@ pub struct ControlContainer
 }
 */
 
+pub struct WidgetContainer
+{
+    pub tree : Option<Box<Tree>>,
+    pub property : Box<WidgetPanel<PropertyBox>>,
+    pub command : Option<Box<Command>>,
+    pub action : Option<Box<Action>>,
+    pub views : Vec<Box<View>>,
+    pub gameview : Option<Box<GameView>>,
+    pub menu : Option<Box<Action>>,
+
+    pub list : Box<ListWidget>,
+    pub name : String,
+    pub visible_prop : HashMap<Uuid, Weak<Widget>>,
+    pub anim : Option<*const Ecore_Animator>,
+
+    pub data : Data<Rc<RefCell<scene::Scene>>>,
+    pub state : State
+}
 
 impl WidgetContainer
 {
@@ -937,8 +893,6 @@ impl WidgetContainer
             action : None,
             menu : None,
             views : Vec::new(),
-            //factory : factory::Factory::new(),
-            op_mgr : operation::OperationManager::new(),
             gameview : None,
             list : box ListWidget { object : None, entries : Vec::new() },
             name : String::from("yoplaboum"),
@@ -1255,26 +1209,26 @@ impl WidgetContainer
                         }
                     }
                 };
-                self.request_operation(prop, operation);
+                self.state.request_operation(prop, operation);
             },
             operation::Change::Undo => {
-                let change = self.undo();
+                let change = self.state.undo();
                 self.handle_change(&change, widget_origin);
             },
             operation::Change::Redo => {
-                let change = self.redo();
+                let change = self.state.redo();
                 self.handle_change(&change, widget_origin);
             },
             operation::Change::DraggerTranslation(t) => {
-                let change = self.request_translation(t);
+                let change = self.state.request_translation(t);
                 self.handle_change(&change, widget_origin);
             },
             operation::Change::DraggerScale(s) => {
-                let change = self.request_scale(s);
+                let change = self.state.request_scale(s);
                 self.handle_change(&change, widget_origin);
             },
             operation::Change::DraggerRotation(r) => {
-                let change = self.request_rotation(r);
+                let change = self.state.request_rotation(r);
                 self.handle_change(&change, widget_origin);
             },
             operation::Change::Property(ref p, ref name) => {
@@ -1317,64 +1271,14 @@ impl WidgetContainer
 
     }
 
-    pub fn get_selected_object(&self) -> Option<Arc<RwLock<object::Object>>>
-    {
-        match self.state.context.selected.get(0) {
-            Some(o) => return Some(o.clone()),
-            None => {
-                println!("view get selected objects, no objects selected");
-                return None;
-            }
-        };
-    }
-
     fn get_scene(&self) -> Option<Rc<RefCell<scene::Scene>>>
     {
-        match self.state.context.scene {
-            Some(ref s) => Some(s.clone()),
-            None => None
-        }
-    }
-
-    fn find_object(&self, uuid : &Uuid) -> Option<Arc<RwLock<object::Object>>>
-    {
-        if let Some(ref s) = self.get_scene() {
-            s.borrow().find_object_by_id(uuid)
-        }
-        else {
-            None
-        }
+        self.state.context.scene.clone()
     }
 
     fn get_selected_objects(&self) -> &Vec<Arc<RwLock<object::Object>>>
     {
         &self.state.context.selected
-    }
-
-    pub fn request_operation(
-        &mut self,
-        name : Vec<String>,
-        op_data : operation::OperationData
-        ) -> operation::Change
-    {
-        let op = operation::Operation::new(
-            self.get_selected_objects().to_vec(),
-            name.clone(),
-            op_data
-            );
-
-        let change = self.op_mgr.add_with_trait(box op);
-        change
-    }
-
-    pub fn undo(&mut self) -> operation::Change
-    {
-        self.op_mgr.undo()
-    }
-
-    pub fn redo(&mut self) -> operation::Change
-    {
-        self.op_mgr.redo()
     }
 
     pub fn request_operation_property_old_new<T : Any+PartialEq>(
@@ -1405,7 +1309,7 @@ impl WidgetContainer
             new
             );
 
-        let change = self.op_mgr.add_with_trait(box op);
+        let change = self.state.op_mgr.add_with_trait(box op);
         change
     }
 
@@ -1423,7 +1327,7 @@ impl WidgetContainer
             new
             );
 
-        let change = self.op_mgr.add_with_trait(box op);
+        let change = self.state.op_mgr.add_with_trait(box op);
         change
     }
 
@@ -1451,7 +1355,7 @@ impl WidgetContainer
             String::from(path),
             old);
 
-        let change = self.op_mgr.add_with_trait(box op);
+        let change = self.state.op_mgr.add_with_trait(box op);
         change
     }
 
@@ -1464,7 +1368,7 @@ impl WidgetContainer
             property,
             String::from(name));
 
-        let change = self.op_mgr.add_with_trait(box op);
+        let change = self.state.op_mgr.add_with_trait(box op);
         change
     }
 
@@ -1494,86 +1398,11 @@ impl WidgetContainer
 
             println!("AFTER counts : {}, {}", Rc::strong_count(&node), Rc::weak_count(&node));
 
-        self.request_operation(
+        self.state.request_operation(
             vs,
             operation::OperationData::VecAdd(index)
             )
 
-    }
-
-    pub fn request_operation_vec_del(
-        &mut self,
-        node : Rc<RefCell<ui::PropertyNode>>
-        )
-        -> operation::Change
-    {
-        let node = node.borrow();
-        let path = &node.get_path();
-        let v: Vec<&str> = path.split('/').collect();
-
-        let mut vs = Vec::new();
-        for i in &v
-        {
-            vs.push(i.to_string());
-        }
-
-        let  prop = if let Some(o) = self.get_selected_object(){
-            let p : Option<Box<Any>> = o.read().unwrap().get_property_hier(path);
-            match p {
-                Some(pp) => pp,
-                None => return operation::Change::None
-            }
-        }
-        else {
-            return operation::Change::None;
-        };
-
-        match v[v.len()-1].parse::<usize>() {
-            Ok(index) => {
-                vs.pop();
-
-                self.request_operation(
-                vs,
-                operation::OperationData::VecDel(index, prop)
-                )
-            },
-                _ => operation::Change::None
-        }
-    }
-
-
-
-    pub fn remove_selected_objects(&mut self) -> operation::Change
-    {
-        println!("control remove sel");
-
-        let s = match self.get_scene() {
-            Some(s) => s,
-            None => return operation::Change::None
-        };
-
-
-        let list = self.get_selected_objects().to_vec();
-        let mut vec = Vec::new();
-        let mut parent = Vec::new();
-        for o in &list {
-            vec.push(o.clone());
-            let parent_id = if let Some(ref p) = o.read().unwrap().parent {
-                p.read().unwrap().id
-            }
-            else {
-                uuid::Uuid::nil()
-            };
-            parent.push(parent_id);
-        }
-
-        let vs = Vec::new();
-        return self.request_operation(
-            vs,
-            operation::OperationData::SceneRemoveObjects(s.clone(), parent, vec)
-            );
-
-        //return operation::Change::SceneRemove(s.read().unwrap().id, vec);
     }
 
     pub fn copy_selected_objects(&mut self) -> operation::Change
@@ -1601,7 +1430,7 @@ impl WidgetContainer
         }
 
         let vs = Vec::new();
-        return self.request_operation(
+        return self.state.request_operation(
             vs,
             operation::OperationData::SceneAddObjects(s.clone(), parents, vec)
             );
@@ -1629,7 +1458,7 @@ impl WidgetContainer
 
         let vs = Vec::new();
 
-        self.request_operation(
+        self.state.request_operation(
             vs,
             operation::OperationData::AddComponent(o.clone(), cp)
             )
@@ -1653,7 +1482,7 @@ impl WidgetContainer
         println!("control set camera");
 
         let vs = Vec::new();
-        return self.request_operation(
+        return self.state.request_operation(
             vs,
             operation::OperationData::SetSceneCamera(s.clone(),current, o.clone())
             );
@@ -1728,56 +1557,6 @@ impl WidgetContainer
                 None => {}
         }
         */
-    }
-
-    fn request_translation(
-        &mut self,
-        translation : vec::Vec3) -> operation::Change
-    {
-        let sp = self.state.saved_positions.clone();
-        let obs = self.get_selected_objects();
-
-        let mut i = 0;
-        for o in obs {
-            //o.write().unwrap().test_set_property_hier(join_string(&vs).as_ref(), new);
-            o.write().unwrap().position = sp[i] + translation;
-            i = i+1;
-        }
-
-        return operation::Change::DirectChange("position".to_owned());
-    }
-
-    fn request_scale(
-        &mut self,
-        scale : vec::Vec3) -> operation::Change
-    {
-        let sp = self.state.saved_scales.clone();
-        let obs = self.get_selected_objects();
-
-        let mut i = 0;
-        for o in obs {
-            //o.write().unwrap().test_set_property_hier(join_string(&vs).as_ref(), new);
-            o.write().unwrap().scale = sp[i] * scale;
-            i = i+1;
-        }
-
-        return operation::Change::DirectChange("scale".to_owned());
-    }
-
-    fn request_rotation(
-        &mut self,
-        rotation : vec::Quat) -> operation::Change
-    {
-        let so = self.state.saved_oris.clone();
-        let obs = self.get_selected_objects();
-
-        let mut i = 0;
-        for o in obs {
-            o.write().unwrap().orientation = so[i] * transform::Orientation::new_with_quat(&rotation);
-            i = i+1;
-        }
-
-        operation::Change::DirectChange("orientation/*".to_owned())
     }
 
 
@@ -1931,6 +1710,10 @@ impl WidgetContainer
         }
     }
 
+    pub fn get_selected_object(&self) -> Option<Arc<RwLock<object::Object>>>
+    {
+        self.state.get_selected_object()
+    }
 }
 
 // TODO remove/rework
@@ -2100,7 +1883,7 @@ pub fn add_empty(container : &mut WidgetContainer, view_id : Uuid)
 
     let mut ops = Vec::new();
     let vs = Vec::new();
-    let addob = container.request_operation(
+    let addob = container.state.request_operation(
             vs,
             operation::OperationData::SceneAddObjects(s.clone(),parent,vec.clone())
             );
