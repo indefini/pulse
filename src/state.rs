@@ -3,8 +3,10 @@ use std::rc::{Rc};
 use std::cell::{RefCell};
 use std::any::Any;
 
-use dormin::{vec, transform,object};
+use dormin::factory;
+use dormin::{vec, transform, object, component};
 use dormin::property::PropertyGet;
+
 use context;
 use operation;
 //TODO remove
@@ -324,6 +326,89 @@ impl State {
 
     }
 
+    pub fn copy_selected_objects(&mut self, factory : &factory::Factory) -> operation::Change
+    {
+        let s = match self.context.scene {
+            Some(ref s) => s.clone(),
+            None => return operation::Change::None
+        };
+
+        let mut vec = Vec::new();
+        let mut parents = Vec::new();
+        for o in &self.context.selected {
+            //vec.push(o.clone());
+            let ob = o.read().unwrap();
+            vec.push(Arc::new(RwLock::new(factory.copy_object(&*ob))));
+            let parent_id = if let Some(ref p) = ob.parent {
+                p.read().unwrap().id
+            }
+            else {
+                uuid::Uuid::nil()
+            };
+
+            parents.push(parent_id);
+        }
+
+        let vs = Vec::new();
+        return self.request_operation(
+            vs,
+            operation::OperationData::SceneAddObjects(s, parents, vec)
+            );
+
+        //return operation::Change::SceneRemove(s.read().unwrap().id, vec);
+    }
+
+    pub fn add_component(&mut self, component_name : &str) -> operation::Change
+    {
+        let o = if let Some(o) = self.context.selected.get(0) {
+            o.clone()
+        }
+        else
+        {
+            return operation::Change::None;
+        };
+
+        let cp = if component_name == "MeshRender" {
+            box component::CompData::MeshRender(component::mesh_render::MeshRender::new("model/skeletonmesh.mesh", "material/simple.mat"))
+        }
+        else {
+            return operation::Change::None;
+        };
+
+        let vs = Vec::new();
+
+        self.request_operation(
+            vs,
+            operation::OperationData::AddComponent(o.clone(), cp)
+            )
+    }
+
+    pub fn set_scene_camera(&mut self) -> operation::Change
+    {
+        println!("control remove sel");
+
+        let s = match self.context.scene {
+            Some(ref s) => s.clone(),
+            None => return operation::Change::None
+        };
+
+        let current = match s.borrow().camera {
+            None => None,
+            Some(ref c) => Some(c.borrow().object.clone())
+        };
+
+        let o = self.get_selected_object();
+        println!("control set camera");
+
+        let vs = Vec::new();
+        return self.request_operation(
+            vs,
+            operation::OperationData::SetSceneCamera(s,current, o.clone())
+            );
+
+        //return operation::Change::SceneRemove(s.read().unwrap().id, vec);
+
+    }
 
 }
 
