@@ -50,6 +50,18 @@ impl Data<world::World>
                 world::World::new()
             )
     }
+
+    pub fn get_or_load_scene(&mut self, name : &str) -> &mut world::World
+    {
+        //TODO
+        self.scenes.entry(String::from(name)).or_insert(world::World::new())
+    }
+
+    pub fn get_or_load_any_scene(&mut self) -> &mut world::World
+    {
+        //TODO
+        self.scenes.entry(String::from(name)).or_insert(world::World::new())
+    }
 }
 
 impl Data<Rc<RefCell<scene::Scene>>>
