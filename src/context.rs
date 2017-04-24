@@ -18,9 +18,17 @@ trait ToId<I> {
 
 impl ToId<uuid::Uuid> for Arc<RwLock<object::Object>>
 {
-    fn to_id(&self) -> uuid::Uuid 
+    fn to_id(&self) -> uuid::Uuid
     {
         self.read().unwrap().id
+    }
+}
+
+impl ToId<uuid::Uuid> for Rc<RefCell<scene::Scene>>
+{
+    fn to_id(&self) -> uuid::Uuid
+    {
+        self.borrow().id
     }
 }
 
@@ -28,7 +36,7 @@ pub struct Context<S, O, I>
 {
     pub selected : Vec<O>,
     pub scene : Option<S>,
-    phantom : PhantomData<I>
+    id : PhantomData<I>
 }
 
 
@@ -39,7 +47,7 @@ impl<S : Clone, O, I> Context<S,O,I>
         Context {
             selected: Vec::new(),
             scene : None,
-            phantom : PhantomData
+            id : PhantomData
         }
     }
 
@@ -53,7 +61,6 @@ impl<S : Clone, O, I> Context<S,O,I>
     {
         self.scene.clone()
     }
-
 }
 
 impl<S, O : ToId<I> + Clone, I : Eq> Context<S, O, I>
@@ -68,12 +75,12 @@ impl<S, O : ToId<I> + Clone, I : Eq> Context<S, O, I>
         v
     }
 
-    pub fn remove_objects_by_id(&mut self, ids : Vec<I>)
+    pub fn remove_objects_by_id(&mut self, ids : &[I])
     {
         let mut new_list = Vec::new();
         for o in &self.selected {
             let mut not_found = true;
-            for id in &ids {
+            for id in ids {
                 if *id == o.to_id() {
                     not_found = false;
                     break;
@@ -108,6 +115,34 @@ impl<S, O : ToId<I> + Clone, I : Eq> Context<S, O, I>
 
         false
     }
+}
 
+impl Context<Rc<RefCell<scene::Scene>>, Arc<RwLock<object::Object>>, uuid::Uuid>
+{
+
+    pub fn select_by_id(&mut self, ids : &mut Vec<uuid::Uuid>)
+    {
+        //TODO same as the code at the end of mouse_up, so factorize
+        println!("TODO check: is this find by id ok? : control will try to find object by id, .................select is called ");
+
+        //c.selected.clear();
+
+        let scene = match self.scene {
+            Some(ref s) => s.clone(),
+            None => return
+        };
+
+        let mut obs = scene.borrow().find_objects_by_id(ids);
+        self.selected.append(&mut obs);
+
+        //for id in ids.iter() {
+            //match scene.read().unwrap().find_object_by_id(id) {
+                //Some(o) =>
+                    //c.selected.push_back(o.clone()),
+                //None => {}
+            //};
+        //}
+
+    }
 }
 

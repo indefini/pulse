@@ -268,8 +268,8 @@ pub extern fn init_cb(data: *const c_void) -> () {
         }
         else {
             container.data.get_or_load_any_scene()
-        };
-        
+        }.clone();
+
         container.set_scene(scene);
     }
 
@@ -1069,7 +1069,7 @@ impl WidgetContainer
                 self.handle_change(&operation::Change::SelectedChange, widget_origin);
             },
             operation::Change::SelectedChange => {
-                let sel = self.get_selected_objects().to_vec();
+                let sel = &self.state.context.selected;
 
                 if let Some(ref mut t) = self.tree {
                     if widget_origin != t.id {
@@ -1118,7 +1118,7 @@ impl WidgetContainer
             operation::Change::SceneRemove(ref id, ref parents, ref obs) => {
                 {
                     println!("container, sceneremove!!!!!!!!");
-                    self.state.context.remove_objects_by_id(obs.clone());
+                    self.state.context.remove_objects_by_id(obs);
                 }
                 if let Some(ref mut t) = self.tree {
                     if widget_origin != t.id {
@@ -1254,16 +1254,14 @@ impl WidgetContainer
         match event {
             Event::SelectObject(ob) => {
                 println!("event, selected : {}", ob.read().unwrap().name);
-                let mut l = Vec::new();
-                l.push(ob.read().unwrap().id.clone());
-                self.select_by_id(&mut l);
+                let mut l = vec![ob.read().unwrap().id.clone()];
+                self.state.context.select_by_id(&mut l);
                 self.handle_change(&operation::Change::SelectedChange, widget_origin);
             },
             Event::UnselectObject(ob) => {
                 println!("event, unselected : {}", ob.read().unwrap().name);
-                let mut l = LinkedList::new();
-                l.push_back(ob.read().unwrap().id.clone());
-                self.unselect(&l);
+                let v = vec![ob.read().unwrap().id.clone()];
+                self.state.context.remove_objects_by_id(&v);
                 self.handle_change(&operation::Change::SelectedChange, widget_origin);
             },
             _ => {}
@@ -1276,80 +1274,6 @@ impl WidgetContainer
         self.state.context.scene.clone()
     }
 
-    fn get_selected_objects(&self) -> &Vec<Arc<RwLock<object::Object>>>
-    {
-        &self.state.context.selected
-    }
-
-    fn select_by_id(&mut self, ids : &mut Vec<Uuid>)
-    {
-        //TODO same as the code at the end of mouse_up, so factorize
-        println!("TODO check: is this find by id ok? : control will try to find object by id, .................select is called ");
-        let c = &mut self.state.context;
-
-        //c.selected.clear();
-
-        let scene = match c.scene {
-            Some(ref s) => s.clone(),
-            None => return
-        };
-
-        let mut obs = scene.borrow().find_objects_by_id(ids);
-        c.selected.append(&mut obs);
-
-        //for id in ids.iter() {
-            //match scene.read().unwrap().find_object_by_id(id) {
-                //Some(o) =>
-                    //c.selected.push_back(o.clone()),
-                //None => {}
-            //};
-        //}
-
-    }
-
-    fn unselect(&mut self, ids : &LinkedList<Uuid>)
-    {
-        let c = &mut self.state.context;
-
-        let scene = match c.scene {
-            Some(ref s) => s.clone(),
-            None => return
-        };
-
-        let mut newlist = Vec::new();
-
-        for o in &c.selected {
-            let mut should_remove = false;
-            for id_to_rm in ids {
-                if o.read().unwrap().id == *id_to_rm {
-                    should_remove = true;
-                    break;
-                }
-            }
-
-            if !should_remove {
-                newlist.push(o.clone());
-            }
-        }
-
-        c.selected = newlist;
-
-
-        /* TODO notify property
-        match self.property {
-            Some(ref mut pp) =>
-                match pp.try_borrow_mut() {
-                    Some(ref mut p) => {
-                        p.set_object(&*o.read().unwrap());
-                    },
-                    None=> {}
-                },
-                None => {}
-        }
-        */
-    }
-
-
     pub fn find_view(&self, id : Uuid) -> Option<&View>
     {
         for v in &self.views
@@ -1360,7 +1284,6 @@ impl WidgetContainer
         }
         None
     }
-
 
     pub fn play_gameview(&mut self) -> bool
     {
@@ -1383,8 +1306,6 @@ impl WidgetContainer
             false
         }
     }
-
-
 
     pub fn can_create_gameview(&mut self) ->
         Option<(Rc<RefCell<camera::Camera>>, Rc<RefCell<scene::Scene>>)>
@@ -1734,7 +1655,7 @@ pub extern fn select_list(data : *const c_void, name : *const c_char)
     */
 
     //container.set_scene(scene);
-    let scene = container.data.get_or_load_scene(s);
+    let scene = container.data.get_or_load_scene(s).clone();
     container.set_scene(scene);
 }
 

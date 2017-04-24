@@ -11,17 +11,14 @@ use std::io::{Read,Write};
 use uuid::Uuid;
 
 use dormin;
-use dormin::vec;
-use dormin::resource;
-use dormin::scene;
-use dormin::object;
-use dormin::factory;
+use dormin::{vec, resource, scene, object, factory};
+use dormin::{world};
 use context;
 use uuid;
 use util;
 
 static SCENE_SUFFIX: &'static str = ".scene";
-
+static WORLD_SUFFIX: &'static str = ".world";
 
 pub struct Data<S>
 {
@@ -32,8 +29,9 @@ pub struct Data<S>
     pub worlds : HashMap<String, Box<dormin::world::World>>,
 }
 
-impl Data<Rc<RefCell<scene::Scene>>> {
-    pub fn new() -> Data<Rc<RefCell<scene::Scene>>> {
+impl<S> Data<S> {
+
+    pub fn new() -> Data<S> {
         Data {
             factory : factory::Factory::new(),
             resource : Rc::new(resource::ResourceGroup::new()),
@@ -42,17 +40,30 @@ impl Data<Rc<RefCell<scene::Scene>>> {
             worlds : HashMap::new(),
         }
     }
+}
 
-    pub fn add_empty_scene(&mut self, name : String) -> Rc<RefCell<scene::Scene>>
+impl Data<world::World>
+{
+    pub fn add_empty_scene(&mut self, name : String) -> &mut world::World
+    {
+        self.scenes.entry(name.clone()).or_insert(
+                world::World::new()
+            )
+    }
+}
+
+impl Data<Rc<RefCell<scene::Scene>>>
+{
+    pub fn add_empty_scene(&mut self, name : String) -> &mut Rc<RefCell<scene::Scene>>
     {
         self.scenes.entry(name.clone()).or_insert(
             {
                 let ns = self.factory.create_scene(name.as_str());
                 Rc::new(RefCell::new(ns))
-            }).clone()
+            })
     }
 
-    pub fn get_or_load_scene(&mut self, name : &str) -> Rc<RefCell<scene::Scene>>
+    pub fn get_or_load_scene(&mut self, name : &str) -> &mut Rc<RefCell<scene::Scene>>
     {
         self.scenes.entry(String::from(name)).or_insert(
             {
@@ -66,10 +77,10 @@ impl Data<Rc<RefCell<scene::Scene>>> {
                 }
 
                 Rc::new(RefCell::new(ns))
-            }).clone()
+            })
     }
 
-    pub fn get_or_load_any_scene(&mut self) -> Rc<RefCell<scene::Scene>>  {
+    pub fn get_or_load_any_scene(&mut self) -> &mut Rc<RefCell<scene::Scene>>  {
         if self.scenes.is_empty() {
             let files = util::get_files_in_dir("scene");
             if files.is_empty() {

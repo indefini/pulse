@@ -207,7 +207,7 @@ pub extern fn scene_new(data : *const c_void)
     let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
 
     let name = data::create_scene_name_with_context(&*container.state.context);
-    let scene = container.data.get_or_load_scene(&name);
+    let scene = container.data.get_or_load_scene(&name).clone();
     container.set_scene(scene);
 }
 
