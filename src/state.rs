@@ -3,16 +3,72 @@ use std::rc::{Rc};
 use std::cell::{RefCell};
 use std::any::Any;
 
+use dormin;
 use dormin::factory;
 use dormin::{vec, transform, object, component};
 use dormin::property::PropertyGet;
 
 use context;
 use operation;
+use uuid;
+
 //TODO remove
 use ui;
 
-use uuid;
+trait GetParent<Graph, Id> {
+    fn get_parent(&self, graph : &Graph) -> Option<Id>;
+}
+
+impl<Graph> GetParent<Graph, uuid::Uuid> for Arc<RwLock<object::Object>>
+{
+    fn get_parent(&self, graph : &Graph) -> Option<uuid::Uuid>
+    {
+        self.read().unwrap().parent.as_ref().map(|p| p.read().unwrap().id.clone())
+    }
+}
+
+trait Transformable<Data> {
+    fn set_position(&self, data : &mut Data, v : vec::Vec3);
+}
+
+impl<Data> Transformable<Data> for Arc<RwLock<object::Object>>
+{
+    fn set_position(&self, data : &mut Data, v : vec::Vec3)
+    {
+        self.write().unwrap().position = v;
+    }
+}
+
+impl<'a> Transformable<dormin::world::WorldRefDataMut<'a>> for dormin::world::EntityMut
+{
+    fn set_position(&self, data : &mut dormin::world::WorldRefDataMut, v : vec::Vec3)
+    {
+        if let Some(t) = data.world.get_comp_mut::<transform::Transform>(data.data, self)
+        {
+            t.position = v;
+        }
+    }
+}
+
+struct WorldChange
+{
+    ob : dormin::world::EntityRef,
+    what : String,
+    value : vec::Vec3
+}
+
+impl Transformable<Vec<WorldChange>> for dormin::world::EntityRef
+{
+    fn set_position(&self, data : &mut Vec<WorldChange>, v : vec::Vec3)
+    {
+        data.push(WorldChange { ob : self.clone(), what : "position".to_owned(), value :v});
+    }
+}
+
+
+
+struct NoGraph;
+struct NoData;
 
 pub struct State
 {
@@ -39,7 +95,10 @@ impl State {
 
     pub fn save_positions(&mut self)
     {
-        self.saved_positions = self.context.selected.iter().map(|o| o.read().unwrap().position).collect();
+        self.saved_positions = 
+            self.context.selected.iter().map(
+                |o| o.read().unwrap().position
+                ).collect();
     }
 
     pub fn save_scales(&mut self)
@@ -55,7 +114,7 @@ impl State {
     pub fn request_operation(
         &mut self,
         name : Vec<String>,
-        op_data : operation::OperationData
+        op_data : operation::OperationDataOld
         ) -> operation::Change
     {
         let op = operation::Operation::new(
@@ -92,12 +151,7 @@ impl State {
         let mut parent = Vec::new();
         for o in &list {
             vec.push(o.clone());
-            let parent_id = if let Some(ref p) = o.read().unwrap().parent {
-                p.read().unwrap().id
-            }
-            else {
-                uuid::Uuid::nil()
-            };
+            let parent_id = o.get_parent(&NoGraph).unwrap_or(uuid::Uuid::nil());
             parent.push(parent_id);
         }
 
@@ -138,7 +192,7 @@ impl State {
         }
 
         let  prop = if let Some(o) = self.get_selected_object(){
-            let p : Option<Box<Any>> = o.read().unwrap().get_property_hier(path);
+            let p : Option<Box<Any>> = o.get_property_hier(path);
             match p {
                 Some(pp) => pp,
                 None => return operation::Change::None
@@ -168,7 +222,7 @@ impl State {
         let sp = self.saved_positions.clone();
 
         for (i,o) in self.context.selected.iter().enumerate() {
-            o.write().unwrap().position = sp[i] + translation;
+            o.set_position(&mut NoData, sp[i] + translation);
         }
 
         return operation::Change::DirectChange("position".to_owned());

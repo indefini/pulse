@@ -1,17 +1,13 @@
 use std::any::{Any};//, AnyRefExt};
 use std::sync::{RwLock, Arc};
 use std::cell::RefCell;
-use std::rc::{Rc,Weak};
-use std::fmt;
-use std::collections::LinkedList;
+use std::rc::{Rc};
 use uuid;
 
 use dormin::object;
 use dormin::property;
 use dormin::property::PropertyWrite;
-use ui;
 use ui::PropertyUser;
-use control::WidgetUpdate;
 use dormin::vec;
 use dormin::scene;
 use dormin::component::CompData;
@@ -25,32 +21,32 @@ pub trait OperationTrait
     fn undo(&self) -> Change;
 }
 
-pub enum OperationData
+pub type OperationDataOld = OperationData<Rc<RefCell<scene::Scene>>, Arc<RwLock<object::Object>>, uuid::Uuid>;
+
+pub enum OperationData<Scene, Object, Id>
 {
-    //ToNone(Box<Any>),
-    //ToSome,
     VecAdd(usize),
     VecDel(usize, Box<Any>),
-    Function(fn(LinkedList<Arc<RwLock<object::Object>>>, Box<Any>), Box<Any>),
-    List(LinkedList<Box<Any>>, LinkedList<Box<Any>>),
     Vector(Vec<Box<Any>>, Vec<Box<Any>>),
-    SceneAddObjects(Rc<RefCell<scene::Scene>>, Vec<uuid::Uuid>, Vec<Arc<RwLock<object::Object>>>), //scene, parent, objects
-    SceneRemoveObjects(Rc<RefCell<scene::Scene>>, Vec<uuid::Uuid>, Vec<Arc<RwLock<object::Object>>>),
-    SetSceneCamera(
-        Rc<RefCell<scene::Scene>>,
-        Option<Arc<RwLock<object::Object>>>,
-        Option<Arc<RwLock<object::Object>>>),
+    SceneAddObjects(Scene, Vec<Id>, Vec<Object>), //scene, parent, objects
+    SceneRemoveObjects(Scene, Vec<Id>, Vec<Object>),
+    SetSceneCamera(Scene, Option<Object>, Option<Object>),
     //AddComponent(uuid::Uuid, uuid::Uuid) //object id, component id?
-    AddComponent(Arc<RwLock<object::Object>>, Box<CompData>),
+    AddComponent(Object, Box<CompData>),
     OldNewVec(Vec<Box<Any>>, Box<Any>),
 
+    //To check
+    //ToNone(Box<Any>),
+    //ToSome,
+    //Function(fn(LinkedList<Arc<RwLock<object::Object>>>, Box<Any>), Box<Any>),
 }
+
 
 pub struct Operation
 {
     pub objects : Vec<Arc<RwLock<object::Object>>>,
     pub name : Vec<String>,
-    pub change : OperationData
+    pub change : OperationDataOld
     //pub old : Box<Any>,
     //pub new : Box<Any>,
 }
@@ -67,7 +63,7 @@ pub struct OperationNew
 {
     pub actor : OperationActor,
     pub name : String,
-    pub change : OperationData
+    pub change : OperationDataOld
     //pub old : Box<Any>,
     //pub new : Box<Any>,
 }
@@ -243,7 +239,7 @@ pub enum Change
     None,
     Property(RefMut<PropertyUser>, String),
     Tree,
-    Objects(String, LinkedList<uuid::Uuid>),
+    Objects(String, Vec<uuid::Uuid>),
     DirectChange(String),
     ChangeSelected(Vec<Arc<RwLock<object::Object>>>),
     SelectedChange,
@@ -278,7 +274,7 @@ impl Operation
         name : Vec<String>,
         //old : Box<Any>,
         //new : Box<Any>)
-        change : OperationData
+        change : OperationDataOld
             )
         -> Operation
     {
@@ -382,14 +378,14 @@ impl OperationTrait for Operation
                 else {
                     s.clone()
                 };
-                let mut ids = LinkedList::new();
+                let mut ids = Vec::new();
                 for o in &self.objects {
                     let mut ob = o.write().unwrap();
                     ob.test_set_property_hier(
                         sp.as_str(),
                         &*new[i]);
                     i = i +1;
-                    ids.push_back(ob.id.clone());
+                    ids.push(ob.id.clone());
                 }
                 return Change::Objects(s, ids);
             },
@@ -494,14 +490,14 @@ impl OperationTrait for Operation
                 else {
                     s.clone()
                 };
-                let mut ids = LinkedList::new();
+                let mut ids = Vec::new();
                 for o in &self.objects {
                     let mut ob = o.write().unwrap();
                     ob.test_set_property_hier(
                         sp.as_str(),
                         &*old[i]);
                     i = i +1;
-                    ids.push_back(ob.id.clone());
+                    ids.push(ob.id.clone());
                 }
                 return Change::Objects(s, ids);
             },
