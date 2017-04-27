@@ -15,7 +15,7 @@ pub use self::def::{
     WidgetCbData,
     AppCbData,
     Widget,
-    Event,
+    Event, EventOld,
     WidgetConfig,
     
     PanelGeomFunc,

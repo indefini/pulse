@@ -1530,7 +1530,7 @@ impl AppCbData {
     }
 }
 
-type EventOld = Event<Arc<RwLock<object::Object>>>;
+pub type EventOld = Event<Arc<RwLock<object::Object>>>;
 
 //TODO choose how deep is the event, like between those 3 things
 pub enum Event<Object>
@@ -1540,20 +1540,13 @@ pub enum Event<Object>
     ShowTree(String),
     SelectObject(Object),
     UnselectObject(Object),
+
+    RectVisibleSet(bool),
+    RectSet(f32, f32, f32, f32),
+    
+    DraggerTranslation(vec::Vec3),
+
     Empty
-}
-
-fn make_vec_from_str(s : &str) -> Vec<String>
-{
-    let v: Vec<&str> = s.split('/').collect();
-
-    let mut vs = Vec::new();
-    for i in &v
-    {
-        vs.push(i.to_string());
-    }
-
-    vs
 }
 
 pub fn add_empty(container : &mut WidgetContainer, view_id : Uuid)

@@ -1,31 +1,20 @@
 use std::rc::Rc;
 use std::cell::{RefCell, BorrowState};
 use std::any::{Any};//, AnyRefExt};
-use std::sync::{RwLock, Arc};
 use std::collections::LinkedList;
 use std::f64::consts;
-
-use uuid::Uuid;
 
 use dormin::transform;
 use operation;
 use dormin::camera;
 use context;
-use ui;
 use dragger;
 use dormin::intersection;
 use dormin::vec;
-use dormin::object;
-use dormin::property::PropertyWrite;
 use dormin::resource;
-use dormin::property::PropertyGet;
-use dormin::factory;
-use dormin::component;
 
 use util;
 
-use dormin::scene::Scene;
-use dormin::object::Object;
 
 pub enum State
 {
@@ -468,21 +457,6 @@ impl Control
 
         return operation::Change::DraggerChange;
     }
-}
-
-fn join_string(path : &[String]) -> String
-{
-    let mut s = String::new();
-    let mut first = true;
-    for v in path.iter() {
-        if !first {
-            s.push('/');
-        }
-        s.push_str(v.as_ref());
-        first = false;
-    }
-
-    s
 }
 
 pub trait WidgetUpdate {

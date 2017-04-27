@@ -2,33 +2,21 @@ use std::rc::Rc;
 use std::cell::{Cell,RefCell, BorrowState};
 use std::sync::{RwLock, Arc,Mutex};
 use libc::{c_char, c_void, c_int, c_uint, c_float};
-use std::collections::{LinkedList};
-use std::mem;
-use std::ffi;
 use std::ffi::CStr;
-use std::ffi::CString;
 use std::str;
-use std::ptr;
 use uuid;
 use dormin::object;
-use dormin::mesh;
 use dormin::shader;
 use dormin::transform;
 
 use ui;
-use dormin::render;
 use dormin::render::{Render, GameRender};
-use dormin::factory;
-use context;
 use dormin::resource;
-use dormin::resource::Create;
 use dormin::vec;
-use dormin::geometry;
 use dormin::material;
 use dragger;
 use dormin::camera;
 use operation;
-use dormin::intersection;
 use control;
 use control::Control;
 use control::WidgetUpdate;
@@ -38,6 +26,7 @@ use dormin::component::mesh_render;
 use util;
 use util::Arw;
 use dormin::input;
+use context;
 
 
 #[link(name = "joker")]
@@ -190,29 +179,29 @@ impl View
         self.render.resize(w, h);
     }
 
+    //pub fn handle_control_change(&self, change : &ui::EventOld)
     pub fn handle_control_change(&self, change : &operation::Change)
     {
+        //TODO
+        /*
         match *change {
-            operation::Change::DirectChange(ref name) => {
-            },
-            operation::Change::RectVisibleSet(b) => {
+            ui::Event::RectVisibleSet(b) => {
                 if let Some(w) = self.window {
                     unsafe {
                         window_rect_visible_set(w, b);
                     }
                 }
             },
-            operation::Change::RectSet(x,y,w,h) => {
+            ui::Event::RectSet(x,y,w,h) => {
                 if let Some(win) = self.window {
                     unsafe {
                         window_rect_set(win, x,y,w,h);
                     }
                 }
             },
-            operation::Change::SelectedChange => {
-            },
             _ => {}
         }
+        */
     }
 
     pub fn get_camera_transform(&self) -> (vec::Vec3, vec::Quat)
