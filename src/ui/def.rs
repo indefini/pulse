@@ -1,10 +1,9 @@
 use libc::{c_char, c_void, c_int, c_uint, size_t};
 use std::mem;
-use std::sync::{RwLock, Arc, Mutex};
-use std::collections::{LinkedList};
+use std::sync::{RwLock, Arc};
 use std::ptr;
 use std::rc::{Rc,Weak};
-use std::cell::{RefCell, BorrowState};
+use std::cell::{RefCell};
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
 use std::any::{Any};//, AnyRefExt};
@@ -14,40 +13,27 @@ use std::fs::File;
 use serde_json;
 use std::io::{Read,Write};
 use std::ffi::{CString,CStr};
-use std::thread;
 
 use uuid::Uuid;
 
 use dormin;
-use dormin::intersection;
-use dormin::resource;
-use dormin::geometry;
 use dormin::vec;
 use dormin::scene;
 use dormin::object;
-use ui::{Tree,PropertyList,RefMut,PropertyUser,PropertyConfig,View,Command,Action,GameView,ShouldUpdate,
+use ui::{Tree,RefMut,PropertyUser,View,Command,Action,GameView,
 PropertyWidget,PropertyBox};
 use ui;
-use dormin::factory;
 use operation;
 use dormin::camera;
-use dormin::property;
-use context;
-//use control;
-//use control::Control;
-//use control::WidgetUpdate;
+
 use uuid;
 use dormin::component;
 use dragger;
-use dormin::property::{PropertyWrite,PropertyGet};
-use dormin::transform;
 use util;
 use util::Arw;
 use dormin::render;
 use data::Data;
 use state::State;
-
-static SCENE_SUFFIX: &'static str = ".scene";
 
 #[repr(C)]
 pub struct Window;
@@ -1220,8 +1206,16 @@ impl WidgetContainer
                 self.handle_change(&change, widget_origin);
             },
             operation::Change::DraggerTranslation(t) => {
+                //TODO instead of this : 
                 let change = self.state.request_translation(t);
                 self.handle_change(&change, widget_origin);
+                //TODO we should do this:
+                // first DraggerTranslation should be an 'event' instead of a 'change'
+                // then : 
+                //let wanted_change = self.state.request_change_from_event(event)
+                //if self.data.apply_change(wanted_change) {
+                //  self.ui.reflect_change(wanted_change); //or something else than wanted_change
+                //}
             },
             operation::Change::DraggerScale(s) => {
                 let change = self.state.request_scale(s);
@@ -1249,7 +1243,7 @@ impl WidgetContainer
         self.update_all_views();
     }
 
-    pub fn handle_event(&mut self, event : ui::Event, widget_origin: uuid::Uuid)
+    pub fn handle_event(&mut self, event : EventOld, widget_origin: uuid::Uuid)
     {
         match event {
             Event::SelectObject(ob) => {
@@ -1536,16 +1530,16 @@ impl AppCbData {
     }
 }
 
+type EventOld = Event<Arc<RwLock<object::Object>>>;
 
 //TODO choose how deep is the event, like between those 3 things
-pub enum Event
+pub enum Event<Object>
 {
     KeyPressed(String),
     ViewKeyPressed(String),
     ShowTree(String),
-    //SelectObject(Vec<Arc<RwLock<object::Object>>>)
-    SelectObject(Arc<RwLock<object::Object>>),
-    UnselectObject(Arc<RwLock<object::Object>>),
+    SelectObject(Object),
+    UnselectObject(Object),
     Empty
 }
 
