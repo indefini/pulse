@@ -1540,11 +1540,17 @@ pub enum Event<Object>
     ShowTree(String),
     SelectObject(Object),
     UnselectObject(Object),
+    ChangeSelected(Vec<Object>),
 
     RectVisibleSet(bool),
     RectSet(f32, f32, f32, f32),
-    
+    CameraChange,
+
+    DraggerClicked,
+    DraggerOperation(dragger::Operation), //TODO check if remove
     DraggerTranslation(vec::Vec3),
+    DraggerScale(vec::Vec3),
+    DraggerRotation(vec::Quat),
 
     Empty
 }

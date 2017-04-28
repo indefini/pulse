@@ -137,12 +137,10 @@ pub extern fn remove_selected(data : *const c_void, name : *const c_char)
 }
 */
 
-
 pub extern fn set_scene_camera(data : *const c_void, name : *const c_char)
 {
     println!("command ::: set scene camera");
 }
-
 
 pub extern fn remove_selected2(data : *const c_void, name : *const c_char)
 {
@@ -159,7 +157,6 @@ pub extern fn remove_selected2(data : *const c_void, name : *const c_char)
     //let mut control = v.control.borrow_mut();
     let change = container.state.remove_selected_objects();
 
-    v.handle_control_change(&change);
     container.handle_change(&change, v.uuid);
 }
 
@@ -178,7 +175,6 @@ pub extern fn copy_selected(data : *const c_void, name : *const c_char)
     //let mut control = v.control.borrow_mut();
     let change = container.state.copy_selected_objects(&container.data.factory);
 
-    v.handle_control_change(&change);
     container.handle_change(&change, v.uuid);
 }
 
@@ -193,7 +189,6 @@ pub extern fn set_camera2(data : *const c_void, name : *const c_char)
     println!("commnd set camera");
     let change = container.state.set_scene_camera();
 
-    v.handle_control_change(&change);
     container.handle_change(&change, v.uuid);
 }
 
@@ -210,7 +205,6 @@ extern fn add_comp(data : *const c_void, name : *const c_char)
     let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
 
     let change = container.state.add_component(s);
-    v.handle_control_change(&change);
     container.handle_change(&change, v.uuid);
 }
 

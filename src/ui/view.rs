@@ -38,7 +38,6 @@ extern {
         y : c_float,
         w : c_float,
         h : c_float);
-
 }
 
 pub struct View
@@ -178,13 +177,14 @@ impl View
         self.height = h;
         self.render.resize(w, h);
     }
-
-    //pub fn handle_control_change(&self, change : &ui::EventOld)
-    pub fn handle_control_change(&self, change : &operation::Change)
+    
+    fn handle_control_change(&self, change : &operation::Change)
     {
-        //TODO
-        /*
-        match *change {
+    }
+
+    pub fn handle_event(&self, event : &ui::EventOld)
+    {
+        match *event {
             ui::Event::RectVisibleSet(b) => {
                 if let Some(w) = self.window {
                     unsafe {
@@ -201,7 +201,6 @@ impl View
             },
             _ => {}
         }
-        */
     }
 
     pub fn get_camera_transform(&self) -> (vec::Vec3, vec::Quat)
@@ -279,15 +278,16 @@ pub extern fn mouse_up(
     let wcb : & ui::WidgetCbData = unsafe {&* (data as *const ui::WidgetCbData)};
     let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
 
-    let change = {
+    let event = {
         let control_rc = container.views[wcb.index].control.clone();
         let mut c = control_rc.borrow_mut();
         c.mouse_up(&*container.state.context,button,x,y,timestamp)
     };
 
-    container.views[wcb.index].handle_control_change(&change);
+    container.views[wcb.index].handle_event(&event);
     let id = container.views[wcb.index].uuid;
-    container.handle_change(&change, id);
+    //TODO
+    //container.handle_change(&change, id);
 }
 
 pub extern fn mouse_move(

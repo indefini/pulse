@@ -12,6 +12,7 @@ use dragger;
 use dormin::intersection;
 use dormin::vec;
 use dormin::resource;
+use ui;
 
 use util;
 
@@ -94,13 +95,13 @@ impl Control
             button : i32,
             x : i32,
             y : i32,
-            timestamp : i32) -> operation::Change
+            timestamp : i32) -> ui::EventOld
     {
         match self.state {
             State::CameraRotation => {
                 self.state = State::Idle;
                 println!("state was cam rotate ");
-                return operation::Change::None;
+                return ui::Event::Empty;
             },
             State::Dragger => {
                 self.state = State::Idle;
@@ -111,13 +112,13 @@ impl Control
                     y);
 
                 if let Some(op) = o {
-                    return operation::Change::DraggerOperation(op);
+                    return ui::Event::DraggerOperation(op);
                 }
-                return operation::Change::None;
+                return ui::Event::Empty;
             },
             State::MultipleSelect => {
                 self.state = State::Idle;
-                return operation::Change::RectVisibleSet(false);
+                return ui::Event::RectVisibleSet(false);
             },
             _ => {}
         }
@@ -126,7 +127,7 @@ impl Control
         let r = match self.camera.borrow_state(){
             BorrowState::Writing => {
                 println!("cannot borrow camera");
-                return operation::Change::None;
+                return ui::Event::Empty;
             },
             _ => {
                 self.camera.borrow().ray_from_screen(x as f64, y as f64, 10000f64)
@@ -153,7 +154,7 @@ impl Control
              Some(ref s) => s.clone(),
              None => {
                  println!("no scene ");
-                 return operation::Change::None;
+                 return ui::Event::Empty;
              }
         };
 
@@ -222,7 +223,7 @@ impl Control
             Some(o) => v.push(o)
         }
 
-        return operation::Change::ChangeSelected(v);
+        return ui::Event::ChangeSelected(v);
     }
 
     fn rotate_camera(&mut self, context : &context::ContextOld, x : f64, y : f64)
