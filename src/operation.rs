@@ -232,7 +232,6 @@ impl OperationTrait for ToSome
 }
 
 
-
 //#[derive(PartialEq)]
 pub enum Change
 {
@@ -254,9 +253,6 @@ pub enum Change
     RectVisibleSet(bool),
     RectSet(f32, f32, f32, f32),
     DraggerClicked,
-    DraggerTranslation(vec::Vec3),
-    DraggerScale(vec::Vec3),
-    DraggerRotation(vec::Quat),
 
     DraggerOperation(dragger::Operation),
     Undo,

@@ -253,16 +253,17 @@ pub extern fn mouse_down(
         c.mouse_down(&*container.state.context, modifier, button,x,y,timestamp)
     };
 
-    for op in &op_list {
-        if let operation::Change::DraggerClicked = *op {
+    for op in op_list.into_iter() {
+        if let ui::Event::DraggerClicked = op {
             //let c = &mut container.context;;
             container.state.save_positions();
             container.state.save_scales();
             container.state.save_oris();
         }
-        container.views[wcb.index].handle_control_change(op);
+        container.views[wcb.index].handle_event(&op);
+        //TODO
         let id = container.views[wcb.index].uuid;
-        container.handle_change(op, id);
+        container.handle_event(op, id);
     }
 }
 
@@ -305,7 +306,7 @@ pub extern fn mouse_move(
     let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
     let control_rc = container.views[wcb.index].control.clone();
 
-    let change_list = {
+    let events = {
         let mut c = control_rc.borrow_mut();
         c.mouse_move(
             &*container.state.context,
@@ -319,9 +320,10 @@ pub extern fn mouse_move(
     };
 
     let id = container.views[wcb.index].uuid;
-    for change in &change_list {
-        container.views[wcb.index].handle_control_change(change);
-        container.handle_change(change, id);
+    for e in &events {
+        container.views[wcb.index].handle_event(e);
+        //TODO
+        //container.handle_change(e, id);
     }
 }
 

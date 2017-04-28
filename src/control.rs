@@ -60,9 +60,9 @@ impl Control
             button : i32,
             x : i32,
             y : i32,
-            timestamp : i32) -> LinkedList<operation::Change>
+            timestamp : i32) -> Vec<ui::EventOld>
     {
-        let mut list = LinkedList::new();
+        let mut v = Vec::new();
 
         if (modifier & 1) != 0 {
             println!("pressed shift");
@@ -70,10 +70,10 @@ impl Control
         else if modifier & (1 << 1) != 0 {
             self.mouse_start = Some(vec::Vec2::new(x as f64, y as f64));
             self.state = State::MultipleSelect;
-            list.push_back(operation::Change::RectVisibleSet(true));
-            list.push_back(operation::Change::RectSet(x as f32, y as f32, 1f32, 1f32));
+            v.push(ui::Event::RectVisibleSet(true));
+            v.push(ui::Event::RectSet(x as f32, y as f32, 1f32, 1f32));
             println!("pressed control");
-            return list;
+            return v;
         }
 
         let objs = context.selected.clone();
@@ -82,11 +82,11 @@ impl Control
                 &*self.camera.borrow(),button, x, y, &*self.resource);
             if click {
                 self.state = State::Dragger;
-                list.push_back(operation::Change::DraggerClicked);
+                v.push(ui::Event::DraggerClicked);
             }
         }
 
-        return list;
+        return v;
     }
 
     pub fn mouse_up(
@@ -277,9 +277,9 @@ impl Control
         cury : i32,
         prevx : i32,
         prevy : i32,
-        timestamp : i32) -> LinkedList<operation::Change>
+        timestamp : i32) -> Vec<ui::EventOld>
     {
-        let mut list = LinkedList::new();
+        let mut list = Vec::new();
 
         match self.state {
             State::Idle | State::CameraRotation => {
@@ -320,7 +320,7 @@ impl Control
                 }
 
                 if update {
-                    list.push_back(operation::Change::CameraChange);
+                    list.push(ui::Event::CameraChange);
                 }
             },
             State::Dragger =>
@@ -341,15 +341,15 @@ impl Control
                     match op {
                         dragger::Operation::Translation(v) => {
                             //list.push_back(self.request_translation(v));
-                            list.push_back(operation::Change::DraggerTranslation(v));
+                            list.push(ui::Event::DraggerTranslation(v));
                         },
                         dragger::Operation::Scale(v) => {
                             //list.push_back(self.request_scale(v));
-                            list.push_back(operation::Change::DraggerScale(v));
+                            list.push(ui::Event::DraggerScale(v));
                         },
                         dragger::Operation::Rotation(q) => {
                             //list.push_back(self.request_rotation(q));
-                            list.push_back(operation::Change::DraggerRotation(q));
+                            list.push(ui::Event::DraggerRotation(q));
                         }
                     }
                 }
@@ -362,7 +362,7 @@ impl Control
                     let ey = ms.y as f32;
                     let (startx, endx) = if x < ex {(x, ex - x)} else {(ex, x - ex)};
                     let (starty, endy) = if y < ey {(y, ey - y)} else {(ey, y - ey)};
-                    list.push_back(operation::Change::RectSet(startx, starty, endx, endy));
+                    list.push(ui::Event::RectSet(startx, starty, endx, endy));
 
                     let planes = self.camera.borrow().get_frustum_planes_rect(
                         startx as f64,
@@ -394,7 +394,7 @@ impl Control
                     }
 
                     if has_changed {
-                        list.push_back(operation::Change::ChangeSelected(obvec));
+                        list.push(ui::Event::ChangeSelected(obvec));
                     }
 
                 }

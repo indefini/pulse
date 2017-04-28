@@ -1,24 +1,17 @@
 use std::rc::{Rc};
 use std::cell::{RefCell};
 use std::collections::HashMap;
-use std::collections::hash_map::Entry;
-use std::path::Path;
 use std::fs;
-use std::fs::File;
-use serde_json;
 use std::io::{Read,Write};
 
-use uuid::Uuid;
-
 use dormin;
-use dormin::{vec, resource, scene, object, factory};
+use dormin::{vec, resource, scene, factory};
 use dormin::{world};
 use context;
-use uuid;
 use util;
 
-static SCENE_SUFFIX: &'static str = ".scene";
-static WORLD_SUFFIX: &'static str = ".world";
+static SCENE_SUFFIX: &str = ".scene";
+static WORLD_SUFFIX: &str = ".world";
 
 pub struct Data<S>
 {

@@ -1205,26 +1205,6 @@ impl WidgetContainer
                 let change = self.state.redo();
                 self.handle_change(&change, widget_origin);
             },
-            operation::Change::DraggerTranslation(t) => {
-                //TODO instead of this : 
-                let change = self.state.request_translation(t);
-                self.handle_change(&change, widget_origin);
-                //TODO we should do this:
-                // first DraggerTranslation should be an 'event' instead of a 'change'
-                // then : 
-                //let wanted_change = self.state.request_change_from_event(event)
-                //if self.data.apply_change(wanted_change) {
-                //  self.ui.reflect_change(wanted_change); //or something else than wanted_change
-                //}
-            },
-            operation::Change::DraggerScale(s) => {
-                let change = self.state.request_scale(s);
-                self.handle_change(&change, widget_origin);
-            },
-            operation::Change::DraggerRotation(r) => {
-                let change = self.state.request_rotation(r);
-                self.handle_change(&change, widget_origin);
-            },
             operation::Change::Property(ref p, ref name) => {
                 match *p {
                     RefMut::Arc(ref a) => {
@@ -1258,6 +1238,25 @@ impl WidgetContainer
                 self.state.context.remove_objects_by_id(&v);
                 self.handle_change(&operation::Change::SelectedChange, widget_origin);
             },
+            Event::DraggerTranslation(t) => {
+                //TODO instead of this : 
+                let change = self.state.request_translation(t);
+                self.handle_change(&change, widget_origin);
+                //TODO we should do this:
+                //let wanted_change = self.state.request_change_from_event(event)
+                //if self.data.apply_change(wanted_change) {
+                //  self.ui.reflect_change(wanted_change); //or something else than wanted_change
+                //}
+            },
+            Event::DraggerScale(s) => {
+                let change = self.state.request_scale(s);
+                self.handle_change(&change, widget_origin);
+            },
+            Event::DraggerRotation(r) => {
+                let change = self.state.request_rotation(r);
+                self.handle_change(&change, widget_origin);
+            },
+
             _ => {}
         }
 
