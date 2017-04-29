@@ -1,10 +1,7 @@
 use dormin::object;
 use dormin::scene;
-use dormin::vec;
 use uuid;
-use dormin::transform;
 
-use std::collections::{LinkedList};
 use std::sync::{RwLock, Arc};
 use std::rc::Rc;
 use std::cell::{RefCell, BorrowState};

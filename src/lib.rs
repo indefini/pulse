@@ -1,6 +1,5 @@
 #![feature(borrow_state)]
 #![feature(box_syntax)]
-#![feature(rc_counts)]
 
 extern crate dormin;
 extern crate uuid;

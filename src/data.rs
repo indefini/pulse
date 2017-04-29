@@ -2,7 +2,6 @@ use std::rc::{Rc};
 use std::cell::{RefCell};
 use std::collections::HashMap;
 use std::fs;
-use std::io::{Read,Write};
 
 use dormin;
 use dormin::{vec, resource, scene, factory};
@@ -11,7 +10,7 @@ use context;
 use util;
 
 static SCENE_SUFFIX: &str = ".scene";
-static WORLD_SUFFIX: &str = ".world";
+//static WORLD_SUFFIX: &str = ".world";
 
 pub struct Data<S>
 {

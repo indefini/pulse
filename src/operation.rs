@@ -237,22 +237,17 @@ pub enum Change
 {
     None,
     Property(RefMut<PropertyUser>, String),
-    Tree,
     Objects(String, Vec<uuid::Uuid>),
     DirectChange(String),
-    ChangeSelected(Vec<Arc<RwLock<object::Object>>>),
-    SelectedChange,
     SceneAdd(uuid::Uuid, Vec<uuid::Uuid>, Vec<uuid::Uuid>),
     SceneRemove(uuid::Uuid, Vec<uuid::Uuid>, Vec<uuid::Uuid>),
+
+    //check
     Scene(uuid::Uuid),
     ComponentChanged(uuid::Uuid, String),
 
     VecAdd(Vec<uuid::Uuid>, String, usize),
     VecDel(Vec<uuid::Uuid>, String, usize),
-
-    RectVisibleSet(bool),
-    RectSet(f32, f32, f32, f32),
-    DraggerClicked,
 
     DraggerOperation(dragger::Operation),
     Undo,

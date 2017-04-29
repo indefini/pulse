@@ -1050,57 +1050,6 @@ impl WidgetContainer
                     }
                 }
             },
-            operation::Change::ChangeSelected(ref list) => {
-                self.state.context.selected = list.clone();
-                self.handle_change(&operation::Change::SelectedChange, widget_origin);
-            },
-            operation::Change::SelectedChange => {
-                let sel = &self.state.context.selected;
-
-                if let Some(ref mut t) = self.tree {
-                    if widget_origin != t.id {
-                        let ids = self.state.context.get_vec_selected_ids();
-                        t.select_objects(ids);
-                    }
-                }
-                println!("selected changed");
-
-                if sel.is_empty() {
-                    if let Some(ref mut p) = self.property.widget {
-                        if let Some(ref s) = self.state.context.scene {
-                            //p.set_scene(&*s.borrow());
-                            //p.set_prop_cell(s.clone(), "scene");
-                            p.set_current(RefMut::Cell(s.clone()), "scene");
-                        }
-                    }
-                }
-                else if sel.len() != 1 {
-                    if let Some(ref mut p) = self.property.widget {
-                        if widget_origin != p.id {
-                            p.set_nothing();
-                        }
-                    }
-                    else {
-                        println!("container no property");
-                    }
-                }
-                else {
-                    if let Some(o) = sel.get(0) {
-                        if let Some(ref mut p) = self.property.widget {
-                            if widget_origin != p.id {
-                                //p.set_object(&*o.read().unwrap());
-                                let pu = &*o.read().unwrap() as &PropertyUser;
-                                p.set_prop_arc(o.clone(), "object");
-                                self.visible_prop.insert(
-                                        pu.get_id(), Rc::downgrade(p) as Weak<Widget>);
-                            }
-                        }
-                        else {
-                            println!("container has no property");
-                        }
-                    }
-                }
-            },
             operation::Change::SceneRemove(ref id, ref parents, ref obs) => {
                 {
                     println!("container, sceneremove!!!!!!!!");
@@ -1113,7 +1062,7 @@ impl WidgetContainer
                 }
                 //TODO
                 println!("do something for the other widget");
-                self.handle_change(&operation::Change::SelectedChange, widget_origin);
+                self.handle_event(Event::SelectedChange, widget_origin);
             },
             operation::Change::SceneAdd(ref id, ref parents, ref obs) => {
                 let scene = match self.get_scene() {
@@ -1230,13 +1179,13 @@ impl WidgetContainer
                 println!("event, selected : {}", ob.read().unwrap().name);
                 let mut l = vec![ob.read().unwrap().id.clone()];
                 self.state.context.select_by_id(&mut l);
-                self.handle_change(&operation::Change::SelectedChange, widget_origin);
+                self.handle_event(Event::SelectedChange, widget_origin);
             },
             Event::UnselectObject(ob) => {
                 println!("event, unselected : {}", ob.read().unwrap().name);
                 let v = vec![ob.read().unwrap().id.clone()];
                 self.state.context.remove_objects_by_id(&v);
-                self.handle_change(&operation::Change::SelectedChange, widget_origin);
+                self.handle_event(Event::SelectedChange, widget_origin);
             },
             Event::DraggerTranslation(t) => {
                 //TODO instead of this : 
@@ -1256,7 +1205,57 @@ impl WidgetContainer
                 let change = self.state.request_rotation(r);
                 self.handle_change(&change, widget_origin);
             },
+            Event::ChangeSelected(ref list) => {
+                self.state.context.selected = list.clone();
+                self.handle_event(Event::SelectedChange, widget_origin);
+            },
+            Event::SelectedChange => {
+                let sel = &self.state.context.selected;
 
+                if let Some(ref mut t) = self.tree {
+                    if widget_origin != t.id {
+                        let ids = self.state.context.get_vec_selected_ids();
+                        t.select_objects(ids);
+                    }
+                }
+                println!("selected changed");
+
+                if sel.is_empty() {
+                    if let Some(ref mut p) = self.property.widget {
+                        if let Some(ref s) = self.state.context.scene {
+                            //p.set_scene(&*s.borrow());
+                            //p.set_prop_cell(s.clone(), "scene");
+                            p.set_current(RefMut::Cell(s.clone()), "scene");
+                        }
+                    }
+                }
+                else if sel.len() != 1 {
+                    if let Some(ref mut p) = self.property.widget {
+                        if widget_origin != p.id {
+                            p.set_nothing();
+                        }
+                    }
+                    else {
+                        println!("container no property");
+                    }
+                }
+                else {
+                    if let Some(o) = sel.get(0) {
+                        if let Some(ref mut p) = self.property.widget {
+                            if widget_origin != p.id {
+                                //p.set_object(&*o.read().unwrap());
+                                let pu = &*o.read().unwrap() as &PropertyUser;
+                                p.set_prop_arc(o.clone(), "object");
+                                self.visible_prop.insert(
+                                        pu.get_id(), Rc::downgrade(p) as Weak<Widget>);
+                            }
+                        }
+                        else {
+                            println!("container has no property");
+                        }
+                    }
+                }
+            },
             _ => {}
         }
 
@@ -1537,6 +1536,7 @@ pub enum Event<Object>
     KeyPressed(String),
     ViewKeyPressed(String),
     ShowTree(String),
+    SelectedChange,
     SelectObject(Object),
     UnselectObject(Object),
     ChangeSelected(Vec<Object>),
@@ -1584,6 +1584,7 @@ pub fn add_empty(container : &mut WidgetContainer, view_id : Uuid)
     let mut parent = Vec::new();
     parent.push(uuid::Uuid::nil());
 
+
     let mut ops = Vec::new();
     let vs = Vec::new();
     let addob = container.state.request_operation(
@@ -1592,11 +1593,12 @@ pub fn add_empty(container : &mut WidgetContainer, view_id : Uuid)
             );
 
     ops.push(addob);
-    ops.push(operation::Change::ChangeSelected(vec));
 
     for op in &ops {
         container.handle_change(op, view_id);
     }
+
+    container.handle_event(ui::Event::ChangeSelected(vec), view_id);
 }
 
 pub fn scene_list(container : &Arw<WidgetContainer>, view_id : Uuid, obj : Option<*const Evas_Object>)
