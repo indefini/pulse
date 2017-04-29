@@ -8,7 +8,6 @@ use dormin::object;
 use dormin::property;
 use dormin::property::PropertyWrite;
 use ui::PropertyUser;
-use dormin::vec;
 use dormin::scene;
 use dormin::component::CompData;
 use ui::RefMut;
@@ -250,12 +249,6 @@ pub enum Change
     VecDel(Vec<uuid::Uuid>, String, usize),
 
     DraggerOperation(dragger::Operation),
-    Undo,
-    Redo,
-    CameraChange,
-    DraggerChange,
-
-    All
 }
 
 impl Operation

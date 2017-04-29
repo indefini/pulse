@@ -10,22 +10,16 @@ use dormin::shader;
 use dormin::transform;
 
 use ui;
-use dormin::render::{Render, GameRender};
+use dormin::render::Render;
 use dormin::resource;
 use dormin::vec;
 use dormin::material;
 use dragger;
 use dormin::camera;
 use operation;
-use control;
 use control::Control;
-use control::WidgetUpdate;
-use dormin::scene;
-use dormin::component;
 use dormin::component::mesh_render;
 use util;
-use util::Arw;
-use dormin::input;
 use context;
 
 
@@ -261,7 +255,6 @@ pub extern fn mouse_down(
             container.state.save_oris();
         }
         container.views[wcb.index].handle_event(&op);
-        //TODO
         let id = container.views[wcb.index].uuid;
         container.handle_event(op, id);
     }
@@ -287,8 +280,7 @@ pub extern fn mouse_up(
 
     container.views[wcb.index].handle_event(&event);
     let id = container.views[wcb.index].uuid;
-    //TODO
-    //container.handle_change(&change, id);
+    container.handle_event(event, id);
 }
 
 pub extern fn mouse_move(
@@ -320,10 +312,9 @@ pub extern fn mouse_move(
     };
 
     let id = container.views[wcb.index].uuid;
-    for e in &events {
-        container.views[wcb.index].handle_event(e);
-        //TODO
-        //container.handle_change(e, id);
+    for e in events {
+        container.views[wcb.index].handle_event(&e);
+        container.handle_event(e, id);
     }
 }
 
@@ -359,7 +350,7 @@ pub extern fn key_down(
     let wcb : & ui::WidgetCbData = unsafe {&* (data as *const ui::WidgetCbData)};
     let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
 
-    let change = {
+    let event = {
         let key_str = {
             let s = unsafe {CStr::from_ptr(key).to_bytes()};
             match str::from_utf8(s) {
@@ -460,34 +451,10 @@ pub extern fn key_down(
         }
     };
 
-    container.views[wcb.index].handle_control_change(&change);
+    container.views[wcb.index].handle_event(&event);
     let id = container.views[wcb.index].uuid;
-    container.handle_change(&change, id);
+    container.handle_event(event, id);
 }
-
-
-/*
-//TODO remove
-fn create_repere(m : &mut mesh::Mesh, len : f64)
-{
-    let red = vec::Vec4::new(1.0f64,0.247f64,0.188f64,1f64);
-    let green = vec::Vec4::new(0.2117f64,0.949f64,0.4156f64,1f64);
-    let blue = vec::Vec4::new(0f64,0.4745f64,1f64,1f64);
-
-    let s = geometry::Segment::new(
-        vec::Vec3::zero(), vec::Vec3::new(len, 0f64, 0f64));
-    m.add_line(s, red);
-
-    let s = geometry::Segment::new(
-        vec::Vec3::zero(), vec::Vec3::new(0f64, len, 0f64));
-    m.add_line(s, green);
-
-    let s = geometry::Segment::new(
-        vec::Vec3::zero(), vec::Vec3::new(0f64, 0f64, len));
-    m.add_line(s, blue);
-}
-*/
-
 
 pub extern fn init_cb(data : *const c_void) -> () {
     let wcb : & ui::WidgetCbData = unsafe {&* (data as *const ui::WidgetCbData)};

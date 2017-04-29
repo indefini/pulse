@@ -1,11 +1,9 @@
 use std::rc::Rc;
 use std::cell::{RefCell, BorrowState};
 use std::any::{Any};//, AnyRefExt};
-use std::collections::LinkedList;
 use std::f64::consts;
 
 use dormin::transform;
-use operation;
 use dormin::camera;
 use context;
 use dragger;
@@ -427,7 +425,7 @@ impl Control
         keyname : &str,
         key : &str,
         timestamp : i32
-        ) ->  operation::Change
+        ) ->  ui::EventOld
     {
         let mut t = vec::Vec3::zero();
 
@@ -437,10 +435,10 @@ impl Control
             "f" => t.x = 50f64,
             "s" => t.x = -50f64,
             "z" => {
-                return operation::Change::Undo;
+                return ui::Event::Undo;
             },
             "r" => {
-                return operation::Change::Redo;
+                return ui::Event::Redo;
             },
             "space" => {
                 self.dragger.borrow_mut().change();
@@ -456,7 +454,7 @@ impl Control
             camera.object.write().unwrap().position = p + t;
         }
 
-        return operation::Change::DraggerChange;
+        return ui::Event::DraggerChange;
     }
 }
 

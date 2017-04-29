@@ -1146,14 +1146,6 @@ impl WidgetContainer
                 };
                 self.state.request_operation(prop, operation);
             },
-            operation::Change::Undo => {
-                let change = self.state.undo();
-                self.handle_change(&change, widget_origin);
-            },
-            operation::Change::Redo => {
-                let change = self.state.redo();
-                self.handle_change(&change, widget_origin);
-            },
             operation::Change::Property(ref p, ref name) => {
                 match *p {
                     RefMut::Arc(ref a) => {
@@ -1256,9 +1248,19 @@ impl WidgetContainer
                     }
                 }
             },
+            Event::Undo => {
+                let change = self.state.undo();
+                self.handle_change(&change, widget_origin);
+            },
+            Event::Redo => {
+                let change = self.state.redo();
+                self.handle_change(&change, widget_origin);
+            },
+            Event::CameraChange => {
+                self.update_view(widget_origin);
+            },
             _ => {}
         }
-
     }
 
     fn get_scene(&self) -> Option<Rc<RefCell<scene::Scene>>>
@@ -1377,7 +1379,7 @@ impl WidgetContainer
         }
     }
 
-    fn update_all_views(&mut self)
+    fn update_all_views(&self)
     {
         for view in &self.views {
             view.request_update();
@@ -1385,6 +1387,15 @@ impl WidgetContainer
 
         if let Some(ref gv) = self.gameview {
             gv.request_update();
+        }
+    }
+
+    fn update_view(&self, id : uuid::Uuid)
+    {
+        for view in &self.views {
+            if view.uuid == id {
+                view.request_update();
+            }
         }
     }
 
@@ -1550,6 +1561,10 @@ pub enum Event<Object>
     DraggerTranslation(vec::Vec3),
     DraggerScale(vec::Vec3),
     DraggerRotation(vec::Quat),
+    DraggerChange,
+
+    Undo,
+    Redo,
 
     Empty
 }
