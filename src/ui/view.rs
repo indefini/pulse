@@ -172,10 +172,6 @@ impl View
         self.render.resize(w, h);
     }
     
-    fn handle_control_change(&self, change : &operation::Change)
-    {
-    }
-
     pub fn handle_event(&self, event : &ui::EventOld)
     {
         match *event {
