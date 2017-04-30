@@ -12,6 +12,8 @@ use util;
 static SCENE_SUFFIX: &str = ".scene";
 //static WORLD_SUFFIX: &str = ".world";
 
+pub type DataOld = Data<Rc<RefCell<scene::Scene>>>;
+
 pub struct Data<S>
 {
     pub factory : factory::Factory,
@@ -142,4 +144,17 @@ pub fn create_scene_name(name : String) -> String
 
     s
 }
+
+pub trait ToId<I> {
+    fn to_id(&self) -> I;
+}
+
+use uuid;
+pub type ToIdUuid = ToId<uuid::Uuid>;
+
+pub trait ToId2 {
+    type Id;
+    fn to_id(&self) -> Self::Id;
+}
+
 

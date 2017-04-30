@@ -6,12 +6,9 @@ use std::sync::{RwLock, Arc};
 use std::rc::Rc;
 use std::cell::{RefCell, BorrowState};
 use std::marker::PhantomData;
+use data::ToId;
 
 pub type ContextOld = Context<Rc<RefCell<scene::Scene>>, Arc<RwLock<object::Object>>, uuid::Uuid>;
-
-trait ToId<I> {
-    fn to_id(&self) -> I;
-}
 
 impl ToId<uuid::Uuid> for Arc<RwLock<object::Object>>
 {

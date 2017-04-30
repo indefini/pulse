@@ -1144,7 +1144,10 @@ impl WidgetContainer
                         }
                     }
                 };
-                self.state.request_operation(prop, operation);
+                self.state.request_operation(prop, operation, &mut self.data);
+                //let op = self.state.make_operation(prop, operation);
+                //self.state.op_mgr.add_with_trait2(box op);
+                //self.state.op_mgr.redo(self.data)
             },
             operation::Change::Property(ref p, ref name) => {
                 match *p {
@@ -1249,11 +1252,11 @@ impl WidgetContainer
                 }
             },
             Event::Undo => {
-                let change = self.state.undo();
+                let change = self.state.undo(&mut self.data);
                 self.handle_change(&change, widget_origin);
             },
             Event::Redo => {
-                let change = self.state.redo();
+                let change = self.state.redo(&mut self.data);
                 self.handle_change(&change, widget_origin);
             },
             Event::CameraChange => {
@@ -1604,7 +1607,8 @@ pub fn add_empty(container : &mut WidgetContainer, view_id : Uuid)
     let vs = Vec::new();
     let addob = container.state.request_operation(
             vs,
-            operation::OperationData::SceneAddObjects(s.clone(),parent,vec.clone())
+            operation::OperationData::SceneAddObjects(s.clone(),parent,vec.clone()),
+            &mut container.data
             );
 
     ops.push(addob);
