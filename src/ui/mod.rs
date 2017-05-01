@@ -73,6 +73,7 @@ pub mod property;
 pub mod property_box;
 pub mod property_list;
 pub mod view;
+pub mod view2;
 pub mod gameview;
 //pub mod dragger;
 
