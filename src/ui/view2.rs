@@ -10,18 +10,42 @@ use dormin::resource;
 use dormin::camera;
 use util::Arw;
 
-pub struct View2
+pub trait DataT {
+    type Id : Default;
+    fn get_scene(&self, id : Self::Id) -> Option<usize>;
+}
+
+trait ViewT {
+    fn draw(&mut self) -> bool
+    {
+        false
+    }
+
+    fn init(&mut self) {
+    }
+
+    fn resize(&mut self, w : c_int, h : c_int)
+    {
+    }
+}
+
+impl<D:DataT> ViewT for View2<D> {}
+
+pub struct View2<D : DataT>
 {
     window : *const ui::Evas_Object,
     glview : *const ui::JkGlview,
 
+    id : D::Id,
+
     //name : String,
     pub state : i32,
     pub loading_resource : Arc<Mutex<usize>>,
+    scene : usize,
 }
 
-impl View2 {
-    pub fn new(win : *const ui::Evas_Object) -> Box<View2>
+impl<D:DataT> View2<D> {
+    pub fn new(win : *const ui::Evas_Object, dispatcher : Rc<Dispatcher> ) -> Box<View2<D>>
     {
         //let render = box GameRender::new(camera, resource.clone());
 
@@ -29,11 +53,12 @@ impl View2 {
             window : win,
             //name : "cacayop".to_owned(),
             state : 0,
+            id : Default::default(),
             glview : ptr::null(),
             loading_resource : Arc::new(Mutex::new(0)),
             //camera : camera todo
+            scene : 0usize
         };
-
 
         v.glview = unsafe { ui::jk_glview_new(
                 win,
@@ -98,7 +123,8 @@ impl View2 {
 
 pub extern fn gv_init_cb(v : *const c_void) {
     unsafe {
-        let gv : *mut View2 = mem::transmute(v);
+        //let gv : *mut View2 = mem::transmute(v);
+        let gv : *mut Box<ViewT> = mem::transmute(v);
         //println!("AAAAAAAAAAAAAAAAAAAAAA gv init cb {}", (*gv).name);
         (*gv).init();
     }
@@ -106,9 +132,11 @@ pub extern fn gv_init_cb(v : *const c_void) {
 
 extern fn request_update_again_view2(data : *const c_void) -> bool
 {
-    //let gv : *mut View2 =  unsafe {mem::transmute(data)};
-    let gv : &mut View2 =  unsafe {mem::transmute(data)};
+    //let gv : &mut View2 =  unsafe {mem::transmute(data)};
+    let gv : &mut Box<ViewT> =  unsafe {mem::transmute(data)};
 
+    //TODO
+    /*
     //if let Ok(lr) = (*gv).loading_resource.try_lock() {
     if let Ok(lr) = gv.loading_resource.try_lock() {
         if *lr == 0 {
@@ -117,28 +145,32 @@ extern fn request_update_again_view2(data : *const c_void) -> bool
             return false;
         }
     }
+    */
     true
 }
 
 
 pub extern fn gv_draw_cb(v : *const c_void) {
     unsafe {
-        let gv : *mut View2 = mem::transmute(v);
+        //let gv : *mut View2 = mem::transmute(v);
+        let gv : *mut Box<ViewT> = mem::transmute(v);
         //println!("draw {}", (*gv).name);
         let draw_not_done = (*gv).draw();
 
+        //TODO
+        /*
         if draw_not_done && (*gv).state == 0 {
-            unsafe {
                 ui::ecore_animator_add(request_update_again_view2, mem::transmute(v));
-            }
-    }
+        }
+        */
     }
 }
 
 pub extern fn gv_resize_cb(v : *const c_void, w : c_int, h : c_int) {
     unsafe {
         //return (*v).resize(w, h);
-        let gv : *mut View2 = mem::transmute(v);
+        //let gv : *mut View2 = mem::transmute(v);
+        let gv : *mut Box<ViewT> = mem::transmute(v);
         //println!("resize {}", (*gv).name);
         (*gv).resize(w, h);
     }
@@ -161,9 +193,24 @@ extern fn gv_key_down(
     keycode : c_uint,
     timestamp : c_int)
 {
-    let gv : *mut View2 = unsafe { mem::transmute(data) };
-    let gv : &mut View2 = unsafe { &mut *gv };
+    //let gv : *mut View2 = unsafe { mem::transmute(data) };
+    //let gv : &mut View2 = unsafe { &mut *gv };
+    let gv : *mut Box<ViewT> = unsafe { mem::transmute(data) };
+    let gv : &mut Box<ViewT> = unsafe { &mut *gv };
     //unsafe { (*gv).input.add_key(keycode as u8); }
     println!("key pressed {}", (keycode as u8));
 }
 
+trait SceneUpdate {
+    fn update(&mut self, dt : f64)
+    {
+            //self.scene.borrow_mut().update(0.01f64, &self.input, &*self.resource);
+    }
+}
+
+pub struct Dispatcher;
+
+struct GlViewData {
+    dis : Rc<Dispatcher>,
+    id : usize
+}
