@@ -12,6 +12,7 @@ use dormin::scene;
 use dormin::component::CompData;
 use ui::RefMut;
 use data;
+use data::{ToId, ToIdUuid};
 
 use dragger;
 
@@ -58,7 +59,7 @@ pub enum OperationData<Scene, Object, Id>
     //To check
     //ToNone(Box<Any>),
     //ToSome,
-    //Function(fn(LinkedList<Arc<RwLock<object::Object>>>, Box<Any>), Box<Any>),
+    //Function(fn(Vec<Object>, Box<Any>), Box<Any>),
 }
 
 //pub type OperationOld = Operation<Arc<RwLock<object::Object>>>;
@@ -73,19 +74,6 @@ pub struct Operation
     pub change : OperationDataOld
     //pub old : Box<Any>,
     //pub new : Box<Any>,
-}
-
-pub trait PP : PropertyWrite + ToId<uuid::Uuid> {}
-impl PP for Arc<RwLock<object::Object>> {
-}
-
-use data::{ToId, ToId2, ToIdUuid};
-
-pub struct Ope
-{
-    pub objects : Vec<Box<PP>>,
-    pub name : Vec<String>,
-    pub change : OperationDataOld
 }
 
 pub enum OperationActor{

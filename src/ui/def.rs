@@ -1427,7 +1427,7 @@ impl WidgetContainer
         }
     }
 
-    pub fn get_selected_object(&self) -> Option<Arc<RwLock<object::Object>>>
+    fn get_selected_object(&self) -> Option<Arc<RwLock<object::Object>>>
     {
         self.state.get_selected_object()
     }
