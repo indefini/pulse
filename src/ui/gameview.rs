@@ -1,41 +1,15 @@
 use std::rc::Rc;
 use std::cell::{Cell,RefCell, BorrowState};
 use std::sync::{RwLock, Arc,Mutex};
-use libc::{c_char, c_void, c_int, c_uint, c_float};
-use std::collections::{LinkedList};
+use libc::{c_char, c_void, c_int, c_uint};
 use std::mem;
-use std::ffi;
-use std::ffi::CStr;
-use std::ffi::CString;
-use std::str;
 use std::ptr;
-use uuid;
-use dormin::object;
-use dormin::mesh;
-use dormin::shader;
-use dormin::transform;
 
 use ui;
-use dormin::render;
 use dormin::render::{Render, GameRender};
-use dormin::factory;
-use context;
 use dormin::resource;
-use dormin::resource::Create;
-use dormin::vec;
-use dormin::geometry;
-use dormin::material;
-use dragger;
 use dormin::camera;
-use operation;
-use dormin::intersection;
-use control;
-use control::Control;
-use control::WidgetUpdate;
 use dormin::scene;
-use dormin::component;
-use dormin::component::mesh_render;
-use util;
 use util::Arw;
 use dormin::input;
 
@@ -46,13 +20,13 @@ pub struct GameView
     window : *const ui::Evas_Object,
     glview : *const ui::JkGlview,
     render : Box<GameRender>,
-    scene : Rc<RefCell<scene::Scene>>,
+    pub scene : Rc<RefCell<scene::Scene>>,
     name : String,
     pub state : i32,
-    input : input::Input,
+    pub input : input::Input,
     pub config : ui::WidgetConfig,
     pub loading_resource : Arc<Mutex<usize>>,
-    resource : Rc<resource::ResourceGroup>,
+    //resource : Rc<resource::ResourceGroup>,
 }
 
 
@@ -61,9 +35,8 @@ impl GameView {
     pub fn new(
         //factory: &mut factory::Factory,
         win : *const ui::Evas_Object,
-        camera : Rc<RefCell<camera::Camera>>,
         scene : Rc<RefCell<scene::Scene>>,
-        resource : Rc<resource::ResourceGroup>,
+        render : Box<GameRender>,
         config : ui::WidgetConfig
         ) -> Box<GameView>
     {
@@ -82,9 +55,6 @@ impl GameView {
         };
         */
 
-        //let render = box GameRender::new(factory, camera);
-        let render = box GameRender::new(camera, resource.clone());
-
         let mut v = box GameView {
             render : render,
             window : win,
@@ -95,7 +65,7 @@ impl GameView {
             input : input::Input::new(),
             config : config.clone(),
             loading_resource : Arc::new(Mutex::new(0)),
-            resource : resource
+            //resource : resource
             //camera : camera todo
         };
 
@@ -117,7 +87,6 @@ impl GameView {
 
     pub fn update(&mut self) -> bool {
         if self.state == 1 {
-            self.scene.borrow_mut().update(0.01f64, &self.input, &*self.resource);
             unsafe { ui::jk_glview_request_update(self.glview); }
             self.input.clear();
             true

@@ -1344,6 +1344,7 @@ impl WidgetContainer
     pub fn update_play(&mut self) -> bool
     {
         if let Some(ref mut gv) = self.gameview {
+            gv.scene.borrow_mut().update(0.01f64, &gv.input, &*self.data.resource);
             let was_updated = gv.update();
 
             if was_updated {
@@ -1796,11 +1797,12 @@ pub fn create_gameview_window(
 
     let container : &mut ui::WidgetContainer = &mut *container.write().unwrap();
 
+    let render = box render::GameRender::new(camera, container.data.resource.clone());
+
     ui::gameview::GameView::new(
         win,
-        camera,
         scene,
-        container.data.resource.clone(),
+        render,
         config.clone())
 }
 

@@ -22,18 +22,17 @@ pub trait SceneT {
     fn update(&mut self, dt : f64, input : &input::Input, &resource::ResourceGroup);
 }
 
+/*
 pub trait RenderT<S> {
     //type Object;
     //fn draw(objs : &[Self::Object], loading : Arc<Mutex<usize>);
 }
 
-/*
 impl RenderT<Rc<RefCell<scene::Scene>>> for GameRender
 {
 
 }
 */
-
 
 trait ViewT<Scene:SceneT> {
     fn draw(&mut self, scene : &Scene) -> bool;
