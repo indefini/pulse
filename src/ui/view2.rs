@@ -82,10 +82,8 @@ pub struct View2<R, S : SceneT>
 impl<R, S:SceneT> View2<R,S> {
     pub fn new(
         win : *const ui::Evas_Object,
-        //dispatcher : Rc<Dispatcher<S>>,
-        dispatcher : Rc<DispaTest>,
-        //r : R ) -> Box<Box<View2<R,S>>> where Dispatcher<S> : DataT<S>
-        r : R ) -> Box<Box<View2<R,S>>> where DispaTest : DataT<S>
+        dispatcher : Rc<Dispatcher>,
+        r : R ) -> Box<Box<View2<R,S>>> where Dispatcher : DataT<S>
     {
         //let render = box GameRender::new(camera, resource.clone());
 
@@ -176,8 +174,7 @@ extern fn request_update_again_view2<Scene>(data : *const c_void) -> bool
 }
 
 
-//pub extern fn gv_draw_cb<S:SceneT>(v : *const c_void) where Dispatcher<S> : DataT<S>
-pub extern fn gv_draw_cb<S:SceneT>(v : *const c_void) where DispaTest : DataT<S>
+pub extern fn gv_draw_cb<S:SceneT>(v : *const c_void) where Dispatcher : DataT<S>
 {
     unsafe {
         //let gv : *mut View2 = mem::transmute(v);
@@ -259,64 +256,32 @@ impl SceneT for Rc<RefCell<scene::Scene>> {
     }
 }
 
-pub struct DispaTest;
-
-
-
-pub struct Dispatcher<S:SceneT>
+pub struct Dispatcher
 {
-    scenes : Vec<S>
+    scenes : Vec<Rc<RefCell<scene::Scene>>>
 }
 
-impl<S:SceneT> Dispatcher<S> {
-    fn new() -> Dispatcher<S> {
-        Dispatcher {
-            scenes : Vec::new()
+impl DataT<Rc<RefCell<scene::Scene>>> for Dispatcher {
+    fn get_scene(&self, id : uuid::Uuid) -> Option<&Rc<RefCell<scene::Scene>>>
+    {
+        for i in 0..self.scenes.len() {
+            if self.scenes[i].borrow().id == id {
+                return Some(&self.scenes[i]);
+            }
         }
-    }
-}
 
-impl DataT<SceneS> for Dispatcher<SceneS> {
-    fn get_scene(&self, id : usize) -> Option<&SceneS>
-    {
-        None
-    }
-}
-
-/*
-impl<S:SceneT> DataT<S> for Dispatcher<S> {
-    fn get_scene(&self, id : S::Id) -> Option<&S>
-    {
-        None
-    }
-}
-*/
-
-
-impl DataT<Rc<RefCell<scene::Scene>>> for Dispatcher<Rc<RefCell<scene::Scene>>> {
-    fn get_scene(&self, id : uuid::Uuid) -> Option<&Rc<RefCell<scene::Scene>>>
-    {
-        None
-    }
-}
-
-impl DataT<Rc<RefCell<scene::Scene>>> for DispaTest {
-    fn get_scene(&self, id : uuid::Uuid) -> Option<&Rc<RefCell<scene::Scene>>>
-    {
         None
     }
 }
 
 
 struct GlViewData<Scene:SceneT> {
-    //dis : Rc<Dispatcher<Scene>>,
-    dis : Rc<DispaTest>,
+    dis : Rc<Dispatcher>,
     view : *mut Box<ViewT<Scene>>,
 }
 
 impl<S:SceneT> GlViewData<S> {
-    //fn new(d : Rc<Dispatcher<S>>, view : *mut Box<ViewT<S>>) -> GlViewData<S>
-    fn new(d : Rc<DispaTest>, view : *mut Box<ViewT<S>>) -> GlViewData<S>
+    fn new(d : Rc<Dispatcher>, view : *mut Box<ViewT<S>>) -> GlViewData<S>
     {
         GlViewData {
             dis : d,
