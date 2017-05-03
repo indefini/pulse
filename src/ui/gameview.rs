@@ -151,52 +151,43 @@ impl GameView {
 }
 
 pub extern fn gv_init_cb(v : *const c_void) {
-    unsafe {
-        let gv : *mut GameView = mem::transmute(v);
-        //println!("AAAAAAAAAAAAAAAAAAAAAA gv init cb {}", (*gv).name);
-        (*gv).init();
-    }
+    let gv : &mut GameView = unsafe { mem::transmute(v) };
+    //println!("AAAAAAAAAAAAAAAAAAAAAA gv init cb {}", (*gv).name);
+    gv.init();
 }
 
 pub extern fn request_update_again_gv(data : *const c_void) -> bool
 {
-    unsafe {
-    //let gv : *mut GameView =  unsafe {mem::transmute(data)};
     let gv : &mut GameView =  unsafe {mem::transmute(data)};
 
-    //if let Ok(lr) = (*gv).loading_resource.try_lock() {
     if let Ok(lr) = gv.loading_resource.try_lock() {
         if *lr == 0 {
-            //(*gv).request_update();
             gv.request_update();
             return false;
         }
-    }
     }
     true
 }
 
 
-pub extern fn gv_draw_cb(v : *const c_void) {
-    unsafe {
-        let gv : *mut GameView = mem::transmute(v);
-        //println!("draw {}", (*gv).name);
-        let draw_not_done = (*gv).draw();
+pub extern fn gv_draw_cb(v : *const c_void)
+{
+    let gv : &mut GameView = unsafe { mem::transmute(v) };
+    //println!("draw {}", (*gv).name);
+    let draw_not_done = gv.draw();
 
-        if draw_not_done && (*gv).state == 0 {
-            unsafe {
-                ui::ecore_animator_add(request_update_again_gv, mem::transmute(v));
-            }
-    }
+    if draw_not_done && gv.state == 0 {
+        unsafe {
+            ui::ecore_animator_add(request_update_again_gv, mem::transmute(v));
+        }
     }
 }
 
 pub extern fn gv_resize_cb(v : *const c_void, w : c_int, h : c_int) {
     unsafe {
-        //return (*v).resize(w, h);
-        let gv : *mut GameView = mem::transmute(v);
+        let gv : &mut GameView = mem::transmute(v);
         //println!("resize {}", (*gv).name);
-        (*gv).resize(w, h);
+        gv.resize(w, h);
     }
 }
 
@@ -217,9 +208,7 @@ extern fn gv_key_down(
     keycode : c_uint,
     timestamp : c_int)
 {
-    let gv : *mut GameView = unsafe { mem::transmute(data) };
-    let gv : &mut GameView = unsafe { &mut *gv };
-    //unsafe { (*gv).input.add_key(keycode as u8); }
+    let gv : &mut GameView = unsafe { mem::transmute(data) };
     gv.input.add_key(keycode as u8);
 }
 
