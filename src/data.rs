@@ -28,6 +28,7 @@ pub struct Data<S:SceneT>
 
 pub trait SceneT : ToId<<Self as SceneT>::Id> {
     type Id : Default + Eq;
+    fn init_for_play(&mut self, resource : &resource::ResourceGroup);
     fn update(&mut self, dt : f64, input : &input::Input, &resource::ResourceGroup);
 }
 
@@ -36,6 +37,11 @@ impl SceneT for Rc<RefCell<scene::Scene>> {
     fn update(&mut self, dt : f64, input : &input::Input, res :&resource::ResourceGroup)
     {
         self.borrow_mut().update(dt, input, res);
+    }
+
+    fn init_for_play(&mut self, resource : &resource::ResourceGroup)
+    {
+        self.borrow().init_components(resource);
     }
 }
 
@@ -54,6 +60,11 @@ impl SceneT for world::World {
     fn update(&mut self, dt : f64, input : &input::Input, res :&resource::ResourceGroup)
     {
         println!("TODO !!!!!!!!!!!!!!!!!!!!!!");
+    }
+
+    fn init_for_play(&mut self, resource : &resource::ResourceGroup)
+    {
+        println!("TODO !!!!!!!!!!!!!!!!!!!!!! {}, {} ", file!(), line!());
     }
 }
 

@@ -1312,9 +1312,9 @@ impl WidgetContainer
             return None;
         }
 
-        let scene = if let Some(ref s) = self.state.context.scene {
-            let scene = s.clone();
-            scene.borrow_mut().init_components(&self.data.resource);
+        let scene = if let Some(ref mut s) = self.state.context.scene {
+            let mut scene = s.clone();
+            scene.init_for_play(&self.data.resource);
             scene
         }
         else {
@@ -1345,9 +1345,6 @@ impl WidgetContainer
     pub fn update_play(&mut self) -> bool
     {
         if let Some(ref mut gv) = self.gameview {
-            //let scene_rc = gv.scene.clone();
-            //let mut scene = scene_rc.borrow_mut();
-            //scene.update(0.01f64, gv.get_input(), &*self.data.resource);
             let id = gv.scene.borrow().id;
             self.data.update_scene(id, gv.get_input());
             let was_updated = gv.update();

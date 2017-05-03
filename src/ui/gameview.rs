@@ -69,7 +69,6 @@ impl GameView {
             //camera : camera todo
         };
 
-
         v.glview = unsafe { ui::jk_glview_new(
                 win,
                 //mem::transmute(&*v.render),

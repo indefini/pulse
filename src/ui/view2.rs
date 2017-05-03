@@ -236,7 +236,10 @@ impl SceneT for SceneS {
     type Id = usize;
     fn update(&mut self, dt : f64, input : &input::Input, res :&resource::ResourceGroup)
     {
+    }
 
+    fn init_for_play(&mut self, resource : &resource::ResourceGroup)
+    {
     }
 }
 
