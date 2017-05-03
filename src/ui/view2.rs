@@ -5,6 +5,8 @@ use libc::{c_char, c_void, c_int, c_uint};
 use std::mem;
 use std::ptr;
 
+use uuid;
+
 use ui;
 use dormin::resource;
 use dormin::camera;
@@ -12,15 +14,7 @@ use util::Arw;
 use dormin::input;
 use dormin::scene;
 use dormin::render;
-
-pub trait DataT<S : SceneT> {
-    fn get_scene(&self, id : S::Id) -> Option<&S>;
-}
-
-pub trait SceneT {
-    type Id : Default;
-    fn update(&mut self, dt : f64, input : &input::Input, &resource::ResourceGroup);
-}
+use data::{DataT, SceneT};
 
 /*
 pub trait RenderT<S> {
@@ -246,12 +240,11 @@ impl SceneT for SceneS {
     }
 }
 
-use uuid;
-impl SceneT for Rc<RefCell<scene::Scene>> {
-    type Id = uuid::Uuid;
-    fn update(&mut self, dt : f64, input : &input::Input, res :&resource::ResourceGroup)
+use data;
+impl data::ToId<usize> for SceneS {
+    fn to_id(&self) -> usize
     {
-
+        0usize
     }
 }
 
@@ -270,6 +263,22 @@ impl DataT<Rc<RefCell<scene::Scene>>> for Dispatcher {
         }
 
         None
+    }
+
+    fn get_scene_mut(&mut self, id : uuid::Uuid) -> Option<&mut Rc<RefCell<scene::Scene>>>
+    {
+        for i in 0..self.scenes.len() {
+            if self.scenes[i].borrow().id == id {
+                return Some(&mut self.scenes[i]);
+            }
+        }
+
+        None
+    }
+
+    fn update_scene(&mut self, id : uuid::Uuid, input : &input::Input)
+    {
+        //TODO
     }
 }
 

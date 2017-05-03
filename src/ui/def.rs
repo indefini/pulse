@@ -34,6 +34,7 @@ use util::Arw;
 use dormin::render;
 use data::Data;
 use state::State;
+use data::{DataT, SceneT};
 
 #[repr(C)]
 pub struct Window;
@@ -1344,8 +1345,13 @@ impl WidgetContainer
     pub fn update_play(&mut self) -> bool
     {
         if let Some(ref mut gv) = self.gameview {
-            gv.scene.borrow_mut().update(0.01f64, &gv.input, &*self.data.resource);
+            //let scene_rc = gv.scene.clone();
+            //let mut scene = scene_rc.borrow_mut();
+            //scene.update(0.01f64, gv.get_input(), &*self.data.resource);
+            let id = gv.scene.borrow().id;
+            self.data.update_scene(id, gv.get_input());
             let was_updated = gv.update();
+            gv.clear_input();
 
             if was_updated {
                 for view in &self.views {

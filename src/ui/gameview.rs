@@ -23,7 +23,7 @@ pub struct GameView
     pub scene : Rc<RefCell<scene::Scene>>,
     name : String,
     pub state : i32,
-    pub input : input::Input,
+    input : input::Input,
     pub config : ui::WidgetConfig,
     pub loading_resource : Arc<Mutex<usize>>,
     //resource : Rc<resource::ResourceGroup>,
@@ -88,7 +88,6 @@ impl GameView {
     pub fn update(&mut self) -> bool {
         if self.state == 1 {
             unsafe { ui::jk_glview_request_update(self.glview); }
-            self.input.clear();
             true
         }
         else {
@@ -138,6 +137,16 @@ impl GameView {
         else {
             unsafe { ui::evas_object_hide(self.window); }
         }
+    }
+
+    pub fn get_input(&self) -> &input::Input
+    {
+        &self.input
+    }
+
+    pub fn clear_input(&mut self)
+    {
+        self.input.clear();
     }
 }
 
