@@ -260,11 +260,6 @@ pub extern fn init_cb(data: *const c_void) -> () {
         container.can_create_gameview()
      };
 
-    let op_cam_scene = {
-        let container = &mut *container_arw.write().unwrap();
-        container.can_create_gameview()
-     };
-
     if let Some((camera, scene)) = op_cam_scene {
         let gc = if let Some(gc) = wc.gameview {
             gc
