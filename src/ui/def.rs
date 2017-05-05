@@ -226,10 +226,52 @@ pub extern fn init_cb(data: *const c_void) -> () {
     let app_data : &AppCbData = unsafe { &*(data as *const AppCbData) };
     let container_arw = app_data.container.clone();
 
-    let mut views = Vec::new();
     let wc = WindowConfig::load();
 
-    for v in &wc.views {
+    let mut views = create_views(container_arw.clone(), &wc.views);
+    init_views(container_arw.clone(), &wc, &mut views);
+
+    {
+        let container = &mut *container_arw.write().unwrap();
+        container.views = views;
+    }
+
+    init_gameview(container_arw.clone(), &wc.gameview.clone().unwrap_or_default());
+
+    let path = CString::new("shader".as_bytes()).unwrap();
+    unsafe { jk_monitor_add(file_changed, Box::into_raw(box container_arw.clone()) as *const c_void, path.as_ptr()); }
+}
+
+fn init_gameview(container_arw : Arw<WidgetContainer>, gameview_config : &WidgetConfig)
+{
+    let op_cam_scene = {
+        let container = &mut *container_arw.write().unwrap();
+        container.can_create_gameview()
+     };
+
+    if let Some((camera, scene)) = op_cam_scene {
+
+        let gv = create_gameview_window(
+            container_arw.clone(),
+            camera,
+            scene,
+            &gameview_config);
+
+        let container = &mut *container_arw.write().unwrap();
+        container.set_gameview(gv);
+
+        println!("ADDDDDDDD animator");
+        unsafe {
+            //ui::ecore_animator_add(ui::update_play_cb, mem::transmute(wcb.container));
+        }
+    }
+}
+
+fn create_views(container_arw : Arw<WidgetContainer>, views_config : &[ViewConfig]) -> Vec<Box<View>>
+{
+    let mut views = Vec::with_capacity(views_config.len());
+
+    for v in views_config {
         let container = &mut *container_arw.write().unwrap();
 
         let dragger = Rc::new(RefCell::new(dragger::DraggerManager::new(&container.data.factory, &*container.resource)));
@@ -255,33 +297,11 @@ pub extern fn init_cb(data: *const c_void) -> () {
         container.set_scene(scene);
     }
 
-    let op_cam_scene = {
-        let container = &mut *container_arw.write().unwrap();
-        container.can_create_gameview()
-     };
+    views
+}
 
-    if let Some((camera, scene)) = op_cam_scene {
-        let gc = if let Some(gc) = wc.gameview {
-            gc
-        }
-        else {
-            WidgetConfig::new()
-        };
-        let gv = create_gameview_window(
-            container_arw.clone(),
-            camera,
-            scene,
-            &gc);
-
-        let container = &mut *container_arw.write().unwrap();
-        container.set_gameview(gv);
-
-        println!("ADDDDDDDD animator");
-        unsafe {
-            //ui::ecore_animator_add(ui::update_play_cb, mem::transmute(wcb.container));
-        }
-    }
-
+fn init_views(container_arw : Arw<WidgetContainer>, wc : &WindowConfig, views : &mut [Box<View>])
+{
     //for v in &mut views {
     for (i,v) in views.iter_mut().enumerate() {
         let v : &mut Box<View> = v;
@@ -305,7 +325,8 @@ pub extern fn init_cb(data: *const c_void) -> () {
         //let container = &mut *app_data.container.write().unwrap();
         //container.list.create(win);
 
-        app_data.container.write().unwrap().list.create(win);
+        //app_data.container.write().unwrap().list.create(win);
+        container_arw.write().unwrap().list.create(win);
         }
 
         v.init(win);
@@ -338,11 +359,6 @@ pub extern fn init_cb(data: *const c_void) -> () {
         }
     }
 
-    let container = &mut *container_arw.write().unwrap();
-    container.views = views;
-
-    let path = CString::new("shader".as_bytes()).unwrap();
-    unsafe { jk_monitor_add(file_changed, Box::into_raw(box container_arw.clone()) as *const c_void, path.as_ptr()); }
 }
 
 fn init_property(container : &Arw<WidgetContainer>, win : *const Window, pc : &WidgetPanelConfig)
@@ -507,7 +523,14 @@ impl WidgetConfig
             visible : true
         }
     }
+}
 
+impl Default for WidgetConfig
+{
+    fn default() -> WidgetConfig 
+    {
+        WidgetConfig::new()
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone)]
