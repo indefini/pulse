@@ -17,21 +17,16 @@ use std::ffi::{CString,CStr};
 use uuid::Uuid;
 
 use dormin;
-use dormin::vec;
-use dormin::scene;
-use dormin::object;
+use dormin::{vec, scene, object, camera, component, render, resource};
 use ui::{Tree,RefMut,PropertyUser,View,Command,Action,GameView,
 PropertyWidget,PropertyBox};
 use ui;
 use operation;
-use dormin::camera;
 
 use uuid;
-use dormin::component;
 use dragger;
 use util;
 use util::Arw;
-use dormin::render;
 use data::Data;
 use state::State;
 use data::{DataT, SceneT};
@@ -237,12 +232,12 @@ pub extern fn init_cb(data: *const c_void) -> () {
     for v in &wc.views {
         let container = &mut *container_arw.write().unwrap();
 
-        let dragger = Rc::new(RefCell::new(dragger::DraggerManager::new(&container.data.factory, &*container.data.resource)));
+        let dragger = Rc::new(RefCell::new(dragger::DraggerManager::new(&container.data.factory, &*container.resource)));
         let camera = Rc::new(RefCell::new(v.camera.clone()));
-        let render = box render::Render::new(&container.data.factory, container.data.resource.clone(), camera.clone());
+        let render = box render::Render::new(&container.data.factory, container.resource.clone(), camera.clone());
 
         let view = box View::new(
-            container.data.resource.clone(),
+            container.resource.clone(),
             dragger,
             render,
             v.window.w,
@@ -865,6 +860,7 @@ pub struct WidgetContainer
     pub anim : Option<*const Ecore_Animator>,
 
     pub data : Data<Rc<RefCell<scene::Scene>>>,
+    pub resource : Rc<resource::ResourceGroup>,
     pub state : State
 }
 
@@ -887,6 +883,7 @@ impl WidgetContainer
             anim : None,
 
             data : Data::new(),
+            resource : Rc::new(resource::ResourceGroup::new()),
             state : State::new()
 
         }
@@ -927,7 +924,7 @@ impl WidgetContainer
                         let omr = ob.get_comp_data_value::<component::mesh_render::MeshRender>();
                         if let Some(ref mr) = omr {
                             ob.mesh_render =
-                                Some(component::mesh_render::MeshRenderer::with_mesh_render(mr,&self.data.resource));
+                                Some(component::mesh_render::MeshRenderer::with_mesh_render(mr,&self.resource));
                         }
                     }
                 }
@@ -1046,7 +1043,7 @@ impl WidgetContainer
                             let omr = ob.get_comp_data_value::<component::mesh_render::MeshRender>();
                             if let Some(ref mr) = omr {
                                 ob.mesh_render =
-                                    Some(component::mesh_render::MeshRenderer::with_mesh_render(mr,&self.data.resource));
+                                    Some(component::mesh_render::MeshRenderer::with_mesh_render(mr,&self.resource));
                             }
                     }
                 }
@@ -1314,7 +1311,7 @@ impl WidgetContainer
 
         let scene = if let Some(ref mut s) = self.state.context.scene {
             let mut scene = s.clone();
-            scene.init_for_play(&self.data.resource);
+            scene.init_for_play(&self.resource);
             scene
         }
         else {
@@ -1346,7 +1343,9 @@ impl WidgetContainer
     {
         if let Some(ref mut gv) = self.gameview {
             let id = gv.scene.borrow().id;
-            self.data.update_scene(id, gv.get_input());
+            if let Some(scene) = self.data.get_scene_mut(id) {
+                scene.update(0.01f64, gv.get_input(), &*self.resource);
+            }
             let was_updated = gv.update();
             gv.clear_input();
 
@@ -1757,7 +1756,7 @@ pub extern fn file_changed(
     let mut should_update_views = false;
     if s.ends_with(".frag") || s.ends_with(".vert") {
         println!("file changed : {}", s);
-        let mut shader_manager = container.data.resource.shader_manager.borrow_mut();
+        let mut shader_manager = container.resource.shader_manager.borrow_mut();
 
         for shader in shader_manager.loaded_iter_mut() {
             let mut reload = false;
@@ -1800,7 +1799,7 @@ pub fn create_gameview_window(
 
     let container : &mut ui::WidgetContainer = &mut *container.write().unwrap();
 
-    let render = box render::GameRender::new(camera, container.data.resource.clone());
+    let render = box render::GameRender::new(camera, container.resource.clone());
 
     ui::gameview::GameView::new(
         win,
@@ -1830,7 +1829,7 @@ fn check_mesh(name : &str, wc : &WidgetContainer, id : uuid::Uuid)
             let omr = ob.get_comp_data_value::<component::mesh_render::MeshRender>();
             if let Some(ref mr) = omr {
                 ob.mesh_render =
-                    Some(component::mesh_render::MeshRenderer::with_mesh_render(mr,&wc.data.resource));
+                    Some(component::mesh_render::MeshRenderer::with_mesh_render(mr,&wc.resource));
             }
             else {
                 ob.mesh_render = None;

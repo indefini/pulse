@@ -278,11 +278,6 @@ impl DataT<Rc<RefCell<scene::Scene>>> for Dispatcher {
 
         None
     }
-
-    fn update_scene(&mut self, id : uuid::Uuid, input : &input::Input)
-    {
-        //TODO
-    }
 }
 
 

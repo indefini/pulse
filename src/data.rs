@@ -6,8 +6,7 @@ use std::fs;
 use uuid;
 
 use dormin;
-use dormin::{vec, resource, scene, factory};
-use dormin::{world};
+use dormin::{vec, resource, scene, factory, world};
 use context;
 use util;
 use dormin::input;
@@ -20,7 +19,6 @@ pub type DataOld = Data<Rc<RefCell<scene::Scene>>>;
 pub struct Data<S:SceneT>
 {
     pub factory : factory::Factory,
-    pub resource : Rc<resource::ResourceGroup>,
     pub scenes : HashMap<String, S>,
 
     pub worlds : HashMap<String, Box<dormin::world::World>>,
@@ -71,7 +69,6 @@ impl SceneT for world::World {
 pub trait DataT<S : SceneT> {
     fn get_scene(&self, id : S::Id) -> Option<&S>;
     fn get_scene_mut(&mut self, id : S::Id) -> Option<&mut S>;
-    fn update_scene(&mut self, id : S::Id, input : &input::Input);
 }
 
 impl<S:SceneT> DataT<S> for Data<S>
@@ -97,16 +94,6 @@ impl<S:SceneT> DataT<S> for Data<S>
 
         None
     }
-
-    fn update_scene(&mut self, id : S::Id, input : &input::Input)
-    {
-        for s in self.scenes.values_mut() {
-            if s.to_id() == id {
-                s.update(0.01f64, input, &self.resource);
-                return;
-            }
-        }
-    }
 }
 
 impl<S:SceneT> Data<S> {
@@ -114,7 +101,6 @@ impl<S:SceneT> Data<S> {
     pub fn new() -> Data<S> {
         Data {
             factory : factory::Factory::new(),
-            resource : Rc::new(resource::ResourceGroup::new()),
             scenes : HashMap::new(),
 
             worlds : HashMap::new(),
