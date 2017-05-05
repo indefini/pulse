@@ -159,7 +159,7 @@ impl Data<Rc<RefCell<scene::Scene>>>
     {
         self.scenes.entry(String::from(name)).or_insert(
             {
-                let mut ns = scene::Scene::new_from_file(name, &*self.resource);
+                let mut ns = scene::Scene::new_from_file(name);
 
                 if let None = ns.camera {
                     let mut cam = self.factory.create_camera();
