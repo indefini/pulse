@@ -1318,7 +1318,7 @@ impl WidgetContainer
         }
     }
 
-    pub fn can_create_gameview(&mut self) -> Option<Rc<RefCell<scene::Scene>>>
+    fn can_create_gameview(&mut self) -> Option<Rc<RefCell<scene::Scene>>>
     {
         if self.gameview.is_some() {
             return None;

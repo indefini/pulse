@@ -244,6 +244,9 @@ pub extern fn open_game_view(data : *const c_void)
         return;
     }
 
+    //TODO I think we don't need this now that we create the gameview in ui::init_cb
+    // check for a while and then erase 2017-05-06
+    /*
     let scene = if let Some(scene) = container.can_create_gameview() {
         scene
     }
@@ -254,6 +257,7 @@ pub extern fn open_game_view(data : *const c_void)
     let gv = ui::create_gameview_window(wcb.container.clone(), scene, &ui::WidgetConfig::new());
 
     container.set_gameview(gv);
+    */
 }
 
 pub extern fn play_scene(data : *const c_void)
@@ -271,6 +275,9 @@ pub extern fn play_scene(data : *const c_void)
         return;
     }
 
+    //TODO I think we don't need this now that we create the gameview in ui::init_cb
+    // check for a while and then erase 2017-05-06
+    /*
     let scene = if let Some(scene) = container.can_create_gameview() {
         scene
     }
@@ -288,6 +295,7 @@ pub extern fn play_scene(data : *const c_void)
             ui::ecore_animator_add(ui::update_play_cb, mem::transmute(wcb.container.clone()))
         });
     }
+    */
 }
 
 pub extern fn pause_scene(data : *const c_void)
