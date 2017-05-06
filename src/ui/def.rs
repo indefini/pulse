@@ -1334,17 +1334,6 @@ impl WidgetContainer
         };
 
         Some(scene)
-
-            /*
-        let camera = if let Some(ref c) = scene.borrow().camera {
-            c.clone()
-        }
-        else {
-            return None;
-        };
-
-        Some((camera, scene))
-        */
     }
 
     pub fn set_gameview(&mut self, gv : Box<ui::GameView>)
