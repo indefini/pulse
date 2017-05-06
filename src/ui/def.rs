@@ -1790,7 +1790,7 @@ pub extern fn file_changed(
     }
 }
 
-pub fn create_gameview_window(
+fn create_gameview_window(
     container : Arw<ui::WidgetContainer>,
     scene : Rc<RefCell<scene::Scene>>,
     config : &WidgetConfig
