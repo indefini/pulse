@@ -306,7 +306,7 @@ pub extern fn pause_scene(data : *const c_void)
 
 
     if let Some(ref mut gv) = container.gameview {
-        gv.state = 0;
+        gv.pause();
         //pause
     }
 }

@@ -30,6 +30,7 @@ use util::Arw;
 use data::Data;
 use state::State;
 use data::{DataT, SceneT};
+use ui::gameview::GameViewTrait;
 
 #[repr(C)]
 pub struct Window;
@@ -664,12 +665,12 @@ pub extern fn exit_cb(data: *const c_void) -> ()
 
 pub trait Widget
 {
-    fn update(&self, change : operation::Change)
+    fn handle_change(&self, change : operation::Change)
     {
         println!("please implement me");
     }
 
-    fn set_visible(&self, b : bool)
+    fn set_visible(&mut self, b : bool)
     {
         println!("please implement me");
     }
@@ -680,6 +681,11 @@ pub trait Widget
     }
 
     fn get_id(&self) -> Uuid;
+
+    fn get_config(&self) -> ui::WidgetConfig
+    {
+        ui::WidgetConfig::default()
+    }
 }
 
 pub struct WidgetPanel<T>
@@ -867,7 +873,7 @@ pub struct WidgetContainer
     pub command : Option<Box<Command>>,
     pub action : Option<Box<Action>>,
     pub views : Vec<Box<View>>,
-    pub gameview : Option<Box<GameView>>,
+    pub gameview : Option<Box<GameViewTrait>>,
     pub menu : Option<Box<Action>>,
 
     pub list : Box<ListWidget>,
@@ -1299,7 +1305,7 @@ impl WidgetContainer
     pub fn play_gameview(&mut self) -> bool
     {
         if let Some(ref mut gv) = self.gameview {
-            gv.state = 1;
+            gv.play();
             true
         }
         else {
@@ -1350,12 +1356,11 @@ impl WidgetContainer
     pub fn update_play(&mut self) -> bool
     {
         if let Some(ref mut gv) = self.gameview {
-            let id = gv.scene.borrow().id;
+            let id = gv.get_scene_id();
             if let Some(scene) = self.data.get_scene_mut(id) {
                 scene.update(0.01f64, gv.get_input(), &*self.resource);
             }
             let was_updated = gv.update();
-            gv.clear_input();
 
             if was_updated {
                 for view in &self.views {

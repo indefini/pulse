@@ -4,6 +4,7 @@ use std::sync::{RwLock, Arc,Mutex};
 use libc::{c_char, c_void, c_int, c_uint};
 use std::mem;
 use std::ptr;
+use uuid;
 
 use ui;
 use dormin::render::{Render, GameRender};
@@ -12,8 +13,91 @@ use dormin::camera;
 use dormin::scene;
 use util::Arw;
 use dormin::input;
+use ui::def::Widget;
 
 
+pub trait GameViewTrait : ui::Widget {
+    fn play(&mut self);
+    fn pause(&mut self);
+    fn stop(&mut self);
+    //TODO change id
+    fn get_scene_id(&self) -> uuid::Uuid;
+
+    //TODO check if this belong here.
+    fn update(&mut self) -> bool;
+    fn get_input(&self) -> &input::Input;
+    fn request_update(&self);
+}
+
+impl ui::Widget for GameView {
+
+    fn set_visible(&mut self, b : bool)
+    {
+        self.config.visible = b;
+
+        if b {
+            unsafe { ui::evas_object_show(self.window); }
+        }
+        else {
+            unsafe { ui::evas_object_hide(self.window); }
+        }
+    }
+
+    fn get_id(&self) -> uuid::Uuid
+    {
+        println!("TODO uuid");
+        uuid::Uuid::nil()
+    }
+
+    fn get_config(&self) -> ui::WidgetConfig
+    {
+        self.config.clone()
+    }
+}
+
+impl GameViewTrait for GameView {
+
+    fn play(&mut self)
+    {
+        self.state = 1;
+    }
+
+    fn pause(&mut self)
+    {
+        self.state = 0;
+    }
+
+    fn stop(&mut self)
+    {
+        println!("TODO gameview stop");
+    }
+
+    fn get_scene_id(&self) -> uuid::Uuid
+    {
+        self.scene.borrow().id
+    }
+
+    fn update(&mut self) -> bool {
+        self.clear_input();
+        if self.state == 1 {
+            self.request_update();
+            true
+        }
+        else {
+            false
+        }
+    }
+
+    fn get_input(&self) -> &input::Input
+    {
+        &self.input
+    }
+
+    fn request_update(&self)
+    {
+        unsafe { ui::jk_glview_request_update(self.glview); }
+    }
+}
 
 pub struct GameView
 {
@@ -83,23 +167,7 @@ impl GameView {
 
         return v;
     }
-
-    pub fn update(&mut self) -> bool {
-        if self.state == 1 {
-            unsafe { ui::jk_glview_request_update(self.glview); }
-            true
-        }
-        else {
-            //unsafe { jk_glview_request_update(self.glview); }
-            false
-        }
-    }
-    
-    pub fn request_update(&self)
-    {
-        unsafe { ui::jk_glview_request_update(self.glview); }
-    }
-
+ 
     fn draw(&mut self) -> bool
     {
         self.render.draw(&self.scene.borrow().objects, self.loading_resource.clone())
@@ -119,28 +187,6 @@ impl GameView {
     pub fn visible(&self) -> bool
     {
         self.config.visible
-    }
-
-    pub fn get_config(&self) -> ui::WidgetConfig
-    {
-        self.config.clone()
-    }
-
-    pub fn set_visible(&mut self, b : bool)
-    {
-        self.config.visible = b;
-
-        if b {
-            unsafe { ui::evas_object_show(self.window); }
-        }
-        else {
-            unsafe { ui::evas_object_hide(self.window); }
-        }
-    }
-
-    pub fn get_input(&self) -> &input::Input
-    {
-        &self.input
     }
 
     pub fn clear_input(&mut self)

@@ -8,6 +8,7 @@ use std::ptr;
 use uuid;
 
 use ui;
+use ui::def::Widget;
 use dormin::resource;
 use dormin::camera;
 use util::Arw;
