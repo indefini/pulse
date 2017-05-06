@@ -242,31 +242,6 @@ pub extern fn init_cb(data: *const c_void) -> () {
     unsafe { jk_monitor_add(file_changed, Box::into_raw(box container_arw.clone()) as *const c_void, path.as_ptr()); }
 }
 
-fn init_gameview(container_arw : Arw<WidgetContainer>, gameview_config : &WidgetConfig)
-{
-    let op_cam_scene = {
-        let container = &mut *container_arw.write().unwrap();
-        container.can_create_gameview()
-     };
-
-    if let Some((camera, scene)) = op_cam_scene {
-
-        let gv = create_gameview_window(
-            container_arw.clone(),
-            camera,
-            scene,
-            &gameview_config);
-
-        let container = &mut *container_arw.write().unwrap();
-        container.set_gameview(gv);
-
-        println!("ADDDDDDDD animator");
-        unsafe {
-            //ui::ecore_animator_add(ui::update_play_cb, mem::transmute(wcb.container));
-        }
-    }
-}
-
 fn create_views(container_arw : Arw<WidgetContainer>, views_config : &[ViewConfig]) -> Vec<Box<View>>
 {
     let mut views = Vec::with_capacity(views_config.len());
@@ -488,6 +463,29 @@ fn init_action(container : &Arw<WidgetContainer>, win : *const Window, view_id :
     //container.list.create(w);
 }
 
+fn init_gameview(container_arw : Arw<WidgetContainer>, gameview_config : &WidgetConfig)
+{
+    let op_scene = {
+        let container = &mut *container_arw.write().unwrap();
+        container.can_create_gameview()
+     };
+
+    if let Some(scene) = op_scene {
+
+        let gv = create_gameview_window(
+            container_arw.clone(),
+            scene,
+            &gameview_config);
+
+        let container = &mut *container_arw.write().unwrap();
+        container.set_gameview(gv);
+
+        println!("ADDDDDDDD animator");
+        unsafe {
+            //ui::ecore_animator_add(ui::update_play_cb, mem::transmute(wcb.container));
+        }
+    }
+}
 #[derive(Serialize, Deserialize, Clone)]
 pub struct WidgetConfig
 {
@@ -1320,8 +1318,7 @@ impl WidgetContainer
         }
     }
 
-    pub fn can_create_gameview(&mut self) ->
-        Option<(Rc<RefCell<camera::Camera>>, Rc<RefCell<scene::Scene>>)>
+    pub fn can_create_gameview(&mut self) -> Option<Rc<RefCell<scene::Scene>>>
     {
         if self.gameview.is_some() {
             return None;
@@ -1336,6 +1333,9 @@ impl WidgetContainer
             return None;
         };
 
+        Some(scene)
+
+            /*
         let camera = if let Some(ref c) = scene.borrow().camera {
             c.clone()
         }
@@ -1344,6 +1344,7 @@ impl WidgetContainer
         };
 
         Some((camera, scene))
+        */
     }
 
     pub fn set_gameview(&mut self, gv : Box<ui::GameView>)
@@ -1802,7 +1803,6 @@ pub extern fn file_changed(
 
 pub fn create_gameview_window(
     container : Arw<ui::WidgetContainer>,
-    camera : Rc<RefCell<camera::Camera>>,
     scene : Rc<RefCell<scene::Scene>>,
     config : &WidgetConfig
     ) -> Box<ui::gameview::GameView>
@@ -1817,7 +1817,7 @@ pub fn create_gameview_window(
 
     let container : &mut ui::WidgetContainer = &mut *container.write().unwrap();
 
-    let render = box render::GameRender::new(camera, container.resource.clone());
+    let render = box render::GameRender::new(scene.borrow().camera.clone().unwrap(), container.resource.clone());
 
     ui::gameview::GameView::new(
         win,

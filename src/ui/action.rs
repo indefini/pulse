@@ -215,8 +215,7 @@ pub extern fn scene_list(data : *const c_void)
 {
     let wcb : & ui::WidgetCbData = unsafe {mem::transmute(data)};
     let action : &Action = unsafe {mem::transmute(wcb.widget)};
-    //let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
-    let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
+    //let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
 
     ui::scene_list(&wcb.container, action.view_id, wcb.object);
 }
@@ -238,22 +237,21 @@ pub extern fn scene_rename(data : *const c_void, name : *const c_char)
 pub extern fn open_game_view(data : *const c_void)
 {
     let wcb : & ui::WidgetCbData = unsafe {mem::transmute(data)};
-    let action : &Action = unsafe {mem::transmute(wcb.widget)};
-    //let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
+    //let action : &Action = unsafe {mem::transmute(wcb.widget)};
     let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
 
     if container.open_gameview() {
         return;
     }
 
-    let (camera, scene) = if let Some((camera, scene)) = container.can_create_gameview() {
-        (camera, scene)
+    let scene = if let Some(scene) = container.can_create_gameview() {
+        scene
     }
     else {
         return;
     };
 
-    let gv = ui::create_gameview_window(wcb.container.clone(), camera, scene, &ui::WidgetConfig::new());
+    let gv = ui::create_gameview_window(wcb.container.clone(), scene, &ui::WidgetConfig::new());
 
     container.set_gameview(gv);
 }
@@ -273,14 +271,14 @@ pub extern fn play_scene(data : *const c_void)
         return;
     }
 
-    let (camera, scene) = if let Some((camera, scene)) = container.can_create_gameview() {
-        (camera, scene)
+    let scene = if let Some(scene) = container.can_create_gameview() {
+        scene
     }
     else {
         return;
     };
 
-    let gv = ui::create_gameview_window(wcb.container.clone(), camera, scene, &ui::WidgetConfig::new());
+    let gv = ui::create_gameview_window(wcb.container.clone(), scene, &ui::WidgetConfig::new());
     container.set_gameview(gv);
 
     //println!("ADDDDDDDD animator");
