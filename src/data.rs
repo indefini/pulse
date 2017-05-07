@@ -25,7 +25,7 @@ pub struct Data<S:SceneT>
 }
 
 pub trait SceneT : ToId<<Self as SceneT>::Id> {
-    type Id : Default + Eq;
+    type Id : Default + Eq + Clone;
     fn init_for_play(&mut self, resource : &resource::ResourceGroup);
     fn update(&mut self, dt : f64, input : &input::Input, &resource::ResourceGroup);
 }
@@ -217,7 +217,7 @@ pub fn create_scene_name(name : String) -> String
     s
 }
 
-pub trait ToId<I> {
+pub trait ToId<I : Clone> {
     fn to_id(&self) -> I;
 }
 

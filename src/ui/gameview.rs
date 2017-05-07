@@ -14,14 +14,15 @@ use dormin::scene;
 use util::Arw;
 use dormin::input;
 use ui::def::Widget;
+use data;
+use data::{Data,DataT,SceneT};
 
 
-pub trait GameViewTrait : ui::Widget {
+pub trait GameViewTrait<S:SceneT> : ui::Widget {
     fn play(&mut self);
     fn pause(&mut self);
     fn stop(&mut self);
-    //TODO change id
-    fn get_scene_id(&self) -> uuid::Uuid;
+    fn get_scene_id(&self) -> S::Id;
 
     //TODO check if this belong here.
     fn update(&mut self) -> bool;
@@ -30,7 +31,7 @@ pub trait GameViewTrait : ui::Widget {
 }
 
 impl ui::Widget for GameView {
-
+ 
     fn set_visible(&mut self, b : bool)
     {
         self.config.visible = b;
@@ -55,7 +56,7 @@ impl ui::Widget for GameView {
     }
 }
 
-impl GameViewTrait for GameView {
+impl GameViewTrait<Rc<RefCell<scene::Scene>>> for GameView {
 
     fn play(&mut self)
     {

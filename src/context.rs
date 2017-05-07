@@ -57,7 +57,7 @@ impl<S : Clone, O, I> Context<S,O,I>
     }
 }
 
-impl<S, O : ToId<I> + Clone, I : Eq> Context<S, O, I>
+impl<S, O : ToId<I> + Clone, I : Eq+Clone> Context<S, O, I>
 {
     pub fn get_vec_selected_ids(&self) -> Vec<I>
     {

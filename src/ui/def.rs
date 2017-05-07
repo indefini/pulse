@@ -873,7 +873,7 @@ pub struct WidgetContainer
     pub command : Option<Box<Command>>,
     pub action : Option<Box<Action>>,
     pub views : Vec<Box<View>>,
-    pub gameview : Option<Box<GameViewTrait>>,
+    pub gameview : Option<Box<GameViewTrait<Rc<RefCell<scene::Scene>>>>>,
     pub menu : Option<Box<Action>>,
 
     pub list : Box<ListWidget>,

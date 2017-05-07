@@ -65,30 +65,37 @@ pub struct View2<R, S : SceneT>
 {
     window : *const ui::Evas_Object,
     glview : *const ui::JkGlview,
+    id : uuid::Uuid,
 
     scene_id : S::Id,
     render : R,
 
+    pub config : ui::WidgetConfig,
     pub state : i32,
     pub loading_resource : Arc<Mutex<usize>>,
+    input : input::Input,
 }
 
 impl<R, S:SceneT> View2<R,S> {
     pub fn new(
         win : *const ui::Evas_Object,
         dispatcher : Rc<Dispatcher>,
+        config : ui::WidgetConfig,
         r : R ) -> Box<Box<View2<R,S>>> where Dispatcher : DataT<S>
     {
         //let render = box GameRender::new(camera, resource.clone());
 
         let mut v = box box View2 {
             window : win,
+            id : uuid::Uuid::new_v4(),
             //name : "cacayop".to_owned(),
-            state : 0,
             scene_id : Default::default(),
             render : r,
             glview : ptr::null(),
+            config : config,
+            state : 0,
             loading_resource : Arc::new(Mutex::new(0)),
+            input : input::Input::new(),
             //camera : camera todo
         };
 
@@ -297,3 +304,76 @@ impl<S:SceneT> GlViewData<S> {
         }
     }
 }
+
+impl<R,S:SceneT> ui::Widget for View2<R,S> {
+
+    fn set_visible(&mut self, b : bool)
+    {
+        self.config.visible = b;
+
+        if b {
+            unsafe { ui::evas_object_show(self.window); }
+        }
+        else {
+            unsafe { ui::evas_object_hide(self.window); }
+        }
+    }
+
+    fn get_id(&self) -> uuid::Uuid
+    {
+        self.id
+    }
+
+    fn get_config(&self) -> ui::WidgetConfig
+    {
+        self.config.clone()
+    }
+}
+
+impl<R, S:SceneT>  ui::gameview::GameViewTrait<S> for View2<R,S> {
+
+    fn play(&mut self)
+    {
+        self.state = 1;
+    }
+
+    fn pause(&mut self)
+    {
+        self.state = 0;
+    }
+
+    fn stop(&mut self)
+    {
+        println!("TODO gameview stop");
+    }
+
+    fn get_scene_id(&self) -> S::Id
+    {
+        self.scene_id.clone()
+    }
+
+    fn update(&mut self) -> bool {
+        /*
+        self.clear_input();
+        if self.state == 1 {
+            self.request_update();
+            true
+        }
+        else {
+            false
+        }
+        */
+        false
+    }
+
+    fn get_input(&self) -> &input::Input
+    {
+        &self.input
+    }
+
+    fn request_update(&self)
+    {
+        unsafe { ui::jk_glview_request_update(self.glview); }
+    }
+}
+
