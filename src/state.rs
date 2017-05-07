@@ -482,7 +482,7 @@ impl State {
         };
 
         let cp = if component_name == "MeshRender" {
-            box component::CompData::MeshRender(component::mesh_render::MeshRender::new("model/skeletonmesh.mesh", "material/simple.mat"))
+            box component::CompData::MeshRender(component::mesh_render::MeshRender::with_names_only("model/skeletonmesh.mesh", "material/simple.mat"))
         }
         else {
             return operation::Change::None;

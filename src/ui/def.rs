@@ -945,8 +945,7 @@ impl WidgetContainer
                         let mut ob = o.write().unwrap();
                         let omr = ob.get_comp_data_value::<component::mesh_render::MeshRender>();
                         if let Some(ref mr) = omr {
-                            ob.mesh_render =
-                                Some(component::mesh_render::MeshRenderer::with_mesh_render(mr,&self.resource));
+                            ob.mesh_render = Some(mr.clone());
                         }
                     }
                 }
@@ -1064,8 +1063,7 @@ impl WidgetContainer
                             println!("please update mesh");
                             let omr = ob.get_comp_data_value::<component::mesh_render::MeshRender>();
                             if let Some(ref mr) = omr {
-                                ob.mesh_render =
-                                    Some(component::mesh_render::MeshRenderer::with_mesh_render(mr,&self.resource));
+                                ob.mesh_render = Some(mr.clone());
                             }
                     }
                 }
@@ -1840,8 +1838,7 @@ fn check_mesh(name : &str, wc : &WidgetContainer, id : uuid::Uuid)
             println!("please update mesh");
             let omr = ob.get_comp_data_value::<component::mesh_render::MeshRender>();
             if let Some(ref mr) = omr {
-                ob.mesh_render =
-                    Some(component::mesh_render::MeshRenderer::with_mesh_render(mr,&wc.resource));
+                ob.mesh_render = Some(mr.clone());
             }
             else {
                 ob.mesh_render = None;
