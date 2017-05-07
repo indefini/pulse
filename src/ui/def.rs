@@ -17,23 +17,20 @@ use std::ffi::{CString,CStr};
 use uuid::Uuid;
 
 use dormin;
-use dormin::vec;
-use dormin::scene;
-use dormin::object;
+use dormin::{vec, scene, object, camera, component, render, resource};
 use ui::{Tree,RefMut,PropertyUser,View,Command,Action,GameView,
 PropertyWidget,PropertyBox};
 use ui;
 use operation;
-use dormin::camera;
 
 use uuid;
-use dormin::component;
 use dragger;
 use util;
 use util::Arw;
-use dormin::render;
 use data::Data;
 use state::State;
+use data::{DataT, SceneT};
+use ui::gameview::GameViewTrait;
 
 #[repr(C)]
 pub struct Window;
@@ -230,18 +227,35 @@ pub extern fn init_cb(data: *const c_void) -> () {
     let app_data : &AppCbData = unsafe { &*(data as *const AppCbData) };
     let container_arw = app_data.container.clone();
 
-    let mut views = Vec::new();
     let wc = WindowConfig::load();
 
-    for v in &wc.views {
+    let mut views = create_views(container_arw.clone(), &wc.views);
+    init_views(container_arw.clone(), &wc, &mut views);
+
+    {
+        let container = &mut *container_arw.write().unwrap();
+        container.views = views;
+    }
+
+    init_gameview(container_arw.clone(), &wc.gameview.clone().unwrap_or_default());
+
+    let path = CString::new("shader".as_bytes()).unwrap();
+    unsafe { jk_monitor_add(file_changed, Box::into_raw(box container_arw.clone()) as *const c_void, path.as_ptr()); }
+}
+
+fn create_views(container_arw : Arw<WidgetContainer>, views_config : &[ViewConfig]) -> Vec<Box<View>>
+{
+    let mut views = Vec::with_capacity(views_config.len());
+
+    for v in views_config {
         let container = &mut *container_arw.write().unwrap();
 
-        let dragger = Rc::new(RefCell::new(dragger::DraggerManager::new(&container.data.factory, &*container.data.resource)));
+        let dragger = Rc::new(RefCell::new(dragger::DraggerManager::new(&container.data.factory, &*container.resource)));
         let camera = Rc::new(RefCell::new(v.camera.clone()));
-        let render = box render::Render::new(&container.data.factory, container.data.resource.clone(), camera.clone());
+        let render = box render::Render::new(&container.data.factory, container.resource.clone(), camera.clone());
 
         let view = box View::new(
-            container.data.resource.clone(),
+            container.resource.clone(),
             dragger,
             render,
             v.window.w,
@@ -259,38 +273,11 @@ pub extern fn init_cb(data: *const c_void) -> () {
         container.set_scene(scene);
     }
 
-    let op_cam_scene = {
-        let container = &mut *container_arw.write().unwrap();
-        container.can_create_gameview()
-     };
+    views
+}
 
-    let op_cam_scene = {
-        let container = &mut *container_arw.write().unwrap();
-        container.can_create_gameview()
-     };
-
-    if let Some((camera, scene)) = op_cam_scene {
-        let gc = if let Some(gc) = wc.gameview {
-            gc
-        }
-        else {
-            WidgetConfig::new()
-        };
-        let gv = create_gameview_window(
-            container_arw.clone(),
-            camera,
-            scene,
-            &gc);
-
-        let container = &mut *container_arw.write().unwrap();
-        container.set_gameview(gv);
-
-        println!("ADDDDDDDD animator");
-        unsafe {
-            //ui::ecore_animator_add(ui::update_play_cb, mem::transmute(wcb.container));
-        }
-    }
-
+fn init_views(container_arw : Arw<WidgetContainer>, wc : &WindowConfig, views : &mut [Box<View>])
+{
     //for v in &mut views {
     for (i,v) in views.iter_mut().enumerate() {
         let v : &mut Box<View> = v;
@@ -314,7 +301,8 @@ pub extern fn init_cb(data: *const c_void) -> () {
         //let container = &mut *app_data.container.write().unwrap();
         //container.list.create(win);
 
-        app_data.container.write().unwrap().list.create(win);
+        //app_data.container.write().unwrap().list.create(win);
+        container_arw.write().unwrap().list.create(win);
         }
 
         v.init(win);
@@ -347,11 +335,6 @@ pub extern fn init_cb(data: *const c_void) -> () {
         }
     }
 
-    let container = &mut *container_arw.write().unwrap();
-    container.views = views;
-
-    let path = CString::new("shader".as_bytes()).unwrap();
-    unsafe { jk_monitor_add(file_changed, Box::into_raw(box container_arw.clone()) as *const c_void, path.as_ptr()); }
 }
 
 fn init_property(container : &Arw<WidgetContainer>, win : *const Window, pc : &WidgetPanelConfig)
@@ -481,6 +464,29 @@ fn init_action(container : &Arw<WidgetContainer>, win : *const Window, view_id :
     //container.list.create(w);
 }
 
+fn init_gameview(container_arw : Arw<WidgetContainer>, gameview_config : &WidgetConfig)
+{
+    let op_scene = {
+        let container = &mut *container_arw.write().unwrap();
+        container.can_create_gameview()
+     };
+
+    if let Some(scene) = op_scene {
+
+        let gv = create_gameview_window(
+            container_arw.clone(),
+            scene,
+            &gameview_config);
+
+        let container = &mut *container_arw.write().unwrap();
+        container.set_gameview(gv);
+
+        println!("ADDDDDDDD animator");
+        unsafe {
+            //ui::ecore_animator_add(ui::update_play_cb, mem::transmute(wcb.container));
+        }
+    }
+}
 #[derive(Serialize, Deserialize, Clone)]
 pub struct WidgetConfig
 {
@@ -516,7 +522,14 @@ impl WidgetConfig
             visible : true
         }
     }
+}
 
+impl Default for WidgetConfig
+{
+    fn default() -> WidgetConfig 
+    {
+        WidgetConfig::new()
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -652,12 +665,12 @@ pub extern fn exit_cb(data: *const c_void) -> ()
 
 pub trait Widget
 {
-    fn update(&self, change : operation::Change)
+    fn handle_change(&self, change : operation::Change)
     {
         println!("please implement me");
     }
 
-    fn set_visible(&self, b : bool)
+    fn set_visible(&mut self, b : bool)
     {
         println!("please implement me");
     }
@@ -668,6 +681,11 @@ pub trait Widget
     }
 
     fn get_id(&self) -> Uuid;
+
+    fn get_config(&self) -> ui::WidgetConfig
+    {
+        ui::WidgetConfig::default()
+    }
 }
 
 pub struct WidgetPanel<T>
@@ -855,7 +873,7 @@ pub struct WidgetContainer
     pub command : Option<Box<Command>>,
     pub action : Option<Box<Action>>,
     pub views : Vec<Box<View>>,
-    pub gameview : Option<Box<GameView>>,
+    pub gameview : Option<Box<GameViewTrait>>,
     pub menu : Option<Box<Action>>,
 
     pub list : Box<ListWidget>,
@@ -864,6 +882,7 @@ pub struct WidgetContainer
     pub anim : Option<*const Ecore_Animator>,
 
     pub data : Data<Rc<RefCell<scene::Scene>>>,
+    pub resource : Rc<resource::ResourceGroup>,
     pub state : State
 }
 
@@ -886,6 +905,7 @@ impl WidgetContainer
             anim : None,
 
             data : Data::new(),
+            resource : Rc::new(resource::ResourceGroup::new()),
             state : State::new()
 
         }
@@ -925,8 +945,7 @@ impl WidgetContainer
                         let mut ob = o.write().unwrap();
                         let omr = ob.get_comp_data_value::<component::mesh_render::MeshRender>();
                         if let Some(ref mr) = omr {
-                            ob.mesh_render =
-                                Some(component::mesh_render::MeshRenderer::with_mesh_render(mr,&self.data.resource));
+                            ob.mesh_render = Some(mr.clone());
                         }
                     }
                 }
@@ -1044,8 +1063,7 @@ impl WidgetContainer
                             println!("please update mesh");
                             let omr = ob.get_comp_data_value::<component::mesh_render::MeshRender>();
                             if let Some(ref mr) = omr {
-                                ob.mesh_render =
-                                    Some(component::mesh_render::MeshRenderer::with_mesh_render(mr,&self.data.resource));
+                                ob.mesh_render = Some(mr.clone());
                             }
                     }
                 }
@@ -1144,7 +1162,10 @@ impl WidgetContainer
                         }
                     }
                 };
-                self.state.request_operation(prop, operation);
+                self.state.request_operation(prop, operation, &mut self.data);
+                //let op = self.state.make_operation(prop, operation);
+                //self.state.op_mgr.add_with_trait2(box op);
+                //self.state.op_mgr.redo(self.data)
             },
             operation::Change::Property(ref p, ref name) => {
                 match *p {
@@ -1249,11 +1270,11 @@ impl WidgetContainer
                 }
             },
             Event::Undo => {
-                let change = self.state.undo();
+                let change = self.state.undo(&mut self.data);
                 self.handle_change(&change, widget_origin);
             },
             Event::Redo => {
-                let change = self.state.redo();
+                let change = self.state.redo(&mut self.data);
                 self.handle_change(&change, widget_origin);
             },
             Event::CameraChange => {
@@ -1282,7 +1303,7 @@ impl WidgetContainer
     pub fn play_gameview(&mut self) -> bool
     {
         if let Some(ref mut gv) = self.gameview {
-            gv.state = 1;
+            gv.play();
             true
         }
         else {
@@ -1301,30 +1322,22 @@ impl WidgetContainer
         }
     }
 
-    pub fn can_create_gameview(&mut self) ->
-        Option<(Rc<RefCell<camera::Camera>>, Rc<RefCell<scene::Scene>>)>
+    fn can_create_gameview(&mut self) -> Option<Rc<RefCell<scene::Scene>>>
     {
         if self.gameview.is_some() {
             return None;
         }
 
-        let scene = if let Some(ref s) = self.state.context.scene {
-            let scene = s.clone();
-            scene.borrow_mut().init_components(&self.data.resource);
+        let scene = if let Some(ref mut s) = self.state.context.scene {
+            let mut scene = s.clone();
+            scene.init_for_play(&self.resource);
             scene
         }
         else {
             return None;
         };
 
-        let camera = if let Some(ref c) = scene.borrow().camera {
-            c.clone()
-        }
-        else {
-            return None;
-        };
-
-        Some((camera, scene))
+        Some(scene)
     }
 
     pub fn set_gameview(&mut self, gv : Box<ui::GameView>)
@@ -1341,6 +1354,10 @@ impl WidgetContainer
     pub fn update_play(&mut self) -> bool
     {
         if let Some(ref mut gv) = self.gameview {
+            let id = gv.get_scene_id();
+            if let Some(scene) = self.data.get_scene_mut(id) {
+                scene.update(0.01f64, gv.get_input(), &*self.resource);
+            }
             let was_updated = gv.update();
 
             if was_updated {
@@ -1424,7 +1441,7 @@ impl WidgetContainer
         }
     }
 
-    pub fn get_selected_object(&self) -> Option<Arc<RwLock<object::Object>>>
+    fn get_selected_object(&self) -> Option<Arc<RwLock<object::Object>>>
     {
         self.state.get_selected_object()
     }
@@ -1604,7 +1621,8 @@ pub fn add_empty(container : &mut WidgetContainer, view_id : Uuid)
     let vs = Vec::new();
     let addob = container.state.request_operation(
             vs,
-            operation::OperationData::SceneAddObjects(s.clone(),parent,vec.clone())
+            operation::OperationData::SceneAddObjects(s.clone(),parent,vec.clone()),
+            &mut container.data
             );
 
     ops.push(addob);
@@ -1749,7 +1767,7 @@ pub extern fn file_changed(
     let mut should_update_views = false;
     if s.ends_with(".frag") || s.ends_with(".vert") {
         println!("file changed : {}", s);
-        let mut shader_manager = container.data.resource.shader_manager.borrow_mut();
+        let mut shader_manager = container.resource.shader_manager.borrow_mut();
 
         for shader in shader_manager.loaded_iter_mut() {
             let mut reload = false;
@@ -1775,9 +1793,8 @@ pub extern fn file_changed(
     }
 }
 
-pub fn create_gameview_window(
+fn create_gameview_window(
     container : Arw<ui::WidgetContainer>,
-    camera : Rc<RefCell<camera::Camera>>,
     scene : Rc<RefCell<scene::Scene>>,
     config : &WidgetConfig
     ) -> Box<ui::gameview::GameView>
@@ -1792,11 +1809,12 @@ pub fn create_gameview_window(
 
     let container : &mut ui::WidgetContainer = &mut *container.write().unwrap();
 
+    let render = box render::GameRender::new(scene.borrow().camera.clone().unwrap(), container.resource.clone());
+
     ui::gameview::GameView::new(
         win,
-        camera,
         scene,
-        container.data.resource.clone(),
+        render,
         config.clone())
 }
 
@@ -1820,8 +1838,7 @@ fn check_mesh(name : &str, wc : &WidgetContainer, id : uuid::Uuid)
             println!("please update mesh");
             let omr = ob.get_comp_data_value::<component::mesh_render::MeshRender>();
             if let Some(ref mr) = omr {
-                ob.mesh_render =
-                    Some(component::mesh_render::MeshRenderer::with_mesh_render(mr,&wc.data.resource));
+                ob.mesh_render = Some(mr.clone());
             }
             else {
                 ob.mesh_render = None;

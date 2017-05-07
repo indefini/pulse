@@ -453,7 +453,9 @@ fn changed_set<T : Any+Clone+PartialEq>(
                     (*cur).clone(),
                     path,
                     box oldd.clone(),
-                    box new.clone())
+                    box new.clone(),
+                    &mut container.data
+                    )
             }
             else
             {
@@ -527,7 +529,9 @@ fn changed_enum<T : Any+Clone+PartialEq>(
                     (*cur).clone(),
                     path,
                     old,
-                    box new.clone())
+                    box new.clone(),
+                    &mut container.data
+                    )
             }
             else {
                 operation::Change::None

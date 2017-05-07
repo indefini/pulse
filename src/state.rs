@@ -11,6 +11,7 @@ use dormin::property::PropertyGet;
 use context;
 use operation;
 use uuid;
+use data::ToIdUuid;
 
 //TODO remove
 use ui;
@@ -111,14 +112,48 @@ impl State {
         self.saved_oris = self.context.selected.iter().map(|o| o.read().unwrap().orientation).collect();
     }
 
+    pub fn make_operation(
+        &mut self,
+        name : Vec<String>,
+        op_data : operation::OperationDataOld
+        ) -> operation::Operation
+    {
+        let obs : Vec<Box<ToIdUuid>> =
+            self.context.selected.iter().map(|x| (box x.clone()) as Box<ToIdUuid>).collect();
+
+        operation::Operation::new(
+            //self.context.selected.iter().map(|x| box x.clone()).collect(),
+            obs,
+            name.clone(),
+            op_data
+            )
+    }
+
+    pub fn request_operation(
+        &mut self,
+        name : Vec<String>,
+        op_data : operation::OperationDataOld,
+        rec : &mut operation::OperationRec
+        ) -> operation::Change
+    {
+        let op = self.make_operation(name, op_data);
+        let change = self.op_mgr.add_with_trait(box op, rec);
+        change
+    }
+
+    /*
     pub fn request_operation(
         &mut self,
         name : Vec<String>,
         op_data : operation::OperationDataOld
         ) -> operation::Change
     {
+        let obs : Vec<Box<ToIdUuid>> =
+            self.context.selected.iter().map(|x| (box x.clone()) as Box<ToIdUuid>).collect();
+
         let op = operation::Operation::new(
-            self.context.selected.to_vec(),
+            //self.context.selected.iter().map(|x| box x.clone()).collect(),
+            obs,
             name.clone(),
             op_data
             );
@@ -126,18 +161,22 @@ impl State {
         let change = self.op_mgr.add_with_trait(box op);
         change
     }
+    */
 
-    pub fn undo(&mut self) -> operation::Change
+    pub fn undo(&mut self, rec : &mut operation::OperationRec) -> operation::Change
     {
-        self.op_mgr.undo()
+        self.op_mgr.undo(rec)
     }
 
-    pub fn redo(&mut self) -> operation::Change
+    pub fn redo(&mut self, rec : &mut operation::OperationRec) -> operation::Change
     {
-        self.op_mgr.redo()
+        self.op_mgr.redo(rec)
     }
 
-    pub fn remove_selected_objects(&mut self) -> operation::Change
+    pub fn remove_selected_objects(
+        &mut self,
+        rec : &mut operation::OperationRec
+        ) -> operation::Change
     {
         println!("state remove sel");
 
@@ -158,7 +197,8 @@ impl State {
         let vs = Vec::new();
         return self.request_operation(
             vs,
-            operation::OperationData::SceneRemoveObjects(s.clone(), parent, vec)
+            operation::OperationData::SceneRemoveObjects(s.clone(), parent, vec),
+            rec
             );
 
         //return operation::Change::SceneRemove(s.read().unwrap().id, vec);
@@ -177,7 +217,8 @@ impl State {
 
     pub fn request_operation_vec_del(
         &mut self,
-        node : Rc<RefCell<ui::PropertyNode>>
+        node : Rc<RefCell<ui::PropertyNode>>,
+        rec : &mut operation::OperationRec
         )
         -> operation::Change
     {
@@ -208,7 +249,8 @@ impl State {
 
                 self.request_operation(
                 vs,
-                operation::OperationData::VecDel(index, prop)
+                operation::OperationData::VecDel(index, prop),
+                rec
                 )
             },
                 _ => operation::Change::None
@@ -259,7 +301,9 @@ impl State {
         property : ui::RefMut<ui::PropertyUser>,
         name : &str,
         old : Box<Any>,
-        new : Box<Any>) -> operation::Change
+        new : Box<Any>,
+        rec : &mut operation::OperationRec
+        ) -> operation::Change
     {
         let op = operation::OldNew::new(
             property,
@@ -268,7 +312,7 @@ impl State {
             new
             );
 
-        let change = self.op_mgr.add_with_trait(box op);
+        let change = self.op_mgr.add_with_trait(box op, rec);
         change
     }
 
@@ -277,7 +321,9 @@ impl State {
         property : ui::RefMut<ui::PropertyUser>,
         name : &str,
         old : Box<T>,
-        new : Box<T>) -> operation::Change
+        new : Box<T>,
+        rec : &mut operation::OperationRec
+        ) -> operation::Change
     {
         if *old == *new {
             return operation::Change::None;
@@ -300,7 +346,7 @@ impl State {
             new
             );
 
-        let change = self.op_mgr.add_with_trait(box op);
+        let change = self.op_mgr.add_with_trait(box op, rec);
         change
     }
 
@@ -349,7 +395,9 @@ impl State {
 
     pub fn request_operation_vec_add(
         &mut self,
-        node : Rc<RefCell<ui::PropertyNode>>)
+        node : Rc<RefCell<ui::PropertyNode>>,
+        rec : &mut operation::OperationRec
+        )
         -> operation::Change
     {
         let nodeb = node.borrow();
@@ -375,12 +423,17 @@ impl State {
 
         self.request_operation(
             vs,
-            operation::OperationData::VecAdd(index)
+            operation::OperationData::VecAdd(index),
+            rec
             )
 
     }
 
-    pub fn copy_selected_objects(&mut self, factory : &factory::Factory) -> operation::Change
+    pub fn copy_selected_objects(
+        &mut self,
+        //TODO factory : &factory::Factory,
+        rec : &mut operation::OperationRec
+        ) -> operation::Change
     {
         let s = match self.context.scene {
             Some(ref s) => s.clone(),
@@ -392,7 +445,8 @@ impl State {
         for o in &self.context.selected {
             //vec.push(o.clone());
             let ob = o.read().unwrap();
-            vec.push(Arc::new(RwLock::new(factory.copy_object(&*ob))));
+            println!("COPY is not working because of this TODO");
+            //TODO vec.push(Arc::new(RwLock::new(factory.copy_object(&*ob))));
             let parent_id = if let Some(ref p) = ob.parent {
                 p.read().unwrap().id
             }
@@ -406,13 +460,18 @@ impl State {
         let vs = Vec::new();
         return self.request_operation(
             vs,
-            operation::OperationData::SceneAddObjects(s, parents, vec)
+            operation::OperationData::SceneAddObjects(s, parents, vec),
+            rec
             );
 
         //return operation::Change::SceneRemove(s.read().unwrap().id, vec);
     }
 
-    pub fn add_component(&mut self, component_name : &str) -> operation::Change
+    pub fn add_component(
+        &mut self,
+        component_name : &str,
+        rec : &mut operation::OperationRec
+        ) -> operation::Change
     {
         let o = if let Some(o) = self.context.selected.get(0) {
             o.clone()
@@ -423,7 +482,7 @@ impl State {
         };
 
         let cp = if component_name == "MeshRender" {
-            box component::CompData::MeshRender(component::mesh_render::MeshRender::new("model/skeletonmesh.mesh", "material/simple.mat"))
+            box component::CompData::MeshRender(component::mesh_render::MeshRender::with_names_only("model/skeletonmesh.mesh", "material/simple.mat"))
         }
         else {
             return operation::Change::None;
@@ -433,11 +492,15 @@ impl State {
 
         self.request_operation(
             vs,
-            operation::OperationData::AddComponent(o.clone(), cp)
+            operation::OperationData::AddComponent(o.clone(), cp),
+            rec
             )
     }
 
-    pub fn set_scene_camera(&mut self) -> operation::Change
+    pub fn set_scene_camera(
+        &mut self,
+        rec : &mut operation::OperationRec
+        ) -> operation::Change
     {
         println!("control remove sel");
 
@@ -457,7 +520,8 @@ impl State {
         let vs = Vec::new();
         return self.request_operation(
             vs,
-            operation::OperationData::SetSceneCamera(s,current, o.clone())
+            operation::OperationData::SetSceneCamera(s,current, o.clone()),
+            rec
             );
 
         //return operation::Change::SceneRemove(s.read().unwrap().id, vec);

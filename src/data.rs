@@ -3,30 +3,104 @@ use std::cell::{RefCell};
 use std::collections::HashMap;
 use std::fs;
 
+use uuid;
+
 use dormin;
-use dormin::{vec, resource, scene, factory};
-use dormin::{world};
+use dormin::{vec, resource, scene, factory, world};
 use context;
 use util;
+use dormin::input;
 
 static SCENE_SUFFIX: &str = ".scene";
 //static WORLD_SUFFIX: &str = ".world";
 
-pub struct Data<S>
+pub type DataOld = Data<Rc<RefCell<scene::Scene>>>;
+
+pub struct Data<S:SceneT>
 {
     pub factory : factory::Factory,
-    pub resource : Rc<resource::ResourceGroup>,
     pub scenes : HashMap<String, S>,
 
     pub worlds : HashMap<String, Box<dormin::world::World>>,
 }
 
-impl<S> Data<S> {
+pub trait SceneT : ToId<<Self as SceneT>::Id> {
+    type Id : Default + Eq;
+    fn init_for_play(&mut self, resource : &resource::ResourceGroup);
+    fn update(&mut self, dt : f64, input : &input::Input, &resource::ResourceGroup);
+}
+
+impl SceneT for Rc<RefCell<scene::Scene>> {
+    type Id = uuid::Uuid;
+    fn update(&mut self, dt : f64, input : &input::Input, res :&resource::ResourceGroup)
+    {
+        self.borrow_mut().update(dt, input, res);
+    }
+
+    fn init_for_play(&mut self, resource : &resource::ResourceGroup)
+    {
+        self.borrow().init_components(resource);
+    }
+}
+
+impl ToId<usize> for world::World
+{
+    fn to_id(&self) -> usize
+    {
+        println!("TO TODO, world ToId");
+        0usize
+    }
+}
+
+
+impl SceneT for world::World {
+    type Id = usize;
+    fn update(&mut self, dt : f64, input : &input::Input, res :&resource::ResourceGroup)
+    {
+        println!("TODO !!!!!!!!!!!!!!!!!!!!!!");
+    }
+
+    fn init_for_play(&mut self, resource : &resource::ResourceGroup)
+    {
+        println!("TODO !!!!!!!!!!!!!!!!!!!!!! {}, {} ", file!(), line!());
+    }
+}
+
+pub trait DataT<S : SceneT> {
+    fn get_scene(&self, id : S::Id) -> Option<&S>;
+    fn get_scene_mut(&mut self, id : S::Id) -> Option<&mut S>;
+}
+
+impl<S:SceneT> DataT<S> for Data<S>
+{
+    fn get_scene(&self, id : S::Id) -> Option<&S>
+    {
+        for v in self.scenes.values() {
+            if v.to_id() == id {
+                return Some(v)
+            }
+        }
+
+        None
+    }
+
+    fn get_scene_mut(&mut self, id : S::Id) -> Option<&mut S>
+    {
+        for v in self.scenes.values_mut() {
+            if v.to_id() == id {
+                return Some(v)
+            }
+        }
+
+        None
+    }
+}
+
+impl<S:SceneT> Data<S> {
 
     pub fn new() -> Data<S> {
         Data {
             factory : factory::Factory::new(),
-            resource : Rc::new(resource::ResourceGroup::new()),
             scenes : HashMap::new(),
 
             worlds : HashMap::new(),
@@ -71,7 +145,7 @@ impl Data<Rc<RefCell<scene::Scene>>>
     {
         self.scenes.entry(String::from(name)).or_insert(
             {
-                let mut ns = scene::Scene::new_from_file(name, &*self.resource);
+                let mut ns = scene::Scene::new_from_file(name);
 
                 if let None = ns.camera {
                     let mut cam = self.factory.create_camera();
@@ -142,4 +216,16 @@ pub fn create_scene_name(name : String) -> String
 
     s
 }
+
+pub trait ToId<I> {
+    fn to_id(&self) -> I;
+}
+
+pub type ToIdUuid = ToId<uuid::Uuid>;
+
+pub trait ToId2 {
+    type Id;
+    fn to_id(&self) -> Self::Id;
+}
+
 

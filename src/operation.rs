@@ -11,13 +11,35 @@ use ui::PropertyUser;
 use dormin::scene;
 use dormin::component::CompData;
 use ui::RefMut;
+use data;
+use data::{ToId, ToIdUuid};
 
 use dragger;
 
-pub trait OperationTrait
+trait OperationReceiver {
+    type Id;
+    fn getP(&mut self, id : Self::Id) -> Option<&mut PropertyWrite>
+    {
+        None
+    }
+}
+
+pub type OperationRec = OperationReceiver<Id=uuid::Uuid>;
+
+impl OperationReceiver for data::DataOld {
+    type Id = uuid::Uuid;
+    fn getP(&mut self, id : Self::Id) -> Option<&mut PropertyWrite>
+    {
+        None
+    }
+
+    //fn copy_object(
+}
+
+trait OperationTrait
 {
-    fn apply(&self) -> Change;
-    fn undo(&self) -> Change;
+    fn apply(&self, rec : &mut OperationRec) -> Change;
+    fn undo(&self, rec : &mut OperationRec) -> Change;
 }
 
 pub type OperationDataOld = OperationData<Rc<RefCell<scene::Scene>>, Arc<RwLock<object::Object>>, uuid::Uuid>;
@@ -37,13 +59,17 @@ pub enum OperationData<Scene, Object, Id>
     //To check
     //ToNone(Box<Any>),
     //ToSome,
-    //Function(fn(LinkedList<Arc<RwLock<object::Object>>>, Box<Any>), Box<Any>),
+    //Function(fn(Vec<Object>, Box<Any>), Box<Any>),
 }
 
+//pub type OperationOld = Operation<Arc<RwLock<object::Object>>>;
+pub type OperationOld = Operation;
 
+//pub struct Operation<Object>
 pub struct Operation
 {
-    pub objects : Vec<Arc<RwLock<object::Object>>>,
+    //pub objects : Vec<Box<Object>>,
+    pub objects : Vec<Box<ToIdUuid>>,
     pub name : Vec<String>,
     pub change : OperationDataOld
     //pub old : Box<Any>,
@@ -95,7 +121,8 @@ impl OldNew
 
 impl OperationTrait for OldNew
 {
-    fn apply(&self) -> Change
+    //fn apply(&self ) -> Change
+    fn apply(&self, rec : &mut OperationRec) -> Change
     {
         println!("NEW TEST operation set property hier {:?}", self.name);
         match self.object {
@@ -110,7 +137,8 @@ impl OperationTrait for OldNew
         Change::Property(self.object.clone(), self.name.clone())
     }
 
-    fn undo(&self) -> Change
+    //fn undo(&self) -> Change
+    fn undo(&self, rec : &mut OperationRec) -> Change
     {
         match self.object {
             RefMut::Arc(ref a) => {
@@ -149,7 +177,8 @@ impl ToNone
 
 impl OperationTrait for ToNone
 {
-    fn apply(&self) -> Change
+    //fn apply(&self) -> Change
+    fn apply(&self, rec : &mut OperationRec) -> Change
     {
         println!("TO NONE operation set property hier {:?}", self.name);
         match self.object {
@@ -164,7 +193,8 @@ impl OperationTrait for ToNone
         Change::Property(self.object.clone(), self.name.clone())
     }
 
-    fn undo(&self) -> Change
+    //fn undo(&self) -> Change
+    fn undo(&self, rec : &mut OperationRec) -> Change
     {
         match self.object {
             RefMut::Arc(ref a) => {
@@ -200,7 +230,8 @@ impl ToSome
 
 impl OperationTrait for ToSome
 {
-    fn apply(&self) -> Change
+    //fn apply(&self) -> Change
+    fn apply(&self, rec : &mut OperationRec) -> Change
     {
         println!("TO Some operation set property hier {:?}", self.name);
         match self.object {
@@ -215,7 +246,8 @@ impl OperationTrait for ToSome
         Change::Property(self.object.clone(), self.name.clone())
     }
 
-    fn undo(&self) -> Change
+    //fn undo(&self) -> Change
+    fn undo(&self, rec : &mut OperationRec) -> Change
     {
         match self.object {
             RefMut::Arc(ref a) => {
@@ -251,15 +283,18 @@ pub enum Change
     DraggerOperation(dragger::Operation),
 }
 
+//impl<Object> Operation<Object>
 impl Operation
 {
     pub fn new(
-        objects : Vec<Arc<RwLock<object::Object>>>,
+        //objects : Vec<Box<Object>>,
+        objects : Vec<Box<ToId<uuid::Uuid>>>,
         name : Vec<String>,
         //old : Box<Any>,
         //new : Box<Any>)
         change : OperationDataOld
             )
+        //-> Operation<Object>
         -> Operation
     {
 
@@ -296,9 +331,10 @@ impl Operation
 
 }
 
-impl OperationTrait for Operation
+impl OperationTrait for OperationOld
 {
-    fn apply(&self) -> Change
+    //fn apply(&self) -> Change
+    fn apply(&self, rec : &mut OperationRec) -> Change
     {
         match self.change {
             /*
@@ -319,9 +355,10 @@ impl OperationTrait for Operation
                 let s = join_string(&self.name);
                 let mut ids = Vec::new();
                 for o in &self.objects {
-                    let mut ob = o.write().unwrap();
-                    ob.add_item(s.as_ref(), i, &String::from("empty"));
-                    ids.push(ob.id.clone());
+                    if let Some(p) = rec.getP(o.to_id()) {
+                        p.add_item(s.as_ref(), i, &String::from("empty"));
+                    }
+                    ids.push(o.to_id());
                 }
                 return Change::VecAdd(ids, s, i);
             },
@@ -330,11 +367,13 @@ impl OperationTrait for Operation
                 let s = join_string(&self.name);
                 let mut ids = Vec::new();
                 for o in &self.objects {
-                    let mut ob = o.write().unwrap();
+                    //let mut ob = o.write().unwrap();
                     //TODO chris
-                    println!("yeeeeeeeeeeeee call del_item : {}", ob.name);
-                    ob.del_item(s.as_ref(), i);
-                    ids.push(ob.id.clone());
+                    //println!("yeeeeeeeeeeeee call del_item : {}", ob.name);
+                    if let Some(p) = rec.getP(o.to_id()) {
+                        p.del_item(s.as_ref(), i);
+                    }
+                    ids.push(o.to_id().clone());
                 }
                 return Change::VecDel(ids, s, i);
             },
@@ -364,12 +403,13 @@ impl OperationTrait for Operation
                 };
                 let mut ids = Vec::new();
                 for o in &self.objects {
-                    let mut ob = o.write().unwrap();
-                    ob.test_set_property_hier(
+                    if let Some(p) = rec.getP(o.to_id()) {
+                    p.test_set_property_hier(
                         sp.as_str(),
                         &*new[i]);
+                    }
                     i = i +1;
-                    ids.push(ob.id.clone());
+                    ids.push(o.to_id());
                 }
                 return Change::Objects(s, ids);
             },
@@ -413,7 +453,8 @@ impl OperationTrait for Operation
         Change::None
     }
 
-    fn undo(&self) -> Change
+    //fn undo(&self) -> Change
+    fn undo(&self, rec : &mut OperationRec) -> Change
     {
         match self.change {
             /*
@@ -445,9 +486,11 @@ impl OperationTrait for Operation
                 let s = join_string(&self.name);
                 let mut ids = Vec::new();
                 for o in &self.objects {
-                    let mut ob = o.write().unwrap();
-                    ob.del_item(s.as_ref(), i);
-                    ids.push(ob.id.clone());
+                    //let mut ob = o.write().unwrap();
+                    if let Some(p) = rec.getP(o.to_id()) {
+                        p.del_item(s.as_ref(), i);
+                    }
+                    ids.push(o.to_id());
                 }
                 return Change::VecDel(ids, s, i);
             },
@@ -456,9 +499,11 @@ impl OperationTrait for Operation
                 let s = join_string(&self.name);
                 let mut ids = Vec::new();
                 for o in &self.objects {
-                    let mut ob = o.write().unwrap();
-                    ob.add_item(s.as_ref(), i, &**value);
-                    ids.push(ob.id.clone());
+                    //let mut ob = o.write().unwrap();
+                    if let Some(p) = rec.getP(o.to_id()) {
+                        p.add_item(s.as_ref(), i, &**value);
+                    }
+                    ids.push(o.to_id());
                 }
                 //return Change::Objects(s, ids);
                 return Change::VecAdd(ids, s, i);
@@ -476,12 +521,14 @@ impl OperationTrait for Operation
                 };
                 let mut ids = Vec::new();
                 for o in &self.objects {
-                    let mut ob = o.write().unwrap();
-                    ob.test_set_property_hier(
+                    //let mut ob = o.write().unwrap();
+                    if let Some(p) = rec.getP(o.to_id()) {
+                    p.test_set_property_hier(
                         sp.as_str(),
                         &*old[i]);
+                    }
                     i = i +1;
-                    ids.push(ob.id.clone());
+                    ids.push(o.to_id());
                 }
                 return Change::Objects(s, ids);
             },
@@ -545,22 +592,28 @@ impl OperationManager
         }
     }
 
-    pub fn add(&mut self, op : Operation) -> Change
+    pub fn add(&mut self, op : OperationOld, rec : &mut OperationRec) -> Change
     {
-        let change = op.apply();
+        let change = op.apply(rec);
         self.add_undo(box op);
         self.redo.clear();
 
         change
     }
 
-    pub fn add_with_trait(&mut self, op : Box<OperationTrait>) -> Change
+    pub fn add_with_trait(&mut self, op : Box<OperationTrait>, rec : &mut OperationRec) -> Change
     {
-        let change = op.apply();
+        let change = op.apply(rec);
         self.add_undo(op);
         self.redo.clear();
 
         change
+    }
+
+    pub fn add_with_trait2(&mut self, op : Box<OperationTrait>)
+    {
+        self.add_undo(op);
+        self.redo.clear();
     }
 
     fn add_undo(&mut self, op : Box<OperationTrait+'static>)
@@ -584,7 +637,7 @@ impl OperationManager
         self.redo.pop()
     }
 
-    pub fn undo(&mut self) -> Change
+    pub fn undo(&mut self, rec : &mut OperationRec) -> Change
     {
         let op = match self.pop_undo() {
             Some(o) => o,
@@ -594,14 +647,14 @@ impl OperationManager
             }
         };
 
-        let change = op.undo();
+        let change = op.undo(rec);
 
         self.add_redo(op);
 
         return change;
     }
 
-    pub fn redo(&mut self) -> Change
+    pub fn redo(&mut self, rec : &mut OperationRec) -> Change
     {
         let op = match self.pop_redo() {
             Some(o) => o,
@@ -611,7 +664,7 @@ impl OperationManager
             }
         };
 
-        let change = op.apply();
+        let change = op.apply(rec);
 
         self.add_undo(op);
         return change;

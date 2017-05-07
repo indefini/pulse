@@ -524,7 +524,7 @@ fn create_camera_object_mesh(
 
     let mat = create_mat();
 
-    cam.mesh_render = Some(mesh_render::MeshRenderer::new_with_mat(
+    cam.mesh_render = Some(mesh_render::MeshRender::new_with_mat(
         "model/camera.mesh",
         mat,
         resource));

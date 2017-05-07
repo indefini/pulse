@@ -345,7 +345,7 @@ pub fn create_dragger(
     let mut dragger = factory.create_object(name);
     let mat = create_mat(color, name);
 
-    dragger.mesh_render = Some(mesh_render::MeshRenderer::new_with_mat(
+    dragger.mesh_render = Some(mesh_render::MeshRender::new_with_mat(
         mesh,
         mat,
         resource));

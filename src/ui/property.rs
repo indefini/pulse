@@ -300,17 +300,6 @@ impl<T : PropertyShow> PropertyShow for Option<T> {
     }
 }
 
-impl<T> PropertyShow for resource::ResTT<T>
-{
-    fn get_property(&self, field : &str) -> Option<&PropertyShow>
-    {
-        match field {
-            "name" => Some(&self.name as &PropertyShow),
-            _ => None
-        }
-    }
-}
-
 impl<T:PropertyShow> PropertyShow for Vec<T>
 {
     fn create_widget_itself(&self, field : &str) -> Option<*const PropertyValue>
@@ -795,7 +784,17 @@ macro_rules! property_show_impl(
                 $up
             }
         }
-        )
+        );
+    ($my_type:ty, $gen:tt, $e:tt, $up:expr) => (
+        impl<$gen> PropertyShow for $my_type {
+            property_show_methods!($my_type, $e);
+
+            fn to_update(&self) -> ShouldUpdate
+            {
+                $up
+            }
+        }
+        );
     );
 
 property_show_impl!(vec::Vec3,[x,y,z]);
@@ -805,6 +804,7 @@ property_show_impl!(object::Object,
                      [name,position,orientation,scale,comp_data,comp_lua]);
 
 property_show_impl!(component::mesh_render::MeshRender,[mesh,material], ShouldUpdate::Mesh);
+property_show_impl!(resource::ResTT<T>,T,[name], ShouldUpdate::Mesh);
 property_show_impl!(component::player::Player,[speed]);
 property_show_impl!(component::player::Enemy,[name]);
 property_show_impl!(component::player::Collider,[name]);
@@ -865,7 +865,7 @@ pub extern fn vec_add(
     //let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
     let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
 
-    let change = container.state.request_operation_vec_add(node.clone());
+    let change = container.state.request_operation_vec_add(node.clone(), &mut container.data);
     container.handle_change(&change, uuid::Uuid::nil());//p.id);
 }
 
@@ -888,7 +888,7 @@ pub extern fn vec_del(
     //let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
     let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
 
-    let change = container.state.request_operation_vec_del(node);
+    let change = container.state.request_operation_vec_del(node, &mut container.data);
     container.handle_change(&change, uuid::Uuid::nil());
 }
 
