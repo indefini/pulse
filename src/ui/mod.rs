@@ -61,7 +61,6 @@ pub use self::property_box::{PropertyBox,JkPropertyBox};
 pub use self::property::{make_vec_from_str,find_property_show,JkPropertyCb};
 
 pub use self::view::{View};
-pub use self::gameview::{GameView, gv_close_cb};
 
 mod tree;
 mod action;

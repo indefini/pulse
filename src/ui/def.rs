@@ -16,9 +16,8 @@ use std::ffi::{CString,CStr};
 
 use uuid::Uuid;
 
-use dormin;
 use dormin::{vec, scene, object, camera, component, render, resource};
-use ui::{Tree,RefMut,PropertyUser,View,Command,Action,GameView,
+use ui::{Tree,RefMut,PropertyUser,View,Command,Action,
 PropertyWidget,PropertyBox};
 use ui;
 use operation;
@@ -487,6 +486,7 @@ fn init_gameview(container_arw : Arw<WidgetContainer>, gameview_config : &Widget
         }
     }
 }
+
 #[derive(Serialize, Deserialize, Clone)]
 pub struct WidgetConfig
 {
@@ -866,6 +866,8 @@ pub struct ControlContainer
 }
 */
 
+type Scene = Rc<RefCell<scene::Scene>>;
+
 pub struct WidgetContainer
 {
     pub tree : Option<Box<Tree>>,
@@ -873,7 +875,7 @@ pub struct WidgetContainer
     pub command : Option<Box<Command>>,
     pub action : Option<Box<Action>>,
     pub views : Vec<Box<View>>,
-    pub gameview : Option<Box<GameViewTrait<Rc<RefCell<scene::Scene>>>>>,
+    pub gameview : Option<Box<GameViewTrait<Scene>>>,
     pub menu : Option<Box<Action>>,
 
     pub list : Box<ListWidget>,
@@ -881,7 +883,7 @@ pub struct WidgetContainer
     pub visible_prop : HashMap<Uuid, Weak<Widget>>,
     pub anim : Option<*const Ecore_Animator>,
 
-    pub data : Data<Rc<RefCell<scene::Scene>>>,
+    pub data : Data<Scene>,
     pub resource : Rc<resource::ResourceGroup>,
     pub state : State
 }
@@ -1284,7 +1286,7 @@ impl WidgetContainer
         }
     }
 
-    fn get_scene(&self) -> Option<Rc<RefCell<scene::Scene>>>
+    fn get_scene(&self) -> Option<Scene>
     {
         self.state.context.scene.clone()
     }
@@ -1322,7 +1324,7 @@ impl WidgetContainer
         }
     }
 
-    fn can_create_gameview(&mut self) -> Option<Rc<RefCell<scene::Scene>>>
+    fn can_create_gameview(&mut self) -> Option<Scene>
     {
         if self.gameview.is_some() {
             return None;
@@ -1340,7 +1342,7 @@ impl WidgetContainer
         Some(scene)
     }
 
-    pub fn set_gameview(&mut self, gv : Box<ui::GameView>)
+    pub fn set_gameview(&mut self, gv : Box<GameViewTrait<Scene>>)
     {
         let gvo = &mut self.gameview;
         if gvo.is_some() {
@@ -1416,7 +1418,7 @@ impl WidgetContainer
         }
     }
 
-    pub fn set_scene(&mut self, scene : Rc<RefCell<scene::Scene>>)
+    pub fn set_scene(&mut self, scene : Scene)
     {
         if let Some(ref mut t) = self.tree {
             t.set_scene(&scene.borrow());
@@ -1792,16 +1794,25 @@ pub extern fn file_changed(
         container.update_all_views();
     }
 }
+extern fn gv_close_cb(data : *mut c_void) {
+    //let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(data)};
+    let container : Box<Arw<ui::WidgetContainer>> = unsafe {mem::transmute(data)};
+    let container = &mut *container.write().unwrap();
+    if let Some(ref mut gv) = container.gameview {
+        gv.set_visible(false);
+    }
+}
+
 
 fn create_gameview_window(
     container : Arw<ui::WidgetContainer>,
-    scene : Rc<RefCell<scene::Scene>>,
+    scene : Scene,
     config : &WidgetConfig
     ) -> Box<ui::gameview::GameView>
 {
     let win = unsafe {
         ui::jk_window_new(
-            ui::gameview::gv_close_cb,
+            gv_close_cb,
             mem::transmute( box container.clone()))
     };
 

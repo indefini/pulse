@@ -1,5 +1,6 @@
 #![feature(borrow_state)]
 #![feature(box_syntax)]
+#![allow(unused_variables)]
 
 extern crate dormin;
 extern crate uuid;
