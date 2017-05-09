@@ -1825,7 +1825,8 @@ fn create_gameview_window(
     ui::gameview::GameView::new(
         win,
         scene,
-        &container.data as *const Box<Data<Scene>> as *const Box<DataT<Scene>>,
+        &container.data as *const Box<Data<Scene>>,
+        //(&container.data as &Box<DataT<Scene>>) as *const Box<DataT<Scene>>,
         render,
         config.clone())
 }

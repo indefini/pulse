@@ -113,7 +113,7 @@ pub struct GameView
     input : input::Input,
     pub config : ui::WidgetConfig,
     pub loading_resource : Arc<Mutex<usize>>,
-    data : *const Box<DataT<Scene>>,
+    data : *const Box<Data<Scene>>,
     //resource : Rc<resource::ResourceGroup>,
 }
 
@@ -124,7 +124,7 @@ impl GameView {
         //factory: &mut factory::Factory,
         win : *const ui::Evas_Object,
         scene : Rc<RefCell<scene::Scene>>,
-        data : *const Box<DataT<Scene>>,
+        data : *const Box<Data<Scene>>,
         render : Box<GameRender>,
         config : ui::WidgetConfig
         ) -> Box<GameView>
