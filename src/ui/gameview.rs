@@ -100,6 +100,8 @@ impl GameViewTrait<Rc<RefCell<scene::Scene>>> for GameView {
     }
 }
 
+type Scene = Rc<RefCell<scene::Scene>>;
+
 pub struct GameView
 {
     window : *const ui::Evas_Object,
@@ -111,6 +113,7 @@ pub struct GameView
     input : input::Input,
     pub config : ui::WidgetConfig,
     pub loading_resource : Arc<Mutex<usize>>,
+    data : *const Box<DataT<Scene>>,
     //resource : Rc<resource::ResourceGroup>,
 }
 
@@ -121,6 +124,7 @@ impl GameView {
         //factory: &mut factory::Factory,
         win : *const ui::Evas_Object,
         scene : Rc<RefCell<scene::Scene>>,
+        data : *const Box<DataT<Scene>>,
         render : Box<GameRender>,
         config : ui::WidgetConfig
         ) -> Box<GameView>
@@ -150,6 +154,7 @@ impl GameView {
             input : input::Input::new(),
             config : config.clone(),
             loading_resource : Arc::new(Mutex::new(0)),
+            data : data
             //resource : resource
             //camera : camera todo
         };
@@ -171,7 +176,20 @@ impl GameView {
  
     fn draw(&mut self) -> bool
     {
-        self.render.draw(&self.scene.borrow().objects, self.loading_resource.clone())
+        let id = self.get_scene_id();
+        //let s = unsafe { (&*self.data).get_scene(id) };
+        //let data : & Box<DataT<Scene>> = self.data as &Box<DataT<Scene>>;
+        //let s = (*self.data).get_scene(id);
+        let s = unsafe { (*self.data).get_scene(id) };
+
+        if let Some(scene) = s
+        {
+            self.render.draw(&scene.borrow().objects, self.loading_resource.clone())
+        }
+        else {
+            false
+        }
+        //self.render.draw(&self.scene.borrow().objects, self.loading_resource.clone())
     }
 
     fn init(&mut self) {

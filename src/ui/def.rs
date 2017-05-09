@@ -883,7 +883,7 @@ pub struct WidgetContainer
     pub visible_prop : HashMap<Uuid, Weak<Widget>>,
     pub anim : Option<*const Ecore_Animator>,
 
-    pub data : Data<Scene>,
+    pub data : Box<Data<Scene>>,
     pub resource : Rc<resource::ResourceGroup>,
     pub state : State
 }
@@ -906,7 +906,7 @@ impl WidgetContainer
             visible_prop : HashMap::new(),
             anim : None,
 
-            data : Data::new(),
+            data : box Data::new(),
             resource : Rc::new(resource::ResourceGroup::new()),
             state : State::new()
 
@@ -1164,7 +1164,7 @@ impl WidgetContainer
                         }
                     }
                 };
-                self.state.request_operation(prop, operation, &mut self.data);
+                self.state.request_operation(prop, operation, &mut *self.data);
                 //let op = self.state.make_operation(prop, operation);
                 //self.state.op_mgr.add_with_trait2(box op);
                 //self.state.op_mgr.redo(self.data)
@@ -1272,11 +1272,11 @@ impl WidgetContainer
                 }
             },
             Event::Undo => {
-                let change = self.state.undo(&mut self.data);
+                let change = self.state.undo(&mut *self.data);
                 self.handle_change(&change, widget_origin);
             },
             Event::Redo => {
-                let change = self.state.redo(&mut self.data);
+                let change = self.state.redo(&mut *self.data);
                 self.handle_change(&change, widget_origin);
             },
             Event::CameraChange => {
@@ -1624,7 +1624,7 @@ pub fn add_empty(container : &mut WidgetContainer, view_id : Uuid)
     let addob = container.state.request_operation(
             vs,
             operation::OperationData::SceneAddObjects(s.clone(),parent,vec.clone()),
-            &mut container.data
+            &mut *container.data
             );
 
     ops.push(addob);
@@ -1825,6 +1825,7 @@ fn create_gameview_window(
     ui::gameview::GameView::new(
         win,
         scene,
+        &container.data as *const Box<Data<Scene>> as *const Box<DataT<Scene>>,
         render,
         config.clone())
 }
