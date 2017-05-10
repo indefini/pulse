@@ -75,7 +75,7 @@ impl GameViewTrait<Rc<RefCell<scene::Scene>>> for GameView {
 
     fn get_scene_id(&self) -> uuid::Uuid
     {
-        self.scene.borrow().id
+        self.scene
     }
 
     fn update(&mut self) -> bool {
@@ -107,23 +107,21 @@ pub struct GameView
     window : *const ui::Evas_Object,
     glview : *const ui::JkGlview,
     render : Box<GameRender>,
-    pub scene : Rc<RefCell<scene::Scene>>,
+    pub scene : uuid::Uuid,
     name : String,
     pub state : i32,
     input : input::Input,
     pub config : ui::WidgetConfig,
     pub loading_resource : Arc<Mutex<usize>>,
     data : *const Box<Data<Scene>>,
-    //resource : Rc<resource::ResourceGroup>,
 }
 
 
 
 impl GameView {
     pub fn new(
-        //factory: &mut factory::Factory,
         win : *const ui::Evas_Object,
-        scene : Rc<RefCell<scene::Scene>>,
+        scene : uuid::Uuid,
         data : *const Box<Data<Scene>>,
         render : Box<GameRender>,
         config : ui::WidgetConfig

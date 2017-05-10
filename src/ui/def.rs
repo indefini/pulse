@@ -1808,7 +1808,7 @@ fn create_gameview_window(
     container : Arw<ui::WidgetContainer>,
     scene : Scene,
     config : &WidgetConfig
-    ) -> Box<ui::gameview::GameView>
+    ) -> Box<ui::gameview::GameViewTrait<Scene>>
 {
     let win = unsafe {
         ui::jk_window_new(
@@ -1820,15 +1820,27 @@ fn create_gameview_window(
 
     let container : &mut ui::WidgetContainer = &mut *container.write().unwrap();
 
-    let render = box render::GameRender::new(scene.borrow().camera.clone().unwrap(), container.resource.clone());
+    let render = render::GameRender::new(scene.borrow().camera.clone().unwrap(), container.resource.clone());
 
+    /*
     ui::gameview::GameView::new(
         win,
-        scene,
+        scene.borrow().id,
         &container.data as *const Box<Data<Scene>>,
-        //(&container.data as &Box<DataT<Scene>>) as *const Box<DataT<Scene>>,
-        render,
+        box render,
         config.clone())
+        */
+
+        //*
+    ui::view2::View2::new(
+        win,
+        &*container.data as *const DataT<Scene>,
+        config.clone(),
+        render,
+        scene.borrow().id,
+        )
+        //*/
+
 }
 
 fn check_mesh(name : &str, wc : &WidgetContainer, id : uuid::Uuid)

@@ -15,7 +15,7 @@ use util::Arw;
 use dormin::input;
 use dormin::scene;
 use dormin::render;
-use data::{DataT, SceneT};
+use data::{Data, DataT, SceneT};
 
 /*
 pub trait RenderT<S> {
@@ -29,11 +29,12 @@ impl RenderT<Rc<RefCell<scene::Scene>>> for GameRender
 }
 */
 
-trait ViewT<Scene:SceneT> {
+pub trait ViewT<Scene:SceneT> {
     fn draw(&mut self, scene : &Scene) -> bool;
     fn init(&mut self);
     fn resize(&mut self, w : c_int, h : c_int);
     fn get_scene_id(&self) -> Scene::Id;
+    fn handle_key(&mut self, key : u8) ;
 }
 
 impl ViewT<Rc<RefCell<scene::Scene>>> for View2<render::GameRender,Rc<RefCell<scene::Scene>>> {
@@ -59,6 +60,11 @@ impl ViewT<Rc<RefCell<scene::Scene>>> for View2<render::GameRender,Rc<RefCell<sc
         self.scene_id
     }
 
+    fn handle_key(&mut self, keycode : u8)
+    {
+        self.input.add_key(keycode);
+    }
+
 }
 
 pub struct View2<R, S : SceneT>
@@ -76,20 +82,22 @@ pub struct View2<R, S : SceneT>
     input : input::Input,
 }
 
-impl<R, S:SceneT> View2<R,S> {
+impl<R:'static, S:SceneT+'static> View2<R,S> where View2<R,S> : ViewT<S> {
     pub fn new(
         win : *const ui::Evas_Object,
-        dispatcher : Rc<Dispatcher>,
+        d : *const DataT<S>,
         config : ui::WidgetConfig,
-        r : R ) -> Box<Box<View2<R,S>>> where Dispatcher : DataT<S>
+        r : R,
+        id : S::Id
+        ) -> Box<View2<R,S>> where Dispatcher : DataT<S>
     {
         //let render = box GameRender::new(camera, resource.clone());
 
-        let mut v = box box View2 {
+        let mut v = box View2 {
             window : win,
             id : uuid::Uuid::new_v4(),
             //name : "cacayop".to_owned(),
-            scene_id : Default::default(),
+            scene_id : id, //Default::default(),
             render : r,
             glview : ptr::null(),
             config : config,
@@ -99,12 +107,11 @@ impl<R, S:SceneT> View2<R,S> {
             //camera : camera todo
         };
 
-        let gldata = GlViewData::new(dispatcher, &mut *v as *mut Box<View2<R,S>> as *mut Box<ViewT<S>>);
+        let gldata = box GlViewData::new(d, &mut *v as *mut View2<R,S> as *mut ViewT<S>);
 
         v.glview = unsafe { ui::jk_glview_new(
                 win,
-                //mem::transmute(&*v),
-                mem::transmute(box gldata),
+                Box::into_raw(gldata) as *const c_void,
                 gv_init_cb::<S>,
                 gv_draw_cb::<S>,
                 gv_resize_cb::<S>,
@@ -147,10 +154,7 @@ impl<R, S:SceneT> View2<R,S> {
 
 pub extern fn gv_init_cb<S:SceneT>(v : *const c_void) {
     unsafe {
-        //let gv : *mut View2 = mem::transmute(v);
-        //let gv : &mut Box<ViewT<S>> = mem::transmute(gldata.view);
-        //println!("AAAAAAAAAAAAAAAAAAAAAA gv init cb {}", (*gv).name);
-        let gldata : &Box<GlViewData<S>> = mem::transmute(v);
+        let gldata : &GlViewData<S> = &*(v as *const GlViewData<S>) ;
         (*gldata.view).init();
     }
 }
@@ -184,8 +188,12 @@ pub extern fn gv_draw_cb<S:SceneT>(v : *const c_void) where Dispatcher : DataT<S
         //TODO TODO //TODO
         //let draw_not_done = (*gv).draw();
         
-        let gldata : &Box<GlViewData<S>> = mem::transmute(v);
-        let scene = gldata.dis.get_scene((*gldata.view).get_scene_id());
+        let gldata : &GlViewData<S> = &*(v as *const GlViewData<S>) ;
+
+        let id = (*gldata.view).get_scene_id();
+        let scene = (*gldata.dis).get_scene(id) ;
+
+        //let scene = gldata.dis.get_scene((*gldata.view).get_scene_id());
         (*gldata.view).draw(scene.unwrap());
 
         //TODO
@@ -199,11 +207,8 @@ pub extern fn gv_draw_cb<S:SceneT>(v : *const c_void) where Dispatcher : DataT<S
 
 pub extern fn gv_resize_cb<S:SceneT>(v : *const c_void, w : c_int, h : c_int) {
     unsafe {
-        //return (*v).resize(w, h);
-        //let gv : *mut View2 = mem::transmute(v);
-        let gv : *mut Box<ViewT<S>> = mem::transmute(v);
-        //println!("resize {}", (*gv).name);
-        (*gv).resize(w, h);
+        let gldata : &GlViewData<S> = &*(v as *const GlViewData<S>) ;
+        (*gldata.view).resize(w, h);
     }
 }
 
@@ -216,7 +221,7 @@ pub extern fn gv_close_cb(data : *mut c_void) {
     }
 }
 
-extern fn gv_key_down<S>(
+extern fn gv_key_down<S:SceneT>(
     data : *const c_void,
     modifier : c_int,
     keyname : *const c_char,
@@ -224,12 +229,11 @@ extern fn gv_key_down<S>(
     keycode : c_uint,
     timestamp : c_int)
 {
-    //let gv : *mut View2 = unsafe { mem::transmute(data) };
-    //let gv : &mut View2 = unsafe { &mut *gv };
-    let gv : *mut Box<ViewT<S>> = unsafe { mem::transmute(data) };
-    let gv : &mut Box<ViewT<S>> = unsafe { &mut *gv };
-    //unsafe { (*gv).input.add_key(keycode as u8); }
     println!("key pressed {}", (keycode as u8));
+    unsafe {
+        let gldata : &GlViewData<S> = &*(data as *const GlViewData<S>) ;
+        (*gldata.view).handle_key(keycode as u8);
+    }
 }
 
 trait SceneUpdate {
@@ -288,19 +292,17 @@ impl DataT<Rc<RefCell<scene::Scene>>> for Dispatcher {
     }
 }
 
-
 struct GlViewData<Scene:SceneT> {
-    dis : Rc<Dispatcher>,
-    view : *mut Box<ViewT<Scene>>,
+    dis : *const DataT<Scene>,
+    view : *mut ViewT<Scene>,
 }
 
 impl<S:SceneT> GlViewData<S> {
-    fn new(d : Rc<Dispatcher>, view : *mut Box<ViewT<S>>) -> GlViewData<S>
+    fn new(d : *const DataT<S>, view : *mut ViewT<S>) -> GlViewData<S>
     {
         GlViewData {
             dis : d,
-            view : view
-
+            view : view,
         }
     }
 }
@@ -353,8 +355,8 @@ impl<R, S:SceneT>  ui::gameview::GameViewTrait<S> for View2<R,S> {
     }
 
     fn update(&mut self) -> bool {
-        /*
-        self.clear_input();
+        self.input.clear();
+
         if self.state == 1 {
             self.request_update();
             true
@@ -362,8 +364,6 @@ impl<R, S:SceneT>  ui::gameview::GameViewTrait<S> for View2<R,S> {
         else {
             false
         }
-        */
-        false
     }
 
     fn get_input(&self) -> &input::Input
