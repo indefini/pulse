@@ -883,7 +883,7 @@ pub struct WidgetContainer
     pub visible_prop : HashMap<Uuid, Weak<Widget>>,
     pub anim : Option<*const Ecore_Animator>,
 
-    pub data : Data<Scene>,
+    pub data : Box<Data<Scene>>,
     pub resource : Rc<resource::ResourceGroup>,
     pub state : State
 }
@@ -906,7 +906,7 @@ impl WidgetContainer
             visible_prop : HashMap::new(),
             anim : None,
 
-            data : Data::new(),
+            data : box Data::new(),
             resource : Rc::new(resource::ResourceGroup::new()),
             state : State::new()
 
@@ -1164,7 +1164,7 @@ impl WidgetContainer
                         }
                     }
                 };
-                self.state.request_operation(prop, operation, &mut self.data);
+                self.state.request_operation(prop, operation, &mut *self.data);
                 //let op = self.state.make_operation(prop, operation);
                 //self.state.op_mgr.add_with_trait2(box op);
                 //self.state.op_mgr.redo(self.data)
@@ -1272,11 +1272,11 @@ impl WidgetContainer
                 }
             },
             Event::Undo => {
-                let change = self.state.undo(&mut self.data);
+                let change = self.state.undo(&mut *self.data);
                 self.handle_change(&change, widget_origin);
             },
             Event::Redo => {
-                let change = self.state.redo(&mut self.data);
+                let change = self.state.redo(&mut *self.data);
                 self.handle_change(&change, widget_origin);
             },
             Event::CameraChange => {
@@ -1624,7 +1624,7 @@ pub fn add_empty(container : &mut WidgetContainer, view_id : Uuid)
     let addob = container.state.request_operation(
             vs,
             operation::OperationData::SceneAddObjects(s.clone(),parent,vec.clone()),
-            &mut container.data
+            &mut *container.data
             );
 
     ops.push(addob);
@@ -1808,7 +1808,7 @@ fn create_gameview_window(
     container : Arw<ui::WidgetContainer>,
     scene : Scene,
     config : &WidgetConfig
-    ) -> Box<ui::gameview::GameView>
+    ) -> Box<ui::gameview::GameViewTrait<Scene>>
 {
     let win = unsafe {
         ui::jk_window_new(
@@ -1820,13 +1820,27 @@ fn create_gameview_window(
 
     let container : &mut ui::WidgetContainer = &mut *container.write().unwrap();
 
-    let render = box render::GameRender::new(scene.borrow().camera.clone().unwrap(), container.resource.clone());
+    let render = render::GameRender::new(scene.borrow().camera.clone().unwrap(), container.resource.clone());
 
+    /*
     ui::gameview::GameView::new(
         win,
-        scene,
-        render,
+        scene.borrow().id,
+        &container.data as *const Box<Data<Scene>>,
+        box render,
         config.clone())
+        */
+
+        //*
+    ui::view2::View2::new(
+        win,
+        &*container.data as *const DataT<Scene>,
+        config.clone(),
+        render,
+        scene.borrow().id,
+        )
+        //*/
+
 }
 
 fn check_mesh(name : &str, wc : &WidgetContainer, id : uuid::Uuid)
