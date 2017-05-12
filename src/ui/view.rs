@@ -1,5 +1,5 @@
 use std::rc::Rc;
-use std::cell::{Cell,RefCell, BorrowState};
+use std::cell::{Cell,RefCell};
 use std::sync::{RwLock, Arc,Mutex};
 use libc::{c_char, c_void, c_int, c_uint, c_float};
 use std::ffi::CStr;
@@ -16,7 +16,6 @@ use dormin::vec;
 use dormin::material;
 use dragger;
 use dormin::camera;
-use operation;
 use control::Control;
 use dormin::component::mesh_render;
 use util;
@@ -44,7 +43,6 @@ pub struct View
     dragger : Rc<RefCell<dragger::DraggerManager>>,
 
     pub camera : Rc<RefCell<camera::Camera>>,
-    pub resource : Rc<resource::ResourceGroup>,
     pub uuid : uuid::Uuid,
 
     pub width : i32,
@@ -80,7 +78,6 @@ impl View
             dragger : dragger,
 
             camera : camera,
-            resource : resource,
             uuid : uuid::Uuid::new_v4(),
 
             width : w,
@@ -141,7 +138,7 @@ impl View
         let mut cams = Vec::new();
         for c in &scene.cameras {
 
-            let mut camo = create_camera_object_mesh(&*self.resource, "dance_cam");
+            let mut camo = create_camera_object_mesh("dance_cam");
             let cb = c.borrow();
             camo.position = cb.object.read().unwrap().world_position();
             camo.orientation = transform::Orientation::new_with_quat(&cb.object.read().unwrap().world_orientation());
@@ -499,7 +496,6 @@ pub extern fn resize_cb(data : *const c_void, w : c_int, h : c_int) -> () {
 }
 
 fn create_camera_object_mesh(
-    resource : &resource::ResourceGroup,
     name : &str) -> object::Object
 {
    // let mut cam = factory.create_object(name);
@@ -524,10 +520,9 @@ fn create_camera_object_mesh(
 
     let mat = create_mat();
 
-    cam.mesh_render = Some(mesh_render::MeshRender::new_with_mat(
+    cam.mesh_render = Some(mesh_render::MeshRender::new_with_mat2(
         "model/camera.mesh",
-        mat,
-        resource));
+        mat));
 
     cam
 }

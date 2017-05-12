@@ -1,4 +1,3 @@
-use std::collections::LinkedList;
 use std::rc::{Rc,Weak};
 use std::cell::RefCell;
 use std::sync::{RwLock, Arc};
@@ -6,7 +5,6 @@ use dormin::object;
 use dormin::mesh;
 use dormin::vec;
 use dormin::resource;
-use dormin::resource::Create;
 use dormin::shader;
 use dormin::material;
 use dormin::transform;
@@ -101,7 +99,7 @@ pub struct Dragger<O>
 
 impl DraggerManager
 {
-    pub fn new(factory : &factory::Factory, resource : &resource::ResourceGroup) -> DraggerManager
+    pub fn new(factory : &factory::Factory) -> DraggerManager
     {
         let mut dm = DraggerManager {
             draggers : Vec::with_capacity(3),
@@ -112,13 +110,13 @@ impl DraggerManager
             dragger_focus : None
         };
 
-        let tr = create_dragger_translation_group(factory, resource);
+        let tr = create_dragger_translation_group(factory);
         dm.draggers.push(tr);
 
-        let sc = create_scale_draggers(factory, resource);
+        let sc = create_scale_draggers(factory);
         dm.draggers.push(sc);
 
-        let sc = create_rotation_draggers(factory, resource);
+        let sc = create_rotation_draggers(factory);
         dm.draggers.push(sc);
 
         dm
@@ -337,7 +335,6 @@ impl DraggerManager
 
 pub fn create_dragger(
     factory : &factory::Factory,
-    resource : &resource::ResourceGroup,
     name : &str,
     mesh : &str,
     color : vec::Vec4) -> Arc<RwLock<object::Object>>
@@ -454,20 +451,28 @@ impl Dragger<Arc<RwLock<object::Object>>>
         let rotation = ob.orientation.as_quat();
         let scale = vec::Vec3::new(s, s, s);
 
-        let mm = resource.mesh_manager.borrow();
-        let mesh = match ob.mesh_render {
-            None => return (false,0f64),
-            Some(ref mr) => {
-                mr.mesh.as_ref(&mm).unwrap()//.read().unwrap()
-            },
+        let mut mm = resource.mesh_manager.borrow_mut();
+
+        let ir = 
+        {
+            let mesh = match ob.mesh_render {
+                None => return (false,0f64),
+                Some(ref mr) => {
+                    match mr.mesh.as_ref(&mm) {
+                        None => return (false,0f64),
+                        Some(m) => m
+                    }
+                },
+            };
+
+            let aabox = match mesh.aabox {
+                None => return (false,0f64),
+                Some(ref aa) => aa
+            };
+
+            intersection::intersection_ray_box(r, aabox, &position, &rotation, &scale)
         };
 
-        let aabox = match mesh.aabox {
-            None => return (false,0f64),
-            Some(ref aa) => aa
-        };
-
-        let ir = intersection::intersection_ray_box(r, aabox, &position, &rotation, &scale);
         if ir.hit {
             let length = (ir.position - r.start).length2();
 
@@ -475,7 +480,7 @@ impl Dragger<Arc<RwLock<object::Object>>>
 
             let m = match self.collision{
                 Collision::SpecialMesh(ref r) => {
-                    if let Some(m) = r.as_ref(&*mm) {
+                    if let Some(m) = r.as_ref_instant(&mut *mm) {
                         m
                     }
                     else {

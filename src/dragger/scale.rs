@@ -102,7 +102,7 @@ impl DraggerMouse for ScaleOperation {
 
 pub fn create_scale_draggers(
     factory : &factory::Factory,
-    resource : &resource::ResourceGroup)
+    )
     -> DraggerGroup
 {
     let red = vec::Vec4::new(1.0f64,0.247f64,0.188f64,0.5f64);
@@ -112,7 +112,7 @@ pub fn create_scale_draggers(
     //let mesh_cube = "model/dragger_cube.mesh";
 
     let dragger_x = Dragger::new(
-        create_dragger(factory, resource, "scale_x", mesh, red),
+        create_dragger(factory, "scale_x", mesh, red),
         vec::Vec3::new(1f64,0f64,0f64),
         transform::Orientation::Quat(vec::Quat::new_axis_angle_deg(vec::Vec3::new(0f64,1f64,0f64), 90f64)),
         Kind::Scale,
@@ -121,7 +121,7 @@ pub fn create_scale_draggers(
         );
 
     let dragger_y = Dragger::new(
-        create_dragger(factory, resource, "scale_y", mesh, green),
+        create_dragger(factory, "scale_y", mesh, green),
         vec::Vec3::new(0f64,1f64,0f64),
         transform::Orientation::Quat(vec::Quat::new_axis_angle_deg(vec::Vec3::new(1f64,0f64,0f64), -90f64)), 
         Kind::Scale,
@@ -130,7 +130,7 @@ pub fn create_scale_draggers(
         );
 
     let dragger_z = Dragger::new(
-        create_dragger(factory, resource, "scale_z", mesh, blue),
+        create_dragger(factory, "scale_z", mesh, blue),
         vec::Vec3::new(0f64,0f64,1f64),
         transform::Orientation::Quat(vec::Quat::identity()), 
         Kind::Scale,
