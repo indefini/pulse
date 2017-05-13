@@ -1,4 +1,3 @@
-use std::collections::LinkedList;
 use std::rc::{Rc,Weak};
 use std::cell::RefCell;
 use std::sync::{RwLock, Arc};
@@ -7,12 +6,9 @@ use dormin::mesh;
 use dormin::vec;
 use dormin::resource;
 use dormin::resource::Create;
-use dormin::shader;
-use dormin::material;
 use dormin::transform;
 use dormin::geometry;
 use dormin::intersection;
-use dormin::matrix;
 use dormin::factory;
 use dormin::camera;
 
@@ -104,7 +100,7 @@ impl RotationOperation {
     }
 }
 
-pub fn create_rotation_draggers(factory : &factory::Factory, resource : &resource::ResourceGroup)
+pub fn create_rotation_draggers(factory : &factory::Factory)
     -> DraggerGroup
 {
     let red = vec::Vec4::new(1.0f64,0.247f64,0.188f64,0.5f64);
@@ -112,11 +108,10 @@ pub fn create_rotation_draggers(factory : &factory::Factory, resource : &resourc
     let blue = vec::Vec4::new(0f64,0.4745f64,1f64,0.5f64);
     let mesh = "model/dragger_rotate_quarter.mesh";
     let collider = "model/dragger_rotate_collider_quarter.mesh";
-    let collider_mesh : resource::ResTT<mesh::Mesh> = 
-        resource.mesh_manager.borrow_mut().request_use_no_proc_tt(collider);
+    let collider_mesh : resource::ResTT<mesh::Mesh> = resource::ResTT::new(collider);
 
     let dragger_x = Dragger::new(
-        create_dragger(factory, resource, "rotate_x", mesh, red),
+        create_dragger(factory, "rotate_x", mesh, red),
         vec::Vec3::new(1f64,0f64,0f64),
         transform::Orientation::Quat(vec::Quat::new_axis_angle_deg(
                 vec::Vec3::new(0f64,1f64,0f64), -90f64)),
@@ -126,7 +121,7 @@ pub fn create_rotation_draggers(factory : &factory::Factory, resource : &resourc
         );
 
     let dragger_y = Dragger::new(
-        create_dragger(factory, resource, "rotate_y", mesh, green),
+        create_dragger(factory, "rotate_y", mesh, green),
         vec::Vec3::new(0f64,1f64,0f64),
         transform::Orientation::Quat(vec::Quat::new_axis_angle_deg(
                 vec::Vec3::new(1f64,0f64,0f64), 90f64)), 
@@ -136,7 +131,7 @@ pub fn create_rotation_draggers(factory : &factory::Factory, resource : &resourc
         );
 
     let dragger_z = Dragger::new(
-        create_dragger(factory, resource, "rotate_z", mesh, blue),
+        create_dragger(factory, "rotate_z", mesh, blue),
         vec::Vec3::new(0f64,0f64,1f64),
         transform::Orientation::Quat(vec::Quat::identity()), 
         Kind::Rotate,

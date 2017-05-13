@@ -4,7 +4,6 @@ use std::cell::{RefCell};
 use std::any::Any;
 
 use dormin;
-use dormin::factory;
 use dormin::{vec, transform, object, component};
 use dormin::property::PropertyGet;
 
