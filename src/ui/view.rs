@@ -92,9 +92,31 @@ impl View
     pub fn init(
         &mut self,
         win : *const ui::Window,
+        wcb : ui::WidgetCbData
         ) {
 
         self.window = Some(win);
+
+        unsafe {
+            //TODO clean Box::into_raw data
+            ui::window_callback_set(
+                win,
+                Box::into_raw(box wcb.clone()) as *const c_void,
+                mouse_down,
+                mouse_up,
+                mouse_move,
+                mouse_wheel,
+                key_down
+                );
+
+            //TODO clean Box::into_raw data
+            ui::tmp_func(
+                win,
+                Box::into_raw(box wcb) as *const c_void,
+                init_cb,
+                draw_cb,
+                resize_cb);
+        }
     }
 
     fn init_render(&mut self)

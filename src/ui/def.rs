@@ -277,19 +277,13 @@ fn create_views(container_arw : Arw<WidgetContainer>, views_config : &[ViewConfi
 
 fn init_views(container_arw : Arw<WidgetContainer>, wc : &WindowConfig, views : &mut [Box<View>])
 {
-    //for v in &mut views {
     for (i,v) in views.iter_mut().enumerate() {
         let v : &mut Box<View> = v;
 
         let pc = wc.property.clone();
-        let tc = if let Some(ref t) = wc.tree {
-            t.clone()
-        }
-        else {
-            ui::WidgetConfig::new()
-        };
+        let tc = wc.tree.clone().unwrap_or_default();
 
-        let win = unsafe {ui::window_new(v.width,v.height)};
+        let win = unsafe { ui::window_new(v.width,v.height) };
 
         //TODO remove from here?
         init_property(&container_arw, win, &pc);
@@ -304,34 +298,8 @@ fn init_views(container_arw : Arw<WidgetContainer>, wc : &WindowConfig, views : 
         container_arw.write().unwrap().list.create(win);
         }
 
-        v.init(win);
-
-        if let Some(w) = v.window {
-            unsafe {
-                let wcb = ui::WidgetCbData::with_index(&container_arw, i);
-
-                //TODO clean Box::into_raw data
-                ui::window_callback_set(
-                    w,
-                    Box::into_raw(box wcb) as *const c_void,
-                    ui::view::mouse_down,
-                    ui::view::mouse_up,
-                    ui::view::mouse_move,
-                    ui::view::mouse_wheel,
-                    ui::view::key_down
-                    );
-
-                let wcb = ui::WidgetCbData::with_index(&container_arw, i);
-
-                //TODO clean Box::into_raw data
-                tmp_func(
-                    w,
-                    Box::into_raw(box wcb) as *const c_void,
-                    ui::view::init_cb,
-                    ui::view::draw_cb,
-                    ui::view::resize_cb);
-            }
-        }
+        let wcb = ui::WidgetCbData::with_index(&container_arw, i);
+        v.init(win, wcb);
     }
 
 }

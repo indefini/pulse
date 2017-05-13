@@ -33,7 +33,9 @@ pub use self::def::{
     jk_window_new,
     jk_window_request_update,
     jk_glview_new,
+
     window_callback_set,
+    tmp_func,
 
     add_empty,
     scene_list,
