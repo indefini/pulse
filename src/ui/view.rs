@@ -20,6 +20,7 @@ use control::Control;
 use dormin::component::mesh_render;
 use util;
 use context;
+use data::SceneT;
 
 
 #[link(name = "joker")]
@@ -31,6 +32,36 @@ extern {
         y : c_float,
         w : c_float,
         h : c_float);
+}
+
+//TODO check if all functions belong here
+pub trait EditView<S:SceneT> : ui::Widget {
+    //fn play(&mut self);
+    //fn get_scene_id(&self) -> Option<S::Id>;
+
+    fn init(
+        &mut self,
+        win : *const ui::Window,
+        wcb : ui::WidgetCbData
+        );
+
+    //TODO clean camera functions
+    fn get_camera_rc(&self) -> Rc<RefCell<camera::Camera>>;
+    fn get_camera(&self) -> camera::Camera;
+    fn get_camera_transform(&self) -> (vec::Vec3, vec::Quat);
+
+    fn request_update(&self);
+
+    //TODO user input
+    fn get_control(&self) -> Rc<RefCell<Control>>;
+    fn handle_event(&self, event : &ui::EventOld);
+
+
+    //TODO glview cb and draw stuff
+    fn init_render(&mut self);
+    fn draw(&mut self, context : &context::ContextOld) -> bool;
+    fn resize(&mut self, w : c_int, h : c_int);
+    fn is_loading_resource(&self) -> bool;
 }
 
 pub struct View
@@ -45,83 +76,99 @@ pub struct View
     pub camera : Rc<RefCell<camera::Camera>>,
     pub uuid : uuid::Uuid,
 
-    pub width : i32,
-    pub height : i32,
+    pub config : ui::WidgetConfig,
+
     pub updating : Cell<bool>,
     loading_resource : Arc<Mutex<usize>>,
 }
 
-impl View
+impl<S:SceneT> EditView<S> for View
 {
-    pub fn new(
-        resource : Rc<resource::ResourceGroup>,
-        dragger : Rc<RefCell<dragger::DraggerManager>>,
-        render : Box<Render>,
-        w : i32,
-        h : i32,
-        camera : Rc<RefCell<camera::Camera>>
-        ) -> View
+    /*
+    fn get_scene_id(&self) -> Option<S::Id>
     {
-        let control = Rc::new(RefCell::new(
-                Control::new(
-                    camera.clone(),
-                    dragger.clone(),
-                    resource.clone(),
-                    )));
-
-        let v = View {
-            render : render,
-            control : control,
-
-            window : None,
-
-            dragger : dragger,
-
-            camera : camera,
-            uuid : uuid::Uuid::new_v4(),
-
-            width : w,
-            height : h,
-            updating : Cell::new(false),
-            loading_resource : Arc::new(Mutex::new(0)),
-        };
-
-        return v;
+        None
     }
+    */
 
-    pub fn init(
+    fn init(
         &mut self,
         win : *const ui::Window,
         wcb : ui::WidgetCbData
         ) {
 
-        self.window = Some(win);
+        self.init_(win, wcb);
+    }
 
-        unsafe {
-            //TODO clean Box::into_raw data
-            ui::window_callback_set(
-                win,
-                Box::into_raw(box wcb.clone()) as *const c_void,
-                mouse_down,
-                mouse_up,
-                mouse_move,
-                mouse_wheel,
-                key_down
-                );
+    fn get_camera_rc(&self) -> Rc<RefCell<camera::Camera>>
+    {
+        self.camera.clone()
+    }
 
-            //TODO clean Box::into_raw data
-            ui::tmp_func(
-                win,
-                Box::into_raw(box wcb) as *const c_void,
-                init_cb,
-                draw_cb,
-                resize_cb);
+    fn get_camera(&self) -> camera::Camera
+    {
+       self.camera.borrow().clone()
+    }
+
+    fn get_camera_transform(&self) -> (vec::Vec3, vec::Quat)
+    {
+        let c = self.camera.borrow();
+        let c = c.object.read().unwrap();
+        (c.position, c.orientation.as_quat())
+    }
+
+    fn request_update(&self)
+    {
+        if self.updating.get() {
+            return;
+        }
+
+        if let Some(w) = self.window {
+            self.updating.set(true);
+            unsafe {ui::jk_window_request_update(w);}
+        }
+    }
+
+    fn get_control(&self) -> Rc<RefCell<Control>>
+    {
+        self.control.clone()
+    }
+
+    fn handle_event(&self, event : &ui::EventOld)
+    {
+        match *event {
+            ui::Event::RectVisibleSet(b) => {
+                if let Some(w) = self.window {
+                    unsafe {
+                        window_rect_visible_set(w, b);
+                    }
+                }
+            },
+            ui::Event::RectSet(x,y,w,h) => {
+                if let Some(win) = self.window {
+                    unsafe {
+                        window_rect_set(win, x,y,w,h);
+                    }
+                }
+            },
+            _ => {}
         }
     }
 
     fn init_render(&mut self)
     {
         self.render.init();
+    }
+
+    fn is_loading_resource(&self) -> bool
+    {
+        if let Ok(lr) = self.loading_resource.try_lock() {
+            if *lr == 0 {
+                return false;
+            }
+        }
+
+        true
     }
 
     fn draw(&mut self, context : &context::ContextOld) -> bool
@@ -186,52 +233,108 @@ impl View
 
     fn resize(&mut self, w : c_int, h : c_int)
     {
-        self.width = w;
-        self.height = h;
+        self.config.w = w;
+        self.config.h = h;
         self.render.resize(w, h);
     }
-    
-    pub fn handle_event(&self, event : &ui::EventOld)
-    {
-        match *event {
-            ui::Event::RectVisibleSet(b) => {
-                if let Some(w) = self.window {
-                    unsafe {
-                        window_rect_visible_set(w, b);
-                    }
-                }
-            },
-            ui::Event::RectSet(x,y,w,h) => {
-                if let Some(win) = self.window {
-                    unsafe {
-                        window_rect_set(win, x,y,w,h);
-                    }
-                }
-            },
-            _ => {}
-        }
-    }
 
-    pub fn get_camera_transform(&self) -> (vec::Vec3, vec::Quat)
-    {
-        let c = self.camera.borrow();
-        let c = c.object.read().unwrap();
-        (c.position, c.orientation.as_quat())
-    }
+}
 
-    pub fn request_update(&self)
+impl ui::Widget for View {
+    fn set_visible(&mut self, b : bool)
     {
-        if self.updating.get() {
-            return;
-        }
+        self.config.visible = b;
 
+        println!("todo set visible for view");
+        /*
         if let Some(w) = self.window {
-            self.updating.set(true);
-            unsafe {ui::jk_window_request_update(w);}
+            if b {
+                unsafe { ui::evas_object_show(w); }
+            }
+            else {
+                unsafe { ui::evas_object_hide(w); }
+            }
         }
+        */
     }
 
+    fn get_id(&self) -> uuid::Uuid
+    {
+        self.uuid
+    }
 
+    fn get_config(&self) -> ui::WidgetConfig
+    {
+        self.config.clone()
+    }
+
+}
+
+impl View
+{
+    pub fn new(
+        resource : Rc<resource::ResourceGroup>,
+        dragger : Rc<RefCell<dragger::DraggerManager>>,
+        render : Box<Render>,
+        w : i32,
+        h : i32,
+        camera : Rc<RefCell<camera::Camera>>
+        ) -> View
+    {
+        let control = Rc::new(RefCell::new(
+                Control::new(
+                    camera.clone(),
+                    dragger.clone(),
+                    resource.clone(),
+                    )));
+
+        let v = View {
+            render : render,
+            control : control,
+
+            window : None,
+
+            dragger : dragger,
+
+            camera : camera,
+            uuid : uuid::Uuid::new_v4(),
+            config : ui::WidgetConfig::with_width_height(w, h),
+            updating : Cell::new(false),
+            loading_resource : Arc::new(Mutex::new(0)),
+        };
+
+        return v;
+    }
+
+    pub fn init_(
+        &mut self,
+        win : *const ui::Window,
+        wcb : ui::WidgetCbData
+        ) {
+
+        self.window = Some(win);
+
+        unsafe {
+            //TODO clean Box::into_raw data
+            ui::window_callback_set(
+                win,
+                Box::into_raw(box wcb.clone()) as *const c_void,
+                mouse_down,
+                mouse_up,
+                mouse_move,
+                mouse_wheel,
+                key_down
+                );
+
+            //TODO clean Box::into_raw data
+            ui::tmp_func(
+                win,
+                Box::into_raw(box wcb) as *const c_void,
+                init_cb,
+                draw_cb,
+                resize_cb);
+        }
+    } 
 }
 
 /*
@@ -255,7 +358,7 @@ pub extern fn mouse_down(
     let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
 
     let op_list = {
-        let control_rc = container.views[wcb.index].control.clone();
+        let control_rc = container.views[wcb.index].get_control();
 
         //println!("rust mouse down button {}, pos: {}, {}", button, x, y);
         let mut c = control_rc.borrow_mut();
@@ -270,7 +373,7 @@ pub extern fn mouse_down(
             container.state.save_oris();
         }
         container.views[wcb.index].handle_event(&op);
-        let id = container.views[wcb.index].uuid;
+        let id = container.views[wcb.index].get_id();
         container.handle_event(op, id);
     }
 }
@@ -288,13 +391,13 @@ pub extern fn mouse_up(
     let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
 
     let event = {
-        let control_rc = container.views[wcb.index].control.clone();
+        let control_rc = container.views[wcb.index].get_control();
         let mut c = control_rc.borrow_mut();
         c.mouse_up(&*container.state.context,button,x,y,timestamp)
     };
 
     container.views[wcb.index].handle_event(&event);
-    let id = container.views[wcb.index].uuid;
+    let id = container.views[wcb.index].get_id();
     container.handle_event(event, id);
 }
 
@@ -311,7 +414,7 @@ pub extern fn mouse_move(
 {
     let wcb : & ui::WidgetCbData = unsafe {&* (data as *const ui::WidgetCbData)};
     let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
-    let control_rc = container.views[wcb.index].control.clone();
+    let control_rc = container.views[wcb.index].get_control();
 
     let events = {
         let mut c = control_rc.borrow_mut();
@@ -326,7 +429,7 @@ pub extern fn mouse_move(
             timestamp)
     };
 
-    let id = container.views[wcb.index].uuid;
+    let id = container.views[wcb.index].get_id();
     for e in events {
         container.views[wcb.index].handle_event(&e);
         container.handle_event(e, id);
@@ -344,8 +447,8 @@ pub extern fn mouse_wheel(
     )
 {
     let wcb : & ui::WidgetCbData = unsafe {&* (data as *const ui::WidgetCbData)};
-    let view : &View = &*wcb.container.read().unwrap().views[wcb.index];
-    let control_rc = view.control.clone();
+    let view : &EditView<_> = &*wcb.container.read().unwrap().views[wcb.index];
+    let control_rc = view.get_control().clone();
 
     let c = control_rc.borrow_mut();
     c.mouse_wheel(modifiers_flag, direction, z, x, y, timestamp);
@@ -439,7 +542,8 @@ pub extern fn key_down(
             },
             "c" => {
                 let center = vec::Vec3::zero();
-                let mut cam = container.views[wcb.index].camera.borrow_mut();
+                let camera_rc = container.views[wcb.index].get_camera_rc();
+                let mut cam = camera_rc.borrow_mut();
                 let pos = center + cam.object.read().unwrap().orientation.rotate_vec3(&vec::Vec3::new(0f64,0f64,100f64));
                 cam.set_position(pos);
                 cam.set_center(&center);
@@ -448,7 +552,8 @@ pub extern fn key_down(
             },
             "f" => {
                 let center = util::objects_center(&container.state.context.selected);
-                let mut cam = container.views[wcb.index].camera.borrow_mut();
+                let camera_rc = container.views[wcb.index].get_camera_rc();
+                let mut cam = camera_rc.borrow_mut();
                 let pos = center + cam.object.read().unwrap().orientation.rotate_vec3(&vec::Vec3::new(0f64,0f64,100f64));
                 cam.set_position(pos);
                 container.views[wcb.index].request_update();
@@ -460,14 +565,14 @@ pub extern fn key_down(
         }
 
         {
-            let control_rc = container.views[wcb.index].control.clone();
+            let control_rc = container.views[wcb.index].get_control().clone();
             let mut c = control_rc.borrow_mut();
             c.key_down(modifier, keyname_str.as_ref(), key_str.as_ref(), timestamp)
         }
     };
 
     container.views[wcb.index].handle_event(&event);
-    let id = container.views[wcb.index].uuid;
+    let id = container.views[wcb.index].get_id();
     container.handle_event(event, id);
 }
 
@@ -485,6 +590,13 @@ pub extern fn request_update_again(data : *const c_void) -> bool
     let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
     let view = &mut container.views[wcb.index];
 
+    if !view.is_loading_resource() {
+        view.request_update();
+        return false;
+    }
+    true
+
+        /*
     if let Ok(lr) = view.loading_resource.try_lock() {
         if *lr == 0 {
             view.request_update();
@@ -492,6 +604,7 @@ pub extern fn request_update_again(data : *const c_void) -> bool
         }
     }
     true
+    */
 }
 
 

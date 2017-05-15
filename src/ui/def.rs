@@ -17,7 +17,7 @@ use std::ffi::{CString,CStr};
 use uuid::Uuid;
 
 use dormin::{vec, scene, object, camera, component, render, resource};
-use ui::{Tree,RefMut,PropertyUser,View,Command,Action,
+use ui::{Tree,RefMut,PropertyUser,View,EditView,Command,Action,
 PropertyWidget,PropertyBox};
 use ui;
 use operation;
@@ -242,7 +242,7 @@ pub extern fn init_cb(data: *const c_void) -> () {
     unsafe { jk_monitor_add(file_changed, Box::into_raw(box container_arw.clone()) as *const c_void, path.as_ptr()); }
 }
 
-fn create_views(container_arw : Arw<WidgetContainer>, views_config : &[ViewConfig]) -> Vec<Box<View>>
+fn create_views(container_arw : Arw<WidgetContainer>, views_config : &[ViewConfig]) -> Vec<Box<EditView<Scene>>>
 {
     let mut views = Vec::with_capacity(views_config.len());
 
@@ -261,7 +261,7 @@ fn create_views(container_arw : Arw<WidgetContainer>, views_config : &[ViewConfi
             v.window.h,
             camera);
 
-        views.push(view);
+        views.push(view as Box<EditView<Scene>>);
         let scene = if let Some(ref scene) = v.scene {
             container.data.get_or_load_scene(scene.as_str())
         }
@@ -275,20 +275,20 @@ fn create_views(container_arw : Arw<WidgetContainer>, views_config : &[ViewConfi
     views
 }
 
-fn init_views(container_arw : Arw<WidgetContainer>, wc : &WindowConfig, views : &mut [Box<View>])
+fn init_views<S:SceneT>(container_arw : Arw<WidgetContainer>, wc : &WindowConfig, views : &mut [Box<EditView<S>>])
 {
     for (i,v) in views.iter_mut().enumerate() {
-        let v : &mut Box<View> = v;
+        let v : &mut Box<EditView<S>> = v;
 
         let pc = wc.property.clone();
         let tc = wc.tree.clone().unwrap_or_default();
 
-        let win = unsafe { ui::window_new(v.width,v.height) };
+        let win = unsafe { ui::window_new(v.get_config().w, v.get_config().h) };
 
         //TODO remove from here?
         init_property(&container_arw, win, &pc);
         init_tree(&container_arw, win, &tc);
-        init_action(&container_arw, win, v.uuid);
+        init_action(&container_arw, win, v.get_id());
 
         {
         //let container = &mut *app_data.container.write().unwrap();
@@ -482,11 +482,16 @@ impl WidgetConfig
 
     pub fn new() -> WidgetConfig
     {
+        WidgetConfig::with_width_height(300,400)
+    }
+
+    pub fn with_width_height(w : i32, h : i32) -> WidgetConfig
+    {
         WidgetConfig {
             x : 10,
             y : 10,
-            w : 300,
-            h : 400,
+            w : w,
+            h : h,
             visible : true
         }
     }
@@ -537,21 +542,14 @@ impl WindowConfig {
 
         for v in &c.views {
             let vc = ViewConfig {
-                //window : WidgetConfig::new( unsafe { window_object_get(win) })
-                window : WidgetConfig{
-                    x : 0,
-                    y : 0,
-                    w : v.width,
-                    h : v.height,
-                    visible : true
-                },
+                window : v.get_config().clone(),
                 scene : match c.state.context.scene {
                     Some(ref s) => {
                         Some(s.borrow().name.clone())
                     },
                     None => None
                 },
-                camera : v.camera.borrow().clone()
+                camera : v.get_camera()
             };
             wc.views.push(vc);
         }
@@ -842,7 +840,8 @@ pub struct WidgetContainer
     pub property : Box<WidgetPanel<PropertyBox>>,
     pub command : Option<Box<Command>>,
     pub action : Option<Box<Action>>,
-    pub views : Vec<Box<View>>,
+    pub views : Vec<Box<EditView<Scene>>>,
+    //pub views : Vec<Box<View>>,
     pub gameview : Option<Box<GameViewTrait<Scene>>>,
     pub menu : Option<Box<Action>>,
 
@@ -1259,12 +1258,12 @@ impl WidgetContainer
         self.state.context.scene.clone()
     }
 
-    pub fn find_view(&self, id : Uuid) -> Option<&View>
+    pub fn find_view(&self, id : Uuid) -> Option<&EditView<Scene>>
     {
         for v in &self.views
         {
-            if v.uuid == id {
-                return Some(v)
+            if v.get_id() == id {
+                return Some(&**v)
             }
         }
         None
@@ -1380,7 +1379,7 @@ impl WidgetContainer
     fn update_view(&self, id : uuid::Uuid)
     {
         for view in &self.views {
-            if view.uuid == id {
+            if view.get_id() == id {
                 view.request_update();
             }
         }

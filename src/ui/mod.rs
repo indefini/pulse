@@ -62,7 +62,7 @@ pub use self::property_box::{PropertyBox,JkPropertyBox};
 //pub use self::property::{JkPropertyList};
 pub use self::property::{make_vec_from_str,find_property_show,JkPropertyCb};
 
-pub use self::view::{View};
+pub use self::view::{View, EditView};
 
 mod tree;
 mod action;
