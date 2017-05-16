@@ -53,7 +53,7 @@ pub trait EditView<S:SceneT> : ui::Widget {
     fn request_update(&self);
 
     //TODO user input
-    fn get_control(&self) -> Rc<RefCell<Control>>;
+    fn get_control(&mut self) -> &mut Control;
     fn handle_event(&self, event : &ui::EventOld);
 
 
@@ -67,18 +67,18 @@ pub trait EditView<S:SceneT> : ui::Widget {
 pub struct View
 {
     render : Box<Render>,
-    pub control : Rc<RefCell<Control>>,
+    control : Control,
 
-    pub window : Option<*const ui::Window>,
+    window : Option<*const ui::Window>,
 
     dragger : Rc<RefCell<dragger::DraggerManager>>,
 
-    pub camera : Rc<RefCell<camera::Camera>>,
-    pub uuid : uuid::Uuid,
+    camera : Rc<RefCell<camera::Camera>>,
+    uuid : uuid::Uuid,
 
-    pub config : ui::WidgetConfig,
+    config : ui::WidgetConfig,
 
-    pub updating : Cell<bool>,
+    updating : Cell<bool>,
     loading_resource : Arc<Mutex<usize>>,
 }
 
@@ -129,9 +129,9 @@ impl<S:SceneT> EditView<S> for View
         }
     }
 
-    fn get_control(&self) -> Rc<RefCell<Control>>
+    fn get_control(&mut self) -> &mut Control
     {
-        self.control.clone()
+        &mut self.control
     }
 
     fn handle_event(&self, event : &ui::EventOld)
@@ -281,12 +281,11 @@ impl View
         camera : Rc<RefCell<camera::Camera>>
         ) -> View
     {
-        let control = Rc::new(RefCell::new(
-                Control::new(
+        let control = Control::new(
                     camera.clone(),
                     dragger.clone(),
                     resource.clone(),
-                    )));
+                    );
 
         let v = View {
             render : render,
@@ -358,10 +357,9 @@ pub extern fn mouse_down(
     let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
 
     let op_list = {
-        let control_rc = container.views[wcb.index].get_control();
+        let c = container.views[wcb.index].get_control();
 
         //println!("rust mouse down button {}, pos: {}, {}", button, x, y);
-        let mut c = control_rc.borrow_mut();
         c.mouse_down(&*container.state.context, modifier, button,x,y,timestamp)
     };
 
@@ -391,8 +389,7 @@ pub extern fn mouse_up(
     let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
 
     let event = {
-        let control_rc = container.views[wcb.index].get_control();
-        let mut c = control_rc.borrow_mut();
+        let c = container.views[wcb.index].get_control();
         c.mouse_up(&*container.state.context,button,x,y,timestamp)
     };
 
@@ -414,10 +411,9 @@ pub extern fn mouse_move(
 {
     let wcb : & ui::WidgetCbData = unsafe {&* (data as *const ui::WidgetCbData)};
     let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
-    let control_rc = container.views[wcb.index].get_control();
 
     let events = {
-        let mut c = control_rc.borrow_mut();
+        let c = container.views[wcb.index].get_control();
         c.mouse_move(
             &*container.state.context,
             modifiers_flag,
@@ -447,11 +443,11 @@ pub extern fn mouse_wheel(
     )
 {
     let wcb : & ui::WidgetCbData = unsafe {&* (data as *const ui::WidgetCbData)};
-    let view : &EditView<_> = &*wcb.container.read().unwrap().views[wcb.index];
-    let control_rc = view.get_control().clone();
-
-    let c = control_rc.borrow_mut();
-    c.mouse_wheel(modifiers_flag, direction, z, x, y, timestamp);
+    let view : &mut EditView<_> = &mut *wcb.container.write().unwrap().views[wcb.index];
+    {
+        let c = view.get_control();
+        c.mouse_wheel(modifiers_flag, direction, z, x, y, timestamp);
+    }
 
     view.request_update();
 }
@@ -565,8 +561,7 @@ pub extern fn key_down(
         }
 
         {
-            let control_rc = container.views[wcb.index].get_control().clone();
-            let mut c = control_rc.borrow_mut();
+            let c = container.views[wcb.index].get_control();
             c.key_down(modifier, keyname_str.as_ref(), key_str.as_ref(), timestamp)
         }
     };

@@ -16,6 +16,7 @@ use dormin::scene;
 use dormin::object;
 use ui::Window;
 use ui;
+use ui::Widget;
 //use control::Control;
 use operation;
 
@@ -101,7 +102,7 @@ pub extern fn add_empty(data : *const c_void, name : *const c_char)
     //let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
     let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
 
-    ui::add_empty(container, v.uuid);
+    ui::add_empty(container, v.get_id());
 }
 
 /*
@@ -149,15 +150,18 @@ pub extern fn remove_selected2(data : *const c_void, name : *const c_char)
     //let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
     let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
 
+    println!("if borrow panic check this code, {}, {} ", file!(), line!());
+    /*
     if v.control.borrow_state() != BorrowState::Unused {
         println!("control already borrowed, remove selected2 ");
         return;
     }
+    */
 
     //let mut control = v.control.borrow_mut();
     let change = container.state.remove_selected_objects(&mut *container.data);
 
-    container.handle_change(&change, v.uuid);
+    container.handle_change(&change, v.get_id());
 }
 
 pub extern fn copy_selected(data : *const c_void, name : *const c_char)
@@ -167,15 +171,18 @@ pub extern fn copy_selected(data : *const c_void, name : *const c_char)
     //let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
     let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
 
+    println!("if borrow panic check this code, {}, {} ", file!(), line!());
+    /*
     if v.control.borrow_state() != BorrowState::Unused {
         println!("control already borrowed, copy selected ");
         return;
     }
+    */
 
     //let mut control = v.control.borrow_mut();
     let change = container.state.copy_selected_objects(&mut *container.data);
 
-    container.handle_change(&change, v.uuid);
+    container.handle_change(&change, v.get_id());
 }
 
 
@@ -189,7 +196,7 @@ pub extern fn set_camera2(data : *const c_void, name : *const c_char)
     println!("commnd set camera");
     let change = container.state.set_scene_camera(&mut *container.data);
 
-    container.handle_change(&change, v.uuid);
+    container.handle_change(&change, v.get_id());
 }
 
 extern fn add_comp(data : *const c_void, name : *const c_char)
@@ -205,7 +212,7 @@ extern fn add_comp(data : *const c_void, name : *const c_char)
     let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
 
     let change = container.state.add_component(s, &mut *container.data);
-    container.handle_change(&change, v.uuid);
+    container.handle_change(&change, v.get_id());
 }
 
 pub extern fn add_component(data : *const c_void, name : *const c_char)
