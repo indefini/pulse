@@ -27,7 +27,7 @@ pub struct Control
 {
     pub camera : Rc<RefCell<camera::Camera>>,
     state : State,
-    dragger : Rc<RefCell<dragger::DraggerManager>>,
+    pub dragger : Rc<RefCell<dragger::DraggerManager>>,
     mouse_start : Option<vec::Vec2>,
     resource : Rc<resource::ResourceGroup>
 }

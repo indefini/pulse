@@ -71,8 +71,6 @@ pub struct View
 
     window : Option<*const ui::Window>,
 
-    dragger : Rc<RefCell<dragger::DraggerManager>>,
-
     camera : Rc<RefCell<camera::Camera>>,
     uuid : uuid::Uuid,
 
@@ -192,7 +190,7 @@ impl<S:SceneT> EditView<S> for View
             center = center / (sel.len() as f64);
 
             //TODO println!("remove this code from here, put in update or when moving the camera");
-            let mut dragger = self.dragger.borrow_mut();
+            let mut dragger = self.control.dragger.borrow_mut();
             dragger.set_position(center);
             dragger.set_orientation(transform::Orientation::Quat(ori), &*self.camera.borrow());
             //let scale = self.camera.borrow().get_camera_resize_w(0.05f64);
@@ -222,7 +220,7 @@ impl<S:SceneT> EditView<S> for View
             obs,
             &cams,
             sel,
-            &self.dragger.borrow().get_objects(),
+            &self.control.dragger.borrow().get_objects(),
             &finish,
             self.loading_resource.clone());
 
@@ -292,8 +290,6 @@ impl View
             control : control,
 
             window : None,
-
-            dragger : dragger,
 
             camera : camera,
             uuid : uuid::Uuid::new_v4(),
@@ -590,16 +586,6 @@ pub extern fn request_update_again(data : *const c_void) -> bool
         return false;
     }
     true
-
-        /*
-    if let Ok(lr) = view.loading_resource.try_lock() {
-        if *lr == 0 {
-            view.request_update();
-            return false;
-        }
-    }
-    true
-    */
 }
 
 
