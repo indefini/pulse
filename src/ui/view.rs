@@ -190,7 +190,7 @@ impl<S:SceneT> EditView<S> for View
             center = center / (sel.len() as f64);
 
             //TODO println!("remove this code from here, put in update or when moving the camera");
-            let mut dragger = self.control.dragger.borrow_mut();
+            let mut dragger = &mut self.control.dragger;
             dragger.set_position(center);
             dragger.set_orientation(transform::Orientation::Quat(ori), &*self.camera.borrow());
             //let scale = self.camera.borrow().get_camera_resize_w(0.05f64);
@@ -220,7 +220,7 @@ impl<S:SceneT> EditView<S> for View
             obs,
             &cams,
             sel,
-            &self.control.dragger.borrow().get_objects(),
+            &self.control.dragger.get_objects(),
             &finish,
             self.loading_resource.clone());
 
@@ -272,7 +272,7 @@ impl View
 {
     pub fn new(
         resource : Rc<resource::ResourceGroup>,
-        dragger : Rc<RefCell<dragger::DraggerManager>>,
+        dragger : dragger::DraggerManager,
         render : Box<Render>,
         w : i32,
         h : i32,
@@ -281,7 +281,7 @@ impl View
     {
         let control = Control::new(
                     camera.clone(),
-                    dragger.clone(),
+                    dragger,
                     resource.clone(),
                     );
 

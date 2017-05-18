@@ -249,7 +249,7 @@ fn create_views(container_arw : Arw<WidgetContainer>, views_config : &[ViewConfi
     for v in views_config {
         let container = &mut *container_arw.write().unwrap();
 
-        let dragger = Rc::new(RefCell::new(dragger::DraggerManager::new(&container.data.factory)));
+        let dragger = dragger::DraggerManager::new(&container.data.factory);
         let camera = Rc::new(RefCell::new(v.camera.clone()));
         let render = box render::Render::new(&container.data.factory, container.resource.clone(), camera.clone());
 

@@ -27,7 +27,7 @@ pub struct Control
 {
     pub camera : Rc<RefCell<camera::Camera>>,
     state : State,
-    pub dragger : Rc<RefCell<dragger::DraggerManager>>,
+    pub dragger : dragger::DraggerManager,
     mouse_start : Option<vec::Vec2>,
     resource : Rc<resource::ResourceGroup>
 }
@@ -36,7 +36,7 @@ impl Control
 {
     pub fn new(
         camera : Rc<RefCell<camera::Camera>>,
-        dragger : Rc<RefCell<dragger::DraggerManager>>,
+        dragger : dragger::DraggerManager,
         resource : Rc<resource::ResourceGroup>
         ) -> Control
     {
@@ -76,7 +76,7 @@ impl Control
 
         let objs = context.selected.clone();
         if !objs.is_empty() {
-            let click = self.dragger.borrow_mut().mouse_down(
+            let click = self.dragger.mouse_down(
                 &*self.camera.borrow(),button, x, y, &*self.resource);
             if click {
                 self.state = State::Dragger;
@@ -103,7 +103,7 @@ impl Control
             },
             State::Dragger => {
                 self.state = State::Idle;
-                let o = self.dragger.borrow_mut().mouse_up(
+                let o = self.dragger.mouse_up(
                     &*self.camera.borrow(),
                     button,
                     x,
@@ -295,11 +295,11 @@ impl Control
                 };
 
                 let update =
-                    self.dragger.borrow_mut().mouse_move_hover(r, button, &*self.resource) || button == 1;
+                    self.dragger.mouse_move_hover(r, button, &*self.resource) || button == 1;
 
                 if button == 1 {
 
-                    self.dragger.borrow_mut().set_state(dragger::State::Idle);
+                    self.dragger.set_state(dragger::State::Idle);
 
                     let x : f64 = curx as f64 - prevx as f64;
                     let y : f64 = cury as f64 - prevy as f64;
@@ -334,7 +334,7 @@ impl Control
 
                 let x : f64 = curx as f64;// - prevx as f64;
                 let y : f64 = cury as f64;// - prevy as f64;
-                let opsome = self.dragger.borrow_mut().mouse_move(&*camera,x,y);
+                let opsome = self.dragger.mouse_move(&*camera,x,y);
                 if let Some(op) = opsome {
                     match op {
                         dragger::Operation::Translation(v) => {
@@ -441,7 +441,7 @@ impl Control
                 return ui::Event::Redo;
             },
             "space" => {
-                self.dragger.borrow_mut().change();
+                self.dragger.change();
             },
             _ => {
                 println!("key not implemented : {}", key);
