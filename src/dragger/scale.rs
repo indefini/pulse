@@ -153,9 +153,9 @@ pub fn create_scale_draggers(
 
     let mut group = Vec::with_capacity(4);
 
-    group.push(Rc::new(RefCell::new(dragger_x)));
-    group.push(Rc::new(RefCell::new(dragger_y)));
-    group.push(Rc::new(RefCell::new(dragger_z)));
+    group.push(dragger_x);
+    group.push(dragger_y);
+    group.push(dragger_z);
     //group.push(Rc::new(RefCell::new(dragger_xyz)));
 
     return group;

@@ -32,7 +32,7 @@ use dragger::{
 };
 
 type DraggerOld = Dragger<Arc<RwLock<object::Object>>>;
-pub type DraggerGroup = Vec<Rc<RefCell<DraggerOld>>>;
+pub type DraggerGroup = Vec<DraggerOld>;
 
 pub struct DraggerManager
 {
@@ -165,27 +165,26 @@ impl DraggerManager
     {
         let mut found_length = 0f64;
         let mut closest_dragger = None;
-        for dragger in &mut self.draggers[self.current_group] {
-            let mut d = dragger.borrow_mut();
-            d.set_state(State::Idle);
-            let (hit, len) = d.check_collision(&r, d.scale, resource);
+        for (i, dragger) in self.draggers[self.current_group].iter_mut().enumerate() {
+            dragger.set_state(State::Idle);
+            let (hit, len) = dragger.check_collision(&r, dragger.scale, resource);
             if hit {
                 if let None = closest_dragger {
-                    closest_dragger = Some(dragger.clone());
+                    closest_dragger = Some(i);
                     found_length = len;
                 }
                 else if len < found_length {
-                    closest_dragger = Some(dragger.clone());
+                    closest_dragger = Some(i);
                     found_length = len;
                 }
             }
         }
 
-        if let Some(d) = closest_dragger {
+        if let Some(i) = closest_dragger {
+            let mut dragger = &mut self.draggers[self.current_group][i];
             match button {
-                0i32 => d.borrow_mut().set_state(State::Highlight),
+                0i32 => dragger.set_state(State::Highlight),
                 1i32 => {
-                    let mut dragger = d.borrow_mut();
                     dragger.set_state(State::Selected);
                     match dragger.kind {
                         Kind::Translate => {
@@ -224,7 +223,7 @@ impl DraggerManager
                 }
                 _ => {}
             };
-            Some(d.borrow().id)
+            Some(dragger.id)
         }
         else {
             None
@@ -258,8 +257,7 @@ impl DraggerManager
 
     pub fn set_position(&mut self, p : vec::Vec3) {
         for d in &mut self.draggers[self.current_group] {
-            let mut db =d.borrow_mut();
-            db.object.write().unwrap().position = p;
+            d.object.write().unwrap().position = p;
         }
 
     }
@@ -267,7 +265,6 @@ impl DraggerManager
     pub fn set_orientation(&mut self, ori : transform::Orientation, camera : &camera::Camera) {
         self.ori = ori.as_quat();
         for d in &mut self.draggers[self.current_group] {
-            let mut d = d.borrow_mut();
             if self.current_group == 2usize {
                 d.face_camera(camera, self.ori);
             }
@@ -285,7 +282,7 @@ impl DraggerManager
 
         for d in &mut self.draggers[self.current_group] {
 
-            d.borrow_mut().scale_to_camera_data(&cam_mat_inv, &projection);
+            d.scale_to_camera_data(&cam_mat_inv, &projection);
         }
     }
 
@@ -293,7 +290,7 @@ impl DraggerManager
     {
         let mut l = Vec::new();
         for d in &self.draggers[self.current_group] {
-            l.push(d.borrow().object.clone());
+            l.push(d.object.clone());
         }
 
         l
@@ -301,7 +298,7 @@ impl DraggerManager
 
     pub fn set_state(&mut self, state : State) {
         for d in &mut self.draggers[self.current_group] {
-            d.borrow_mut().set_state(state);
+            d.set_state(state);
         }
     }
 

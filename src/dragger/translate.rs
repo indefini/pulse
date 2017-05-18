@@ -244,13 +244,13 @@ pub fn create_dragger_translation_group(
 
     let mut group = Vec::with_capacity(6);
 
-    group.push(Rc::new(RefCell::new(dragger_x)));
-    group.push(Rc::new(RefCell::new(dragger_y)));
-    group.push(Rc::new(RefCell::new(dragger_z)));
+    group.push(dragger_x);
+    group.push(dragger_y);
+    group.push(dragger_z);
 
-    group.push(Rc::new(RefCell::new(dragger_xy)));
-    group.push(Rc::new(RefCell::new(dragger_xz)));
-    group.push(Rc::new(RefCell::new(dragger_yz)));
+    group.push(dragger_xy);
+    group.push(dragger_xz);
+    group.push(dragger_yz);
 
     return group;
 }

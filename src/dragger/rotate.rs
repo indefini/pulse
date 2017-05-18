@@ -141,9 +141,9 @@ pub fn create_rotation_draggers(factory : &factory::Factory)
 
     let mut group = Vec::with_capacity(3);
 
-    group.push(Rc::new(RefCell::new(dragger_x)));
-    group.push(Rc::new(RefCell::new(dragger_y)));
-    group.push(Rc::new(RefCell::new(dragger_z)));
+    group.push(dragger_x);
+    group.push(dragger_y);
+    group.push(dragger_z);
 
     return group;
 }
