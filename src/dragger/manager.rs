@@ -1,6 +1,8 @@
 use std::rc::{Rc,Weak};
 use std::cell::RefCell;
 use std::sync::{RwLock, Arc};
+
+use dormin::world;
 use dormin::object;
 use dormin::mesh;
 use dormin::vec;
@@ -29,11 +31,12 @@ use dragger::{
     create_rotation_draggers
 };
 
+type DraggerOld = Dragger<Arc<RwLock<object::Object>>>;
 pub type DraggerGroup = Vec<Rc<RefCell<DraggerOld>>>;
 
 pub struct DraggerManager
 {
-    pub draggers : Vec<DraggerGroup>, //Vec<Rc<RefCell<Dragger>>>,
+    pub draggers : Vec<DraggerGroup>,
     mouse_start : vec::Vec2,
     mouse : Option<Box<DraggerMouse+'static>>,
     pub ori : vec::Quat,
@@ -80,11 +83,8 @@ pub enum Collision
     SpecialMesh(resource::ResTT<mesh::Mesh>)
 }
 
-type DraggerOld = Dragger<Arc<RwLock<object::Object>>>;
-
 pub struct Dragger<O>
 {
-    //object : Arc<RwLock<object::Object>>,
     object : O,
     pub ori : transform::Orientation,
     pub constraint : vec::Vec3,
@@ -333,16 +333,16 @@ impl DraggerManager
 
 }
 
-pub fn create_dragger(
-    factory : &factory::Factory,
+pub fn create_dragger<O : mesh_render::MeshRenderSet>(
+    creator : &world::Creator<O>,
     name : &str,
     mesh : &str,
-    color : vec::Vec4) -> Arc<RwLock<object::Object>>
+    color : vec::Vec4) -> Arc<RwLock<O>>
 {
-    let mut dragger = factory.create_object(name);
+    let mut dragger = creator.create_object(name);
     let mat = create_mat(color, name);
 
-    dragger.mesh_render = Some(mesh_render::MeshRender::new_with_mat2(
+    dragger.set_mesh_render(mesh_render::MeshRender::new_with_mat2(
         mesh,
         mat,
         ));
