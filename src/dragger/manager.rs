@@ -36,10 +36,10 @@ pub type DraggerGroup = Vec<DraggerOld>;
 
 pub struct DraggerManager
 {
-    pub draggers : Vec<DraggerGroup>,
+    draggers : Vec<DraggerGroup>,
     mouse_start : vec::Vec2,
     mouse : Option<Box<DraggerMouse+'static>>,
-    pub ori : vec::Quat,
+    ori : vec::Quat,
     current_group : usize,
     dragger_focus : Option<uuid::Uuid>
 }
