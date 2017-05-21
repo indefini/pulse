@@ -16,6 +16,7 @@ use dormin::intersection;
 use dormin::matrix;
 use dormin::factory;
 use dormin::camera;
+use dormin::render::MatrixMeshRender;
 use uuid;
 
 use dragger::{
@@ -296,6 +297,21 @@ impl DraggerManager
         l
     }
 
+    pub fn get_mmr(&self) -> Vec<MatrixMeshRender>
+    {
+        let mut l = Vec::new();
+        for d in &self.draggers[self.current_group] {
+            let wm = d.object.read().unwrap().get_world_matrix();
+            if let Some(mr) = d.object.read().unwrap().mesh_render.clone() {
+            println!("Material : {:?}", mr);
+            let mmr = MatrixMeshRender::new(wm, mr);
+            l.push(mmr);
+            }
+        }
+
+        l
+    }
+
     pub fn set_state(&mut self, state : State) {
         for d in &mut self.draggers[self.current_group] {
             d.set_state(state);
@@ -455,7 +471,7 @@ impl Dragger<Arc<RwLock<object::Object>>>
             let mesh = match ob.mesh_render {
                 None => return (false,0f64),
                 Some(ref mr) => {
-                    match mr.mesh.as_ref(&mm) {
+                    match mr.mesh.get_ref(&mm) {
                         None => return (false,0f64),
                         Some(m) => m
                     }

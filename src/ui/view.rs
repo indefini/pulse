@@ -221,6 +221,7 @@ impl<S:SceneT> EditView<S> for View
             &cams,
             sel,
             &self.control.dragger.get_objects(),
+            &self.control.dragger.get_mmr(),
             &finish,
             self.loading_resource.clone());
 
