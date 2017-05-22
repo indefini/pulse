@@ -84,7 +84,50 @@ pub enum Collision
     SpecialMesh(resource::ResTT<mesh::Mesh>)
 }
 
-pub struct Dragger<O>
+pub trait Draggable{
+    fn get_position(&self) -> vec::Vec3;
+    fn set_position(&mut self, v :  vec::Vec3);
+
+    fn get_orientation(&self) -> vec::Quat;
+    fn set_orientation(&mut self, q :  vec::Quat);
+
+    fn get_scale(&self) -> vec::Vec3;
+    fn set_scale(&mut self, v :  vec::Vec3);
+}
+
+impl Draggable for Arc<RwLock<object::Object>>
+{
+    fn get_position(&self) -> vec::Vec3
+    {
+        self.read().unwrap().position
+    }
+    fn set_position(&mut self, v :  vec::Vec3)
+    {
+        self.write().unwrap().position = v;
+    }
+
+    fn get_orientation(&self) -> vec::Quat
+    {
+        self.read().unwrap().orientation.as_quat()
+    }
+
+    fn set_orientation(&mut self, q :  vec::Quat)
+    {
+        self.write().unwrap().orientation.set_with_quat(q);
+    }
+
+    fn get_scale(&self) -> vec::Vec3
+    {
+       self.read().unwrap().scale 
+    }
+
+    fn set_scale(&mut self, v :  vec::Vec3)
+    {
+        self.write().unwrap().scale = v;
+    }
+}
+
+pub struct Dragger<O:Draggable>
 {
     object : O,
     pub ori : transform::Orientation,
@@ -193,28 +236,31 @@ impl DraggerManager
                             //println!("ori : {:?}", self.ori);
 
                             self.mouse = Some(box TranslationMove::new(
-                                    ob.position.clone(),
+                                    //ob.position.clone(),
+                                    dragger.object.get_position(),
                                     dragger.constraint,
                                     dragger.repere,
                                     self.ori
                                     ) as Box<DraggerMouse>);
                         }
                         Kind::Scale => {
-                            let ob = dragger.object.read().unwrap();
+                            //let ob = dragger.object.read().unwrap();
 
                             self.mouse = Some(box ScaleOperation::new(
-                                    ob.position.clone(),
+                                    //ob.position.clone(),
+                                    dragger.object.get_position(),
                                     dragger.constraint,
                                     dragger.repere,
                                     self.ori
                                     ) as Box<DraggerMouse>);
                         }
                         Kind::Rotate => {
-                            let ob = dragger.object.read().unwrap();
+                            //let ob = dragger.object.read().unwrap();
                             //println!("ori : {:?}", self.ori);
 
                             self.mouse = Some(box RotationOperation::new(
-                                    ob.position.clone(),
+                                    //ob.position.clone(),
+                                    dragger.object.get_position(),
                                     dragger.constraint,
                                     dragger.repere,
                                     self.ori
@@ -303,9 +349,8 @@ impl DraggerManager
         for d in &self.draggers[self.current_group] {
             let wm = d.object.read().unwrap().get_world_matrix();
             if let Some(mr) = d.object.read().unwrap().mesh_render.clone() {
-            println!("Material : {:?}", mr);
-            let mmr = MatrixMeshRender::new(wm, mr);
-            l.push(mmr);
+                let mmr = MatrixMeshRender::new(wm, mr);
+                l.push(mmr);
             }
         }
 
@@ -374,7 +419,7 @@ fn create_mat(color : vec::Vec4, name : &str) -> material::Material
     mat
 }
 
-impl<O> Dragger<O>
+impl<O:Draggable> Dragger<O>
 {
     pub fn new(
         object : O,
@@ -471,15 +516,19 @@ impl Dragger<Arc<RwLock<object::Object>>>
             let mesh = match ob.mesh_render {
                 None => return (false,0f64),
                 Some(ref mr) => {
-                    match mr.mesh.get_ref(&mm) {
-                        None => return (false,0f64),
+                    match mr.mesh.get_or_load_ref(&mut mm) {
+                        None => {
+                            return (false,0f64);
+                        },
                         Some(m) => m
                     }
                 },
             };
 
             let aabox = match mesh.aabox {
-                None => return (false,0f64),
+                None => {
+                    return (false,0f64);
+                },
                 Some(ref aa) => aa
             };
 
