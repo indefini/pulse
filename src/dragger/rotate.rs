@@ -1,15 +1,9 @@
-use std::rc::{Rc,Weak};
-use std::cell::RefCell;
-use std::sync::{RwLock, Arc};
-use dormin::object;
 use dormin::mesh;
 use dormin::vec;
 use dormin::resource;
-use dormin::resource::Create;
 use dormin::transform;
 use dormin::geometry;
 use dormin::intersection;
-use dormin::factory;
 use dormin::camera;
 
 use dragger::manager::{
@@ -100,7 +94,7 @@ impl RotationOperation {
     }
 }
 
-pub fn create_rotation_draggers(factory : &factory::Factory)
+pub fn create_rotation_draggers()
     -> DraggerGroup
 {
     let red = vec::Vec4::new(1.0f64,0.247f64,0.188f64,0.5f64);

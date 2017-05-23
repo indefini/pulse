@@ -1,9 +1,3 @@
-use std::rc::{Rc,Weak};
-use std::cell::RefCell;
-use std::sync::{RwLock, Arc};
-
-use dormin::world;
-use dormin::object;
 use dormin::mesh;
 use dormin::vec;
 use dormin::resource;
@@ -14,9 +8,7 @@ use dormin::component::mesh_render;
 use dormin::geometry;
 use dormin::intersection;
 use dormin::matrix;
-use dormin::factory;
 use dormin::camera;
-use dormin::render;
 use dormin::render::MatrixMeshRender;
 use uuid;
 
@@ -117,7 +109,7 @@ pub struct Dragger
 
 impl DraggerManager
 {
-    pub fn new(factory : &factory::Factory) -> DraggerManager
+    pub fn new() -> DraggerManager
     {
         let mut dm = DraggerManager {
             draggers : Vec::with_capacity(3),
@@ -128,13 +120,13 @@ impl DraggerManager
             dragger_focus : None
         };
 
-        let tr = create_dragger_translation_group(factory);
+        let tr = create_dragger_translation_group();
         dm.draggers.push(tr);
 
-        let sc = create_scale_draggers(factory);
+        let sc = create_scale_draggers();
         dm.draggers.push(sc);
 
-        let sc = create_rotation_draggers(factory);
+        let sc = create_rotation_draggers();
         dm.draggers.push(sc);
 
         dm

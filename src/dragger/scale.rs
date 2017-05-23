@@ -1,19 +1,5 @@
-use std::collections::LinkedList;
-use std::rc::{Rc,Weak};
-use std::cell::RefCell;
-use std::sync::{RwLock, Arc};
-use dormin::object;
-use dormin::mesh;
 use dormin::vec;
-use dormin::resource;
-use dormin::resource::Create;
-use dormin::shader;
-use dormin::material;
 use dormin::transform;
-use dormin::geometry;
-use dormin::intersection;
-use dormin::matrix;
-use dormin::factory;
 use dormin::camera;
 
 use dragger::manager::{
@@ -26,7 +12,6 @@ use dragger::manager::{
     Dragger,
     create_dragger,
 };
-
 
 pub struct ScaleOperation
 {
@@ -100,10 +85,7 @@ impl DraggerMouse for ScaleOperation {
     }
 }
 
-pub fn create_scale_draggers(
-    factory : &factory::Factory,
-    )
-    -> DraggerGroup
+pub fn create_scale_draggers() -> DraggerGroup
 {
     let red = vec::Vec4::new(1.0f64,0.247f64,0.188f64,0.5f64);
     let green = vec::Vec4::new(0.2117f64,0.949f64,0.4156f64,0.5f64);

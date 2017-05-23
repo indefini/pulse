@@ -1,11 +1,7 @@
-use std::rc::{Rc};
-use std::cell::RefCell;
 use dormin::vec;
-use dormin::resource;
 use dormin::transform;
 use dormin::geometry;
 use dormin::intersection;
-use dormin::factory;
 use dormin::camera;
 
 use dragger::manager::{
@@ -174,10 +170,7 @@ impl DraggerMouse for TranslationMove {
     }
 }
 
-pub fn create_dragger_translation_group(
-    factory : &factory::Factory
-    )
-    -> DraggerGroup
+pub fn create_dragger_translation_group() -> DraggerGroup
 {
     let red = vec::Vec4::new(1.0f64,0.247f64,0.188f64,0.5f64);
     let green = vec::Vec4::new(0.2117f64,0.949f64,0.4156f64,0.5f64);
