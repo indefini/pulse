@@ -84,9 +84,26 @@ pub enum Collision
     SpecialMesh(resource::ResTT<mesh::Mesh>)
 }
 
+#[derive(Clone, Debug)]
+pub struct TransformMeshRender
+{
+    pub transform : transform::Transform,
+    pub mesh_render : mesh_render::MeshRender
+}
+
+impl TransformMeshRender {
+    pub fn new(t : transform::Transform, mr : mesh_render::MeshRender) -> TransformMeshRender
+    {
+        TransformMeshRender {
+        transform : t,
+        mesh_render : mr
+        }
+    }
+}
+
 pub struct Dragger
 {
-    object : render::TransformMeshRender,
+    object : TransformMeshRender,
     pub ori : transform::Orientation,
     pub constraint : vec::Vec3,
     kind : Kind,
@@ -330,27 +347,10 @@ impl DraggerManager
 
 }
 
-pub fn create_dragger<O : mesh_render::MeshRenderSet>(
-    creator : &world::Creator<O>,
+pub fn create_dragger(
     name : &str,
     mesh : &str,
-    color : vec::Vec4) -> O
-{
-    let mut dragger = creator.create_object(name);
-    let mat = create_mat(color, name);
-
-    dragger.set_mesh_render(mesh_render::MeshRender::new_with_mat2(
-        mesh,
-        mat,
-        ));
-
-    dragger
-}
-
-pub fn create_dragger2(
-    name : &str,
-    mesh : &str,
-    color : vec::Vec4) -> render::TransformMeshRender
+    color : vec::Vec4) -> TransformMeshRender
 {
     let mat = create_mat(color, name);
 
@@ -359,7 +359,7 @@ pub fn create_dragger2(
         mat,
         );
 
-    render::TransformMeshRender::new(transform::Transform::new(), mr)
+    TransformMeshRender::new(transform::Transform::new(), mr)
 }
 
 
@@ -377,7 +377,7 @@ fn create_mat(color : vec::Vec4, name : &str) -> material::Material
 impl Dragger
 {
     pub fn new(
-        object : render::TransformMeshRender,
+        object : TransformMeshRender,
         constraint : vec::Vec3,
         ori : transform::Orientation,
         kind : Kind,

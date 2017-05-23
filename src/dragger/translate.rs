@@ -17,7 +17,6 @@ use dragger::manager::{
     Collision,
     Dragger,
     create_dragger,
-    create_dragger2
 };
 
 pub struct TranslationMove
@@ -187,8 +186,7 @@ pub fn create_dragger_translation_group(
     let mesh_plane = "model/dragger_plane.mesh";
 
     let dragger_x = Dragger::new(
-        //create_dragger(factory, "dragger_x", mesh, red),
-        create_dragger2("dragger_x", mesh, red),
+        create_dragger("dragger_x", mesh, red),
         vec::Vec3::new(1f64,0f64,0f64),
         transform::Orientation::Quat(vec::Quat::new_axis_angle_deg(vec::Vec3::new(0f64,1f64,0f64), 90f64)),
         Kind::Translate,
@@ -197,7 +195,7 @@ pub fn create_dragger_translation_group(
         );
 
     let dragger_y = Dragger::new(
-        create_dragger2("dragger_y", mesh, green),
+        create_dragger("dragger_y", mesh, green),
         vec::Vec3::new(0f64,1f64,0f64),
         transform::Orientation::Quat(vec::Quat::new_axis_angle_deg(vec::Vec3::new(1f64,0f64,0f64), -90f64)),
         Kind::Translate,
@@ -206,7 +204,7 @@ pub fn create_dragger_translation_group(
         );
 
     let dragger_z = Dragger::new(
-        create_dragger2("dragger_z", mesh, blue),
+        create_dragger("dragger_z", mesh, blue),
         vec::Vec3::new(0f64,0f64,1f64),
         transform::Orientation::Quat(vec::Quat::identity()),
         Kind::Translate,
@@ -215,7 +213,7 @@ pub fn create_dragger_translation_group(
         );
 
     let dragger_xy = Dragger::new(
-        create_dragger2("dragger_xy", mesh_plane, red),
+        create_dragger("dragger_xy", mesh_plane, red),
         vec::Vec3::new(1f64,1f64,0f64),
         transform::Orientation::Quat(vec::Quat::new_axis_angle_deg(
                 vec::Vec3::new(0f64,1f64,0f64), 90f64)),
@@ -225,7 +223,7 @@ pub fn create_dragger_translation_group(
         );
 
     let dragger_xz = Dragger::new(
-        create_dragger2("dragger_xz", mesh_plane, green),
+        create_dragger("dragger_xz", mesh_plane, green),
         vec::Vec3::new(1f64,0f64,1f64),
         transform::Orientation::Quat(
             vec::Quat::new_axis_angle_deg(vec::Vec3::new(0f64,0f64,1f64), -90f64)),
@@ -235,7 +233,7 @@ pub fn create_dragger_translation_group(
         );
 
     let dragger_yz = Dragger::new(
-        create_dragger2("dragger_yz", mesh_plane, blue),
+        create_dragger("dragger_yz", mesh_plane, blue),
         vec::Vec3::new(0f64,1f64,1f64),
         //transform::Orientation::Quat(vec::Quat::new_axis_angle_deg(vec::Vec3::new(1f64,0f64,0f64), 90f64)),
         transform::Orientation::Quat(vec::Quat::identity()),

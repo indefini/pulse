@@ -21,7 +21,6 @@ use dragger::manager::{
     Collision,
     Dragger,
     create_dragger,
-    create_dragger2
 };
 
 pub struct RotationOperation
@@ -112,7 +111,7 @@ pub fn create_rotation_draggers(factory : &factory::Factory)
     let collider_mesh : resource::ResTT<mesh::Mesh> = resource::ResTT::new(collider);
 
     let dragger_x = Dragger::new(
-        create_dragger2("rotate_x", mesh, red),
+        create_dragger("rotate_x", mesh, red),
         vec::Vec3::new(1f64,0f64,0f64),
         transform::Orientation::Quat(vec::Quat::new_axis_angle_deg(
                 vec::Vec3::new(0f64,1f64,0f64), -90f64)),
@@ -122,7 +121,7 @@ pub fn create_rotation_draggers(factory : &factory::Factory)
         );
 
     let dragger_y = Dragger::new(
-        create_dragger2("rotate_y", mesh, green),
+        create_dragger("rotate_y", mesh, green),
         vec::Vec3::new(0f64,1f64,0f64),
         transform::Orientation::Quat(vec::Quat::new_axis_angle_deg(
                 vec::Vec3::new(1f64,0f64,0f64), 90f64)), 
@@ -132,7 +131,7 @@ pub fn create_rotation_draggers(factory : &factory::Factory)
         );
 
     let dragger_z = Dragger::new(
-        create_dragger2("rotate_z", mesh, blue),
+        create_dragger("rotate_z", mesh, blue),
         vec::Vec3::new(0f64,0f64,1f64),
         transform::Orientation::Quat(vec::Quat::identity()), 
         Kind::Rotate,
