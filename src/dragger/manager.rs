@@ -16,6 +16,7 @@ use dormin::intersection;
 use dormin::matrix;
 use dormin::factory;
 use dormin::camera;
+use dormin::render;
 use dormin::render::MatrixMeshRender;
 use uuid;
 
@@ -32,8 +33,7 @@ use dragger::{
     create_rotation_draggers
 };
 
-type DraggerOld = Dragger<Arc<RwLock<object::Object>>>;
-pub type DraggerGroup = Vec<DraggerOld>;
+pub type DraggerGroup = Vec<Dragger>;
 
 pub struct DraggerManager
 {
@@ -84,52 +84,9 @@ pub enum Collision
     SpecialMesh(resource::ResTT<mesh::Mesh>)
 }
 
-pub trait Draggable{
-    fn get_position(&self) -> vec::Vec3;
-    fn set_position(&mut self, v :  vec::Vec3);
-
-    fn get_orientation(&self) -> vec::Quat;
-    fn set_orientation(&mut self, q :  vec::Quat);
-
-    fn get_scale(&self) -> vec::Vec3;
-    fn set_scale(&mut self, v :  vec::Vec3);
-}
-
-impl Draggable for Arc<RwLock<object::Object>>
+pub struct Dragger
 {
-    fn get_position(&self) -> vec::Vec3
-    {
-        self.read().unwrap().position
-    }
-    fn set_position(&mut self, v :  vec::Vec3)
-    {
-        self.write().unwrap().position = v;
-    }
-
-    fn get_orientation(&self) -> vec::Quat
-    {
-        self.read().unwrap().orientation.as_quat()
-    }
-
-    fn set_orientation(&mut self, q :  vec::Quat)
-    {
-        self.write().unwrap().orientation.set_with_quat(q);
-    }
-
-    fn get_scale(&self) -> vec::Vec3
-    {
-       self.read().unwrap().scale 
-    }
-
-    fn set_scale(&mut self, v :  vec::Vec3)
-    {
-        self.write().unwrap().scale = v;
-    }
-}
-
-pub struct Dragger<O:Draggable>
-{
-    object : O,
+    object : render::TransformMeshRender,
     pub ori : transform::Orientation,
     pub constraint : vec::Vec3,
     kind : Kind,
@@ -232,35 +189,28 @@ impl DraggerManager
                     dragger.set_state(State::Selected);
                     match dragger.kind {
                         Kind::Translate => {
-                            let ob = dragger.object.read().unwrap();
                             //println!("ori : {:?}", self.ori);
 
                             self.mouse = Some(box TranslationMove::new(
-                                    //ob.position.clone(),
-                                    dragger.object.get_position(),
+                                    dragger.object.transform.position,
                                     dragger.constraint,
                                     dragger.repere,
                                     self.ori
                                     ) as Box<DraggerMouse>);
                         }
                         Kind::Scale => {
-                            //let ob = dragger.object.read().unwrap();
-
                             self.mouse = Some(box ScaleOperation::new(
-                                    //ob.position.clone(),
-                                    dragger.object.get_position(),
+                                    dragger.object.transform.position,
                                     dragger.constraint,
                                     dragger.repere,
                                     self.ori
                                     ) as Box<DraggerMouse>);
                         }
                         Kind::Rotate => {
-                            //let ob = dragger.object.read().unwrap();
                             //println!("ori : {:?}", self.ori);
 
                             self.mouse = Some(box RotationOperation::new(
-                                    //ob.position.clone(),
-                                    dragger.object.get_position(),
+                                    dragger.object.transform.position,
                                     dragger.constraint,
                                     dragger.repere,
                                     self.ori
@@ -304,7 +254,7 @@ impl DraggerManager
 
     pub fn set_position(&mut self, p : vec::Vec3) {
         for d in &mut self.draggers[self.current_group] {
-            d.object.write().unwrap().position = p;
+            d.object.transform.position = p;
         }
 
     }
@@ -316,7 +266,7 @@ impl DraggerManager
                 d.face_camera(camera, self.ori);
             }
             else {
-            d.object.write().unwrap().orientation = ori * d.ori;
+                d.object.transform.orientation = ori * d.ori;
             }
         }
     }
@@ -333,25 +283,14 @@ impl DraggerManager
         }
     }
 
-    pub fn get_objects(&self) -> Vec<Arc<RwLock<object::Object>>>
+    pub fn get_mmr(&mut self) -> Vec<MatrixMeshRender>
     {
         let mut l = Vec::new();
-        for d in &self.draggers[self.current_group] {
-            l.push(d.object.clone());
-        }
-
-        l
-    }
-
-    pub fn get_mmr(&self) -> Vec<MatrixMeshRender>
-    {
-        let mut l = Vec::new();
-        for d in &self.draggers[self.current_group] {
-            let wm = d.object.read().unwrap().get_world_matrix();
-            if let Some(mr) = d.object.read().unwrap().mesh_render.clone() {
-                let mmr = MatrixMeshRender::new(wm, mr);
-                l.push(mmr);
-            }
+        for d in &mut self.draggers[self.current_group] {
+            d.object.transform.set_as_dirty();
+            let mat = d.object.transform.get_or_compute_local_matrix().clone();
+            let mmr = MatrixMeshRender::new(mat, d.object.mesh_render.clone());
+            l.push(mmr);
         }
 
         l
@@ -395,7 +334,7 @@ pub fn create_dragger<O : mesh_render::MeshRenderSet>(
     creator : &world::Creator<O>,
     name : &str,
     mesh : &str,
-    color : vec::Vec4) -> Arc<RwLock<O>>
+    color : vec::Vec4) -> O
 {
     let mut dragger = creator.create_object(name);
     let mat = create_mat(color, name);
@@ -405,8 +344,24 @@ pub fn create_dragger<O : mesh_render::MeshRenderSet>(
         mat,
         ));
 
-    Arc::new(RwLock::new(dragger))
+    dragger
 }
+
+pub fn create_dragger2(
+    name : &str,
+    mesh : &str,
+    color : vec::Vec4) -> render::TransformMeshRender
+{
+    let mat = create_mat(color, name);
+
+    let mr = mesh_render::MeshRender::new_with_mat2(
+        mesh,
+        mat,
+        );
+
+    render::TransformMeshRender::new(transform::Transform::new(), mr)
+}
+
 
 fn create_mat(color : vec::Vec4, name : &str) -> material::Material
 {
@@ -419,16 +374,16 @@ fn create_mat(color : vec::Vec4, name : &str) -> material::Material
     mat
 }
 
-impl<O:Draggable> Dragger<O>
+impl Dragger
 {
     pub fn new(
-        object : O,
+        object : render::TransformMeshRender,
         constraint : vec::Vec3,
         ori : transform::Orientation,
         kind : Kind,
         color : vec::Vec4,
         collision : Collision
-        ) -> Dragger<O>
+        ) -> Dragger
     {
         Dragger {
             object : object,
@@ -453,7 +408,7 @@ impl<O:Draggable> Dragger<O>
     }
 }
 
-impl Dragger<Arc<RwLock<object::Object>>>
+impl Dragger
 {
     //TODO
     // We change object transform and object material (color)
@@ -463,7 +418,8 @@ impl Dragger<Arc<RwLock<object::Object>>>
         cam_mat_inv : &matrix::Matrix4,
         projection : &matrix::Matrix4)
     {
-        let world_inv = cam_mat_inv * &self.object.read().unwrap().get_world_matrix();
+        self.object.transform.set_as_dirty();
+        let world_inv = cam_mat_inv * self.object.transform.get_or_compute_local_matrix();
 
         let mut tm = projection * &world_inv;
         tm = tm.transpose();
@@ -477,8 +433,9 @@ impl Dragger<Arc<RwLock<object::Object>>>
 
     fn set_state(&mut self, state : State)
     {
-        fn set_color(s : &DraggerOld, color : vec::Vec4){
-            if let Some(mat) = s.object.write().unwrap().get_material() {
+        fn set_color(s : &mut Dragger, color : vec::Vec4){
+            //TODO material instance
+            if let Some(ref mut mat) = s.object.mesh_render.material.get_instance() {
                 mat.set_uniform_data(
                     "color",
                     shader::UniformData::Vec4(color));
@@ -494,7 +451,8 @@ impl Dragger<Arc<RwLock<object::Object>>>
                 set_color(self, vec::Vec4::new(1f64,1f64,1f64, 1f64));
             },
             State::Idle => {
-                set_color(self, self.color);
+                let c = self.color;
+                set_color(self, c);
             }
             _ => {}
         }
@@ -504,25 +462,20 @@ impl Dragger<Arc<RwLock<object::Object>>>
 
     fn check_collision(&self, r : &geometry::Ray, s : f64, resource : &resource::ResourceGroup) -> (bool, f64)
     {
-        let ob = self.object.read().unwrap();
-        let position = ob.position;
-        let rotation = ob.orientation.as_quat();
+        let ob = &self.object;
+        let position = ob.transform.position;
+        let rotation = ob.transform.orientation.as_quat();
         let scale = vec::Vec3::new(s, s, s);
 
         let mut mm = resource.mesh_manager.borrow_mut();
 
         let ir = 
         {
-            let mesh = match ob.mesh_render {
-                None => return (false,0f64),
-                Some(ref mr) => {
-                    match mr.mesh.get_or_load_ref(&mut mm) {
-                        None => {
-                            return (false,0f64);
-                        },
-                        Some(m) => m
-                    }
+            let mesh = match ob.mesh_render.mesh.get_or_load_ref(&mut mm) {
+                None => {
+                    return (false,0f64);
                 },
+                Some(m) => m
             };
 
             let aabox = match mesh.aabox {
@@ -567,20 +520,20 @@ impl Dragger<Arc<RwLock<object::Object>>>
     }
 
     pub fn face_camera(
-        &self,
+        &mut self,
         camera : &camera::Camera,
         manager_ori : vec::Quat,
         )
     {
         let qo = manager_ori;
-        let mut o = self.object.write().unwrap();
+        let mut o = &mut self.object;
         let constraint = self.constraint;
         let dragger_ori = self.ori.as_quat();
 
 
         let camera_object = camera.object.read().unwrap();
 
-        let diff = o.position - camera_object.position;
+        let diff = o.transform.position - camera_object.position;
         let dotx = diff.dot(&qo.rotate_vec3(&vec::Vec3::x()));
         let doty = diff.dot(&qo.rotate_vec3(&vec::Vec3::y()));
         let dotz = diff.dot(&qo.rotate_vec3(&vec::Vec3::z()));
@@ -633,7 +586,7 @@ impl Dragger<Arc<RwLock<object::Object>>>
         let qoo = dragger_ori *q;
         let qf = qo * qoo;
 
-        o.orientation = transform::Orientation::Quat(qf);
+        o.transform.orientation = transform::Orientation::Quat(qf);
     }
 
 }
