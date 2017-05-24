@@ -44,7 +44,10 @@ impl ViewT<Rc<RefCell<scene::Scene>>> for View2<render::GameRender,Rc<RefCell<sc
         let scene = scene.borrow();
         if let Some(ref camera) = scene.camera {
         let camera = camera.borrow();
-            self.render.draw(&camera, &scene.objects, self.loading_resource.clone())
+            self.render.draw(
+                &render::CameraIdMat::from_camera(&camera),
+                &scene.objects,
+                self.loading_resource.clone())
         }
         else {
             false

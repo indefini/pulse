@@ -10,6 +10,7 @@ use dormin::shader;
 use dormin::transform;
 
 use ui;
+use dormin::render;
 use dormin::render::Render;
 use dormin::resource;
 use dormin::vec;
@@ -248,7 +249,7 @@ impl<S:SceneT> EditView<S> for View
         }
 
         let not_loaded = self.render.draw(
-            &self.camera,
+            &render::CameraIdMat::from_camera(&self.camera),
             obs,
             &cams,
             sel,
