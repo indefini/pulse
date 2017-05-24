@@ -1,5 +1,5 @@
 use std::rc::Rc;
-use std::cell::{Cell,RefCell};
+use std::cell::{Cell};
 use std::sync::{RwLock, Arc,Mutex};
 use libc::{c_char, c_void, c_int, c_uint, c_float};
 use std::ffi::CStr;
@@ -14,7 +14,6 @@ use dormin::render::Render;
 use dormin::resource;
 use dormin::vec;
 use dormin::material;
-use dragger;
 use dormin::camera;
 use control::Control;
 use dormin::component::mesh_render;
@@ -46,14 +45,12 @@ pub trait EditView<S:SceneT> : ui::Widget {
         );
 
     //TODO clean camera functions
-    fn get_camera_rc(&self) -> Rc<RefCell<camera::Camera>>;
-    fn get_camera(&self) -> camera::Camera;
-    fn get_camera_transform(&self) -> (vec::Vec3, vec::Quat);
+    fn get_camera(&self) -> &camera::Camera;
+    fn get_camera_mut(&mut self) -> &mut camera::Camera;
 
     fn request_update(&self);
 
     //TODO user input
-    fn get_control(&mut self) -> &mut Control;
     fn handle_event(&self, event : &ui::EventOld);
 
 
@@ -62,18 +59,64 @@ pub trait EditView<S:SceneT> : ui::Widget {
     fn draw(&mut self, context : &context::ContextOld) -> bool;
     fn resize(&mut self, w : c_int, h : c_int);
     fn is_loading_resource(&self) -> bool;
+
+    fn mouse_down(
+            &mut self,
+            context : &context::ContextOld,
+            modifier : i32,
+            button : i32,
+            x : i32,
+            y : i32,
+            timestamp : i32) -> Vec<ui::EventOld>;
+
+    fn mouse_up(
+            &mut self,
+            context : &context::ContextOld,
+            button : i32,
+            x : i32,
+            y : i32,
+            timestamp : i32) -> ui::EventOld;
+
+    fn mouse_move(
+        &mut self,
+        context : &context::ContextOld,
+        mod_flag : i32,
+        button : i32,
+        curx : i32,
+        cury : i32,
+        prevx : i32,
+        prevy : i32,
+        timestamp : i32) -> Vec<ui::EventOld>;
+
+    fn mouse_wheel(
+        &mut self,
+        modifier : i32,
+        direction : i32,
+        z : i32,
+        x : i32,
+        y : i32,
+        timestamp : i32
+        );
+
+    fn key_down(
+        &mut self,
+        modifier : i32,
+        keyname : &str,
+        key : &str,
+        timestamp : i32
+        ) ->  ui::EventOld;
+
 }
 
 pub struct View
 {
     render : Box<Render>,
     control : Control,
+    camera : camera::Camera,
 
     window : Option<*const ui::Window>,
 
-    camera : Rc<RefCell<camera::Camera>>,
     uuid : uuid::Uuid,
-
     config : ui::WidgetConfig,
 
     updating : Cell<bool>,
@@ -98,21 +141,14 @@ impl<S:SceneT> EditView<S> for View
         self.init_(win, wcb);
     }
 
-    fn get_camera_rc(&self) -> Rc<RefCell<camera::Camera>>
+    fn get_camera(&self) -> &camera::Camera
     {
-        self.camera.clone()
+       &self.camera
     }
 
-    fn get_camera(&self) -> camera::Camera
+    fn get_camera_mut(&mut self) -> &mut camera::Camera
     {
-       self.camera.borrow().clone()
-    }
-
-    fn get_camera_transform(&self) -> (vec::Vec3, vec::Quat)
-    {
-        let c = self.camera.borrow();
-        let c = c.object.read().unwrap();
-        (c.position, c.orientation.as_quat())
+       &mut self.camera
     }
 
     fn request_update(&self)
@@ -125,11 +161,6 @@ impl<S:SceneT> EditView<S> for View
             self.updating.set(true);
             unsafe {ui::jk_window_request_update(w);}
         }
-    }
-
-    fn get_control(&mut self) -> &mut Control
-    {
-        &mut self.control
     }
 
     fn handle_event(&self, event : &ui::EventOld)
@@ -192,10 +223,10 @@ impl<S:SceneT> EditView<S> for View
             //TODO println!("remove this code from here, put in update or when moving the camera");
             let mut dragger = &mut self.control.dragger;
             dragger.set_position(center);
-            dragger.set_orientation(transform::Orientation::Quat(ori), &*self.camera.borrow());
+            dragger.set_orientation(transform::Orientation::Quat(ori), &self.camera);
             //let scale = self.camera.borrow().get_camera_resize_w(0.05f64);
             //dragger.set_scale(scale);
-            dragger.scale_to_camera(&*self.camera.borrow());
+            dragger.scale_to_camera(&self.camera);
         }
 
         let finish = |b| {
@@ -217,6 +248,7 @@ impl<S:SceneT> EditView<S> for View
         }
 
         let not_loaded = self.render.draw(
+            &self.camera,
             obs,
             &cams,
             sel,
@@ -233,7 +265,69 @@ impl<S:SceneT> EditView<S> for View
     {
         self.config.w = w;
         self.config.h = h;
+        self.camera.set_resolution(w, h);
         self.render.resize(w, h);
+    }
+
+    fn mouse_down(
+            &mut self,
+            context : &context::ContextOld,
+            modifier : i32,
+            button : i32,
+            x : i32,
+            y : i32,
+            timestamp : i32) -> Vec<ui::EventOld>
+    {
+        self.control.mouse_down(&self.camera, context,  modifier, button, x, y, timestamp)
+    }
+
+    fn mouse_up(
+            &mut self,
+            context : &context::ContextOld,
+            button : i32,
+            x : i32,
+            y : i32,
+            timestamp : i32) -> ui::EventOld
+    {
+        self.control.mouse_up(&self.camera, context, button, x, y, timestamp)
+    }
+
+    fn mouse_move(
+        &mut self,
+        context : &context::ContextOld,
+        mod_flag : i32,
+        button : i32,
+        curx : i32,
+        cury : i32,
+        prevx : i32,
+        prevy : i32,
+        timestamp : i32) -> Vec<ui::EventOld>
+    {
+        self.control.mouse_move(&mut self.camera, context, mod_flag, button, curx, cury, prevx, prevy, timestamp)
+    }
+
+    fn mouse_wheel(
+        &mut self,
+        modifier : i32,
+        direction : i32,
+        z : i32,
+        x : i32,
+        y : i32,
+        timestamp : i32
+        )
+    {
+        self.control.mouse_wheel(&mut self.camera, modifier, direction, z, x, y, timestamp);
+    }
+
+    fn key_down(
+        &mut self,
+        modifier : i32,
+        keyname : &str,
+        key : &str,
+        timestamp : i32
+        ) ->  ui::EventOld
+    {
+        self.control.key_down(&mut self.camera, modifier, keyname, key, timestamp)
     }
 
 }
@@ -272,22 +366,15 @@ impl View
 {
     pub fn new(
         resource : Rc<resource::ResourceGroup>,
-        dragger : dragger::DraggerManager,
         render : Box<Render>,
         w : i32,
         h : i32,
-        camera : Rc<RefCell<camera::Camera>>
+        camera : camera::Camera
         ) -> View
     {
-        let control = Control::new(
-                    camera.clone(),
-                    dragger,
-                    resource.clone(),
-                    );
-
-        let v = View {
+        View {
             render : render,
-            control : control,
+            control : Control::new(resource.clone()),
 
             window : None,
 
@@ -296,9 +383,7 @@ impl View
             config : ui::WidgetConfig::with_width_height(w, h),
             updating : Cell::new(false),
             loading_resource : Arc::new(Mutex::new(0)),
-        };
-
-        return v;
+        }
     }
 
     pub fn init_(
@@ -332,14 +417,6 @@ impl View
     } 
 }
 
-/*
-pub struct WindowView
-{
-    pub window : Option<*const Window>,
-    pub view : View
-}
-*/
-
 pub extern fn mouse_down(
     data : *const c_void,
     modifier : c_int,
@@ -352,16 +429,17 @@ pub extern fn mouse_down(
     let wcb : & ui::WidgetCbData = unsafe {&* (data as *const ui::WidgetCbData)};
     let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
 
-    let op_list = {
-        let c = container.views[wcb.index].get_control();
-
-        //println!("rust mouse down button {}, pos: {}, {}", button, x, y);
-        c.mouse_down(&*container.state.context, modifier, button,x,y,timestamp)
-    };
+    let op_list =
+        container.views[wcb.index].mouse_down(
+            &*container.state.context,
+            modifier,
+            button,
+            x,
+            y,
+            timestamp);
 
     for op in op_list.into_iter() {
         if let ui::Event::DraggerClicked = op {
-            //let c = &mut container.context;;
             container.state.save_positions();
             container.state.save_scales();
             container.state.save_oris();
@@ -384,10 +462,8 @@ pub extern fn mouse_up(
     let wcb : & ui::WidgetCbData = unsafe {&* (data as *const ui::WidgetCbData)};
     let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
 
-    let event = {
-        let c = container.views[wcb.index].get_control();
-        c.mouse_up(&*container.state.context,button,x,y,timestamp)
-    };
+    let event =
+        container.views[wcb.index].mouse_up(&*container.state.context, button, x, y, timestamp);
 
     container.views[wcb.index].handle_event(&event);
     let id = container.views[wcb.index].get_id();
@@ -408,9 +484,8 @@ pub extern fn mouse_move(
     let wcb : & ui::WidgetCbData = unsafe {&* (data as *const ui::WidgetCbData)};
     let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
 
-    let events = {
-        let c = container.views[wcb.index].get_control();
-        c.mouse_move(
+    let events =
+        container.views[wcb.index].mouse_move(
             &*container.state.context,
             modifiers_flag,
             button,
@@ -418,8 +493,7 @@ pub extern fn mouse_move(
             cury,
             prevx,
             prevy,
-            timestamp)
-    };
+            timestamp);
 
     let id = container.views[wcb.index].get_id();
     for e in events {
@@ -440,10 +514,7 @@ pub extern fn mouse_wheel(
 {
     let wcb : & ui::WidgetCbData = unsafe {&* (data as *const ui::WidgetCbData)};
     let view : &mut EditView<_> = &mut *wcb.container.write().unwrap().views[wcb.index];
-    {
-        let c = view.get_control();
-        c.mouse_wheel(modifiers_flag, direction, z, x, y, timestamp);
-    }
+    view.mouse_wheel(modifiers_flag, direction, z, x, y, timestamp);
 
     view.request_update();
 }
@@ -533,22 +604,28 @@ pub extern fn key_down(
                 return;
             },
             "c" => {
-                let center = vec::Vec3::zero();
-                let camera_rc = container.views[wcb.index].get_camera_rc();
-                let mut cam = camera_rc.borrow_mut();
-                let pos = center + cam.object.read().unwrap().orientation.rotate_vec3(&vec::Vec3::new(0f64,0f64,100f64));
-                cam.set_position(pos);
-                cam.set_center(&center);
-                container.views[wcb.index].request_update();
+                let view = &mut container.views[wcb.index];
+                {
+                    let camera = &mut view.get_camera_mut();
+                    let ori = camera.object.read().unwrap().orientation;
+                    let center = vec::Vec3::zero();
+                    let pos = center + ori.rotate_vec3(&vec::Vec3::new(0f64,0f64,100f64));
+                    camera.set_position(pos);
+                    camera.set_center(&center);
+                }
+                view.request_update();
                 return;
             },
             "f" => {
                 let center = util::objects_center(&container.state.context.selected);
-                let camera_rc = container.views[wcb.index].get_camera_rc();
-                let mut cam = camera_rc.borrow_mut();
-                let pos = center + cam.object.read().unwrap().orientation.rotate_vec3(&vec::Vec3::new(0f64,0f64,100f64));
-                cam.set_position(pos);
-                container.views[wcb.index].request_update();
+                let view = &mut container.views[wcb.index];
+                {
+                    let camera = &mut view.get_camera_mut();
+                    let ori = camera.object.read().unwrap().orientation;
+                    let pos = center + ori.rotate_vec3(&vec::Vec3::new(0f64,0f64,100f64));
+                    camera.set_position(pos);
+                }
+                view.request_update();
                 return;
             },
             _ => {
@@ -557,8 +634,8 @@ pub extern fn key_down(
         }
 
         {
-            let c = container.views[wcb.index].get_control();
-            c.key_down(modifier, keyname_str.as_ref(), key_str.as_ref(), timestamp)
+            let v = &mut container.views[wcb.index];
+            v.key_down(modifier, keyname_str.as_ref(), key_str.as_ref(), timestamp)
         }
     };
 

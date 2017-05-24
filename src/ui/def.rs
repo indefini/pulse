@@ -248,18 +248,14 @@ fn create_views(container_arw : Arw<WidgetContainer>, views_config : &[ViewConfi
 
     for v in views_config {
         let container = &mut *container_arw.write().unwrap();
-
-        let dragger = dragger::DraggerManager::new();
-        let camera = Rc::new(RefCell::new(v.camera.clone()));
-        let render = box render::Render::new(&container.data.factory, container.resource.clone(), camera.clone());
+        let render = box render::Render::new(&container.data.factory, container.resource.clone());
 
         let view = box View::new(
             container.resource.clone(),
-            dragger,
             render,
             v.window.w,
             v.window.h,
-            camera);
+            v.camera.clone());
 
         views.push(view as Box<EditView<Scene>>);
         let scene = if let Some(ref scene) = v.scene {
@@ -549,7 +545,7 @@ impl WindowConfig {
                     },
                     None => None
                 },
-                camera : v.get_camera()
+                camera : v.get_camera().clone()
             };
             wc.views.push(vc);
         }
@@ -1562,7 +1558,7 @@ pub fn add_empty(container : &mut WidgetContainer, view_id : Uuid)
     let mut o = container.data.factory.create_object("new object");
 
     let position = if let Some(v) = container.find_view(view_id) {
-        let (p,q) = v.get_camera_transform();
+        let (p,q) = v.get_camera().object.read().unwrap().get_pos_quat();
         p + q.rotate_vec3(&vec::Vec3::new(0f64,0f64,-100f64))
     }
     else {

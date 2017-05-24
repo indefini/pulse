@@ -41,9 +41,14 @@ impl ViewT<Rc<RefCell<scene::Scene>>> for View2<render::GameRender,Rc<RefCell<sc
 
     fn draw(&mut self, scene : &Rc<RefCell<scene::Scene>>) -> bool
     {
-        //TODO
-        self.render.draw(&scene.borrow().objects, self.loading_resource.clone());
-        false
+        let scene = scene.borrow();
+        if let Some(ref camera) = scene.camera {
+        let camera = camera.borrow();
+            self.render.draw(&camera, &scene.objects, self.loading_resource.clone())
+        }
+        else {
+            false
+        }
     }
 
     fn init(&mut self) {

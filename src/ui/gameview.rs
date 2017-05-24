@@ -182,7 +182,14 @@ impl GameView {
 
         if let Some(scene) = s
         {
-            self.render.draw(&scene.borrow().objects, self.loading_resource.clone())
+            let scene = scene.borrow();
+            if let Some(ref camera) = scene.camera {
+                let camera = camera.borrow();
+                self.render.draw(&camera, &scene.objects, self.loading_resource.clone())
+            }
+            else {
+                false
+            }
         }
         else {
             false
