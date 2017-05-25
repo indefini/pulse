@@ -501,7 +501,7 @@ impl Default for WidgetConfig
     }
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Default)]
 pub struct ViewConfig
 {
     window : WidgetConfig,
@@ -596,7 +596,7 @@ impl WindowConfig {
     fn load() -> WindowConfig
     {
         let mut file = String::new();
-        let wc : WindowConfig = match File::open(&Path::new("windowconf")){
+        let mut wc : WindowConfig = match File::open(&Path::new("windowconf")){
             Ok(ref mut f) => {
                 f.read_to_string(&mut file).unwrap();
                 serde_json::from_str(&file).unwrap()
@@ -605,6 +605,10 @@ impl WindowConfig {
                 WindowConfig::default()
             }
         };
+
+        if wc.views.is_empty() {
+            wc.views.push(ViewConfig::default());
+        }
 
         wc
     }

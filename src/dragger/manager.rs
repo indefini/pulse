@@ -350,7 +350,7 @@ pub fn create_dragger(
         mat,
         );
 
-    TransformMeshRender::new(transform::Transform::new(), mr)
+    TransformMeshRender::new(Default::default(), mr)
 }
 
 
