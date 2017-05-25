@@ -1,11 +1,10 @@
 use std::rc::Rc;
 use std::cell::{Cell};
-use std::sync::{RwLock, Arc,Mutex};
+use std::sync::{Arc,Mutex};
 use libc::{c_char, c_void, c_int, c_uint, c_float};
 use std::ffi::CStr;
 use std::str;
 use uuid;
-use dormin::object;
 use dormin::shader;
 use dormin::transform;
 
@@ -15,7 +14,7 @@ use dormin::render::Render;
 use dormin::resource;
 use dormin::vec;
 use dormin::material;
-use dormin::{camera, camera2};
+use dormin::{camera2};
 use control::Control;
 use dormin::component::mesh_render;
 use util;
@@ -126,22 +125,6 @@ pub struct CameraView
 
 impl CameraView
 {
-    fn from_camera(cam : &camera::Camera) -> CameraView
-    {
-        CameraView {
-            property : camera2::Camera::from_old_camera_data(&cam.data),
-            transform : cam.object.read().unwrap().make_transform(),
-
-            yaw : cam.data.yaw,
-            pitch : cam.data.pitch,
-            roll : cam.data.roll,
-
-            origin : cam.data.origin,
-            local_offset : cam.data.local_offset,
-            center : cam.data.center,
-        }
-    }
-
     pub fn to_camera2_transform(&self) -> camera2::CameraTransform
     {
         camera2::CameraTransform::new(&self.transform, &self.property)
@@ -312,13 +295,13 @@ impl<S:SceneT> EditView<S> for View
 
         let mut cams = Vec::new();
         for c in &scene.cameras {
-
-            let mut camo = create_camera_object_mesh("dance_cam");
             let cb = c.borrow();
-            camo.position = cb.object.read().unwrap().world_position();
-            camo.orientation = transform::Orientation::new_with_quat(&cb.object.read().unwrap().world_orientation());
-            camo.scale = cb.object.read().unwrap().world_scale();
-            cams.push(Arc::new(RwLock::new(camo)));
+            let mat = cb.object.read().unwrap().get_world_matrix();
+            let mr = mesh_render::MeshRender::new_with_mat2(
+            "model/camera.mesh", create_mat());
+
+            let mmr = render::MatrixMeshRender::new(mat, mr);
+            cams.push(mmr);
         }
         if cams.is_empty() {
             panic!("cam is empty");
@@ -768,38 +751,6 @@ pub extern fn resize_cb(data : *const c_void, w : c_int, h : c_int) -> () {
     let view = &mut container.views[wcb.index];
 
     return view.resize(w, h);
-}
-
-fn create_camera_object_mesh(
-    name : &str) -> object::Object
-{
-   // let mut cam = factory.create_object(name);
-        let mut cam = object::Object {
-            name : String::from(name),
-            id : uuid::Uuid::new_v4(),
-            mesh_render : None,
-            position : vec::Vec3::zero(),
-            //orientation : vec::Quat::identity(),
-            orientation : transform::Orientation::new_quat(),
-            //angles : vec::Vec3::zero(),
-            scale : vec::Vec3::one(),
-            children : Vec::new(),
-            parent : None,
-            //transform : box transform::Transform::new()
-            components : Vec::new(),
-            comp_data : Vec::new(),
-            comp_string : Vec::new(),
-            comp_lua : Vec::new(),
-        };
-
-
-    let mat = create_mat();
-
-    cam.mesh_render = Some(mesh_render::MeshRender::new_with_mat2(
-        "model/camera.mesh",
-        mat));
-
-    cam
 }
 
 fn create_mat() -> material::Material
