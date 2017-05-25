@@ -3,6 +3,7 @@ use dormin::transform;
 use dormin::geometry;
 use dormin::intersection;
 use dormin::camera;
+use dormin::camera2;
 
 use dragger::manager::{
     Repere,
@@ -42,13 +43,13 @@ impl TranslationMove {
 
     fn global(
         &self,
-        camera : &camera::Camera,
+        camera : &camera2::CameraTransform,
         mouse_start : vec::Vec2,
         mouse_end : vec::Vec2) -> Option<Operation>
     {
         let mut p = geometry::Plane {
             point : self.translation_start,
-            normal : camera.object.read().unwrap().orientation.rotate_vec3(
+            normal : camera.transform.orientation.rotate_vec3(
                 &vec::Vec3::new(0f64,0f64,-1f64))
         };
 
@@ -89,14 +90,14 @@ impl TranslationMove {
 
     fn local(
         &self,
-        camera : &camera::Camera,
+        camera : &camera2::CameraTransform,
         mouse_start : vec::Vec2,
         mouse_end : vec::Vec2) -> Option<Operation>
     {
         let constraint = self.constraint;
         let ori = self.ori;
 
-        let camup = camera.object.read().unwrap().orientation.rotate_vec3(&vec::Vec3::new(0f64,1f64,0f64));
+        let camup = camera.transform.orientation.rotate_vec3(&vec::Vec3::new(0f64,1f64,0f64));
 
         //printf("dragger ori : %f, %f, %f %f \n ", c->dragger_ori.x, c->dragger_ori.y, c->dragger_ori.z, c->dragger_ori.w);
         let ca = ori.rotate_vec3(&constraint);
@@ -120,7 +121,7 @@ impl TranslationMove {
         //printf("n %f, %f, %f \n", n.x, n.y, n.z);
 
         if constraint == vec::Vec3::new(0f64,1f64,0f64) {//TODO change this by checking the angle between camup and ca
-            let camright = camera.object.read().unwrap().orientation.rotate_vec3(&vec::Vec3::new(1f64,0f64,0f64));
+            let camright = camera.transform.orientation.rotate_vec3(&vec::Vec3::new(1f64,0f64,0f64));
             p.normal = camright ^ ca;
         }
 
@@ -155,7 +156,7 @@ impl DraggerMouse for TranslationMove {
 
     fn mouse_move(
         &self,
-        camera : &camera::Camera,
+        camera : &camera2::CameraTransform,
         mouse_start : vec::Vec2,
         mouse_end : vec::Vec2) -> Option<Operation>
     {

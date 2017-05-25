@@ -9,6 +9,7 @@ use dormin::geometry;
 use dormin::intersection;
 use dormin::matrix;
 use dormin::camera;
+use dormin::camera2;
 use dormin::render::MatrixMeshRender;
 use uuid;
 
@@ -134,7 +135,7 @@ impl DraggerManager
 
     pub fn mouse_down(
         &mut self,
-        c : &camera::Camera,
+        c : &camera2::CameraTransform,
         button : i32,
         x : i32,
         y : i32,
@@ -148,7 +149,7 @@ impl DraggerManager
         self.check_collision(r, button, resource).is_some()
     }
 
-    pub fn mouse_up(&mut self, c : &camera::Camera, button : i32, x : i32, y : i32)
+    pub fn mouse_up(&mut self, c : &camera2::CameraTransform, button : i32, x : i32, y : i32)
         -> Option<Operation>
     {
         self.set_state(State::Idle);
@@ -268,11 +269,11 @@ impl DraggerManager
 
     }
 
-    pub fn set_orientation(&mut self, ori : transform::Orientation, camera : &camera::Camera) {
+    pub fn set_orientation(&mut self, ori : transform::Orientation, camera_position : &vec::Vec3) {
         self.ori = ori.as_quat();
         for d in &mut self.draggers[self.current_group] {
             if self.current_group == 2usize {
-                d.face_camera(camera, self.ori);
+                d.face_camera(camera_position, self.ori);
             }
             else {
                 d.object.transform.orientation = ori * d.ori;
@@ -280,12 +281,10 @@ impl DraggerManager
         }
     }
 
-    pub fn scale_to_camera(&mut self, camera : &camera::Camera)
+    pub fn scale_to_camera(&mut self,
+        cam_mat_inv : &matrix::Matrix4,
+        projection : &matrix::Matrix4)
     {
-        let cam_mat = camera.object.read().unwrap().get_world_matrix();
-        let projection = camera.get_perspective();
-        let cam_mat_inv = cam_mat.get_inverse();
-
         for d in &mut self.draggers[self.current_group] {
 
             d.scale_to_camera_data(&cam_mat_inv, &projection);
@@ -313,7 +312,7 @@ impl DraggerManager
 
     pub fn mouse_move(
         &mut self,
-        camera : &camera::Camera,
+        camera : &camera2::CameraTransform,
         cur_x : f64,
         cur_y : f64) -> Option<Operation>
     {
@@ -513,7 +512,7 @@ impl Dragger
 
     pub fn face_camera(
         &mut self,
-        camera : &camera::Camera,
+        camera_position : &vec::Vec3,
         manager_ori : vec::Quat,
         )
     {
@@ -522,10 +521,7 @@ impl Dragger
         let constraint = self.constraint;
         let dragger_ori = self.ori.as_quat();
 
-
-        let camera_object = camera.object.read().unwrap();
-
-        let diff = o.transform.position - camera_object.position;
+        let diff = o.transform.position - *camera_position;
         let dotx = diff.dot(&qo.rotate_vec3(&vec::Vec3::x()));
         let doty = diff.dot(&qo.rotate_vec3(&vec::Vec3::y()));
         let dotz = diff.dot(&qo.rotate_vec3(&vec::Vec3::z()));
@@ -587,7 +583,7 @@ pub trait DraggerMouse
 {
     fn mouse_move(
         &self,
-        camera : &camera ::Camera,
+        camera : &camera2::CameraTransform,
         mouse_start : vec::Vec2,
         mouse_end : vec::Vec2)
         -> Option<Operation>;

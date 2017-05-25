@@ -5,6 +5,7 @@ use dormin::transform;
 use dormin::geometry;
 use dormin::intersection;
 use dormin::camera;
+use dormin::camera2;
 
 use dragger::manager::{
     Repere,
@@ -44,7 +45,7 @@ impl RotationOperation {
 
     pub fn local_global( 
         &self,
-        camera : &camera::Camera,
+        camera : &camera2::CameraTransform,
         mouse_start : vec::Vec2,
         mouse_end : vec::Vec2) -> Option<Operation>
     {
@@ -52,7 +53,7 @@ impl RotationOperation {
 
         let r = camera.ray_from_screen(mouse_end.x, mouse_end.y, 1f64);
 
-        let normal = camera.object.read().unwrap().orientation.rotate_vec3(&vec::Vec3::new(0f64,0f64,1f64));
+        let normal = camera.transform.orientation.rotate_vec3(&vec::Vec3::new(0f64,0f64,1f64));
         let p = geometry::Plane { point : self.start, normal : normal };
 
         let irstart =  intersection::intersection_ray_plane(&rstart, &p);
@@ -67,7 +68,7 @@ impl RotationOperation {
         let sign = normal.dot(&cross);
         let mut angle = mdot.acos();
 
-        let diff = self.start - camera.object.read().unwrap().position;
+        let diff = self.start - camera.transform.position;
         let cons = if let Repere::Local = self.repere {
             self.ori.rotate_vec3(&self.constraint)
         }
@@ -146,7 +147,7 @@ impl DraggerMouse for RotationOperation {
 
     fn mouse_move(
         &self,
-        camera : &camera::Camera,
+        camera : &camera2::CameraTransform,
         mouse_start : vec::Vec2,
         mouse_end : vec::Vec2) -> Option<Operation>
     {

@@ -1,6 +1,7 @@
 use dormin::vec;
 use dormin::transform;
 use dormin::camera;
+use dormin::camera2;
 
 use dragger::manager::{
     Repere,
@@ -40,7 +41,7 @@ impl ScaleOperation {
 
     fn local(
         &self,
-        camera : &camera::Camera,
+        camera : &camera2::CameraTransform,
         mouse_start : vec::Vec2,
         mouse_end : vec::Vec2) -> Option<Operation>
     {
@@ -77,7 +78,7 @@ impl DraggerMouse for ScaleOperation {
 
     fn mouse_move(
         &self,
-        camera : &camera::Camera,
+        camera : &camera2::CameraTransform,
         mouse_start : vec::Vec2,
         mouse_end : vec::Vec2) -> Option<Operation>
     {

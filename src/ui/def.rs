@@ -506,7 +506,7 @@ pub struct ViewConfig
 {
     window : WidgetConfig,
     scene : Option<String>,
-    camera : camera::Camera,
+    camera : ui::view::CameraView,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -1558,7 +1558,7 @@ pub fn add_empty(container : &mut WidgetContainer, view_id : Uuid)
     let mut o = container.data.factory.create_object("new object");
 
     let position = if let Some(v) = container.find_view(view_id) {
-        let (p,q) = v.get_camera().object.read().unwrap().get_pos_quat();
+        let (p,q) = v.get_camera().transform.get_pos_quat();
         p + q.rotate_vec3(&vec::Vec3::new(0f64,0f64,-100f64))
     }
     else {

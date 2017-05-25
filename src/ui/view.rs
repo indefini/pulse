@@ -15,7 +15,7 @@ use dormin::render::Render;
 use dormin::resource;
 use dormin::vec;
 use dormin::material;
-use dormin::camera;
+use dormin::{camera, camera2};
 use control::Control;
 use dormin::component::mesh_render;
 use util;
@@ -46,8 +46,8 @@ pub trait EditView<S:SceneT> : ui::Widget {
         );
 
     //TODO clean camera functions
-    fn get_camera(&self) -> &camera::Camera;
-    fn get_camera_mut(&mut self) -> &mut camera::Camera;
+    fn get_camera(&self) -> &CameraView;
+    fn get_camera_mut(&mut self) -> &mut CameraView;
 
     fn request_update(&self);
 
@@ -109,11 +109,82 @@ pub trait EditView<S:SceneT> : ui::Widget {
 
 }
 
+#[derive(Clone, Serialize, Deserialize, Default)]
+pub struct CameraView
+{
+    pub property : camera2::Camera,
+    pub transform : transform::Transform,
+
+    pub yaw : f64,
+    pub pitch : f64,
+    pub roll : f64,
+
+    pub origin : vec::Vec3,
+    pub local_offset : vec::Vec3,
+    pub center : vec::Vec3,
+}
+
+impl CameraView
+{
+    fn from_camera(cam : &camera::Camera) -> CameraView
+    {
+        CameraView {
+            property : camera2::Camera::from_old_camera_data(&cam.data),
+            transform : cam.object.read().unwrap().make_transform(),
+
+            yaw : cam.data.yaw,
+            pitch : cam.data.pitch,
+            roll : cam.data.roll,
+
+            origin : cam.data.origin,
+            local_offset : cam.data.local_offset,
+            center : cam.data.center,
+        }
+    }
+
+    pub fn to_camera2_transform(&self) -> camera2::CameraTransform
+    {
+        camera2::CameraTransform::new(&self.transform, &self.property)
+    }
+
+    pub fn pan(&mut self, t : &vec::Vec3)
+    {
+        let o = &mut self.transform;
+
+        self.local_offset = self.local_offset + *t;
+        let tt = o.orientation.rotate_vec3(t);
+        o.position = o.position + tt;
+    }
+
+    pub fn set_center(&mut self, c : &vec::Vec3)
+    {
+        self.center = *c;
+        self.recalculate_origin();
+    }
+
+    fn recalculate_origin(&mut self)
+    {
+        let offset = self.transform.orientation.rotate_vec3(&self.local_offset);
+        let origin = self.transform.position - offset;
+        let qi = self.transform.orientation.as_quat().inverse();
+        self.origin = qi.rotate_vec3_around(&origin, &self.center);
+    }
+
+    pub fn rotate_around_center(&mut self, q : &vec::Quat)
+    {
+        let def = q.rotate_vec3_around(&self.origin, &self.center);
+        let doff = q.rotate_vec3(&self.local_offset);
+        self.transform.position = def + doff;
+    }
+
+}
+
+
 pub struct View
 {
     render : Box<Render>,
     control : Control,
-    camera : camera::Camera,
+    camera : CameraView,
 
     window : Option<*const ui::Window>,
 
@@ -142,12 +213,12 @@ impl<S:SceneT> EditView<S> for View
         self.init_(win, wcb);
     }
 
-    fn get_camera(&self) -> &camera::Camera
+    fn get_camera(&self) -> &CameraView
     {
        &self.camera
     }
 
-    fn get_camera_mut(&mut self) -> &mut camera::Camera
+    fn get_camera_mut(&mut self) -> &mut CameraView
     {
        &mut self.camera
     }
@@ -224,10 +295,15 @@ impl<S:SceneT> EditView<S> for View
             //TODO println!("remove this code from here, put in update or when moving the camera");
             let mut dragger = &mut self.control.dragger;
             dragger.set_position(center);
-            dragger.set_orientation(transform::Orientation::Quat(ori), &self.camera);
+            dragger.set_orientation(transform::Orientation::Quat(ori), &self.camera.transform.position);
             //let scale = self.camera.borrow().get_camera_resize_w(0.05f64);
             //dragger.set_scale(scale);
-            dragger.scale_to_camera(&self.camera);
+            self.camera.transform.set_as_dirty();
+            let cam_mat = self.camera.transform.get_or_compute_local_matrix();
+            let projection = self.camera.property.get_perspective();
+            let cam_mat_inv = cam_mat.get_inverse();
+
+            dragger.scale_to_camera(&cam_mat_inv, &projection);
         }
 
         let finish = |b| {
@@ -248,8 +324,13 @@ impl<S:SceneT> EditView<S> for View
             panic!("cam is empty");
         }
 
+        self.camera.transform.set_as_dirty();
+        self.camera.transform.compute_local_matrix();
         let not_loaded = self.render.draw(
-            &render::CameraIdMat::from_camera(&self.camera),
+            &render::CameraIdMat::from_transform_camera2(
+                uuid::Uuid::new_v4(),
+                &self.camera.transform,
+                &self.camera.property),
             obs,
             &cams,
             sel,
@@ -266,7 +347,7 @@ impl<S:SceneT> EditView<S> for View
     {
         self.config.w = w;
         self.config.h = h;
-        self.camera.set_resolution(w, h);
+        self.camera.property.set_resolution(w, h);
         self.render.resize(w, h);
     }
 
@@ -279,7 +360,7 @@ impl<S:SceneT> EditView<S> for View
             y : i32,
             timestamp : i32) -> Vec<ui::EventOld>
     {
-        self.control.mouse_down(&self.camera, context,  modifier, button, x, y, timestamp)
+        self.control.mouse_down(&self.camera.to_camera2_transform(), context,  modifier, button, x, y, timestamp)
     }
 
     fn mouse_up(
@@ -290,7 +371,7 @@ impl<S:SceneT> EditView<S> for View
             y : i32,
             timestamp : i32) -> ui::EventOld
     {
-        self.control.mouse_up(&self.camera, context, button, x, y, timestamp)
+        self.control.mouse_up(&self.camera.to_camera2_transform(), context, button, x, y, timestamp)
     }
 
     fn mouse_move(
@@ -370,7 +451,7 @@ impl View
         render : Box<Render>,
         w : i32,
         h : i32,
-        camera : camera::Camera
+        camera : CameraView
         ) -> View
     {
         View {
@@ -608,10 +689,10 @@ pub extern fn key_down(
                 let view = &mut container.views[wcb.index];
                 {
                     let camera = &mut view.get_camera_mut();
-                    let ori = camera.object.read().unwrap().orientation;
+                    let ori = camera.transform.orientation;
                     let center = vec::Vec3::zero();
                     let pos = center + ori.rotate_vec3(&vec::Vec3::new(0f64,0f64,100f64));
-                    camera.set_position(pos);
+                    camera.transform.position = pos;
                     camera.set_center(&center);
                 }
                 view.request_update();
@@ -622,9 +703,9 @@ pub extern fn key_down(
                 let view = &mut container.views[wcb.index];
                 {
                     let camera = &mut view.get_camera_mut();
-                    let ori = camera.object.read().unwrap().orientation;
+                    let ori = camera.transform.orientation;
                     let pos = center + ori.rotate_vec3(&vec::Vec3::new(0f64,0f64,100f64));
-                    camera.set_position(pos);
+                    camera.transform.position = pos;
                 }
                 view.request_update();
                 return;

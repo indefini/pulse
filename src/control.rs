@@ -5,12 +5,14 @@ use std::f64::consts;
 
 use dormin::transform;
 use dormin::camera;
+use dormin::camera2;
 use context;
 use dragger;
 use dormin::intersection;
 use dormin::vec;
 use dormin::resource;
 use ui;
+use ui::view::CameraView;
 
 use util;
 
@@ -52,7 +54,7 @@ impl Control
 
     pub fn mouse_down(
             &mut self,
-            camera : &camera::Camera,
+            camera : &camera2::CameraTransform,
             context : &context::ContextOld,
             modifier : i32,
             button : i32,
@@ -88,7 +90,7 @@ impl Control
 
     pub fn mouse_up(
             &mut self,
-            camera : &camera::Camera,
+            camera : &camera2::CameraTransform,
             context : &context::ContextOld,
             button : i32,
             x : i32,
@@ -218,7 +220,7 @@ impl Control
 
     fn rotate_camera(
         &mut self,
-        camera : &mut camera::Camera,
+        camera : &mut CameraView,
         context : &context::ContextOld,
         x : f64,
         y : f64
@@ -226,27 +228,26 @@ impl Control
     {
         self.state = State::CameraRotation;
 
-        let cori = camera.object.read().unwrap().orientation;
+        let cori = camera.transform.orientation;
 
         let (result, angle_x, angle_y) = {
-            let cam = &mut camera.data;
 
             if vec::Vec3::up().dot(&cori.rotate_vec3(&vec::Vec3::up())) <0f64 {
-                cam.yaw = cam.yaw + 0.005*x;
+                camera.yaw = camera.yaw + 0.005*x;
             }
             else {
-                cam.yaw = cam.yaw - 0.005*x;
+                camera.yaw = camera.yaw - 0.005*x;
             }
 
-            cam.pitch -= 0.005*y;
+            camera.pitch -= 0.005*y;
 
-            let qy = vec::Quat::new_axis_angle_rad(vec::Vec3::up(), cam.yaw);
-            let qp = vec::Quat::new_axis_angle_rad(vec::Vec3::right(), cam.pitch);
+            let qy = vec::Quat::new_axis_angle_rad(vec::Vec3::up(), camera.yaw);
+            let qp = vec::Quat::new_axis_angle_rad(vec::Vec3::right(), camera.pitch);
 
             (
                 qy * qp,
-                cam.pitch/consts::PI*180f64,
-                cam.yaw/consts::PI*180f64,
+                camera.pitch/consts::PI*180f64,
+                camera.yaw/consts::PI*180f64,
                 )
         };
 
@@ -256,16 +257,13 @@ impl Control
         }
 
         camera.rotate_around_center(&result);
-
-        let mut c = camera.object.write().unwrap();
-        //(*c).orientation = vec::Quat::new_yaw_pitch_roll_deg(angle_y, angle_x, 0f64);
-        (*c).orientation = transform::Orientation::Quat(vec::Quat::new_yaw_pitch_roll_deg(angle_y, angle_x, 0f64));
+        camera.transform.orientation = transform::Orientation::Quat(vec::Quat::new_yaw_pitch_roll_deg(angle_y, angle_x, 0f64));
         //self.state = CameraRotation;
     }
 
     pub fn mouse_move(
         &mut self,
-        camera : &mut camera::Camera,
+        camera : &mut CameraView,
         context : &context::ContextOld,
         mod_flag : i32,
         button : i32,
@@ -282,7 +280,7 @@ impl Control
                 let x : f64 = curx as f64;
                 let y : f64 = cury as f64;
 
-                let r = camera.ray_from_screen(x as f64, y as f64, 10000f64);
+                let r = camera.to_camera2_transform().ray_from_screen(x as f64, y as f64, 10000f64);
 
                 let update =
                     self.dragger.mouse_move_hover(r, button, &*self.resource) || button == 1;
@@ -314,7 +312,7 @@ impl Control
             {
                 let x : f64 = curx as f64;// - prevx as f64;
                 let y : f64 = cury as f64;// - prevy as f64;
-                let opsome = self.dragger.mouse_move(&*camera,x,y);
+                let opsome = self.dragger.mouse_move(&camera.to_camera2_transform(),x,y);
                 if let Some(op) = opsome {
                     match op {
                         dragger::Operation::Translation(v) => {
@@ -342,7 +340,7 @@ impl Control
                     let (starty, endy) = if y < ey {(y, ey - y)} else {(ey, y - ey)};
                     list.push(ui::Event::RectSet(startx, starty, endx, endy));
 
-                    let planes = camera.get_frustum_planes_rect(
+                    let planes = camera.to_camera2_transform().get_frustum_planes_rect(
                         startx as f64,
                         starty as f64,
                         endx as f64,
@@ -384,7 +382,7 @@ impl Control
 
     pub fn mouse_wheel(
         &self,
-        camera : &mut camera::Camera,
+        camera : &mut CameraView,
         modifier : i32,
         direction : i32,
         z : i32,
@@ -401,7 +399,7 @@ impl Control
 
     pub fn key_down(
         &mut self,
-        camera : &mut camera::Camera,
+        camera : &mut CameraView,
         modifier : i32,
         keyname : &str,
         key : &str,
@@ -430,8 +428,8 @@ impl Control
         }
 
         {
-            let p = camera.object.read().unwrap().position;
-            camera.object.write().unwrap().position = p + t;
+            let p = camera.transform.position;
+            camera.transform.position = p + t;
         }
 
         return ui::Event::DraggerChange;
@@ -450,10 +448,10 @@ pub trait WidgetUpdate {
 
 
 use dormin::matrix;
-fn get_camera_scale(camera : &camera::Camera, world_matrix : &matrix::Matrix4) -> f64
+fn get_camera_scale(camera : &camera2::CameraTransform, world_matrix : &matrix::Matrix4) -> f64
 {
-    let cam_mat = camera.object.read().unwrap().get_world_matrix();
-    let projection = camera.get_perspective();
+    let cam_mat = camera.transform.get_computed_local_matrix();
+    let projection = camera.camera.get_perspective();
     let cam_mat_inv = cam_mat.get_inverse();
 
     let world_inv = &cam_mat_inv * world_matrix;
