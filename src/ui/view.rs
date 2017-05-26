@@ -100,6 +100,7 @@ pub trait EditView<S:SceneT> : ui::Widget {
 
     fn key_down(
         &mut self,
+        context : &context::ContextOld,
         modifier : i32,
         keyname : &str,
         key : &str,
@@ -386,15 +387,36 @@ impl<S:SceneT> EditView<S> for View
 
     fn key_down(
         &mut self,
+        context : &context::ContextOld,
         modifier : i32,
         keyname : &str,
         key : &str,
         timestamp : i32
         ) ->  ui::EventOld
     {
+        match key {
+            "c" => {
+                let ori = self.camera.transform.orientation;
+                let center = vec::Vec3::zero();
+                let pos = center + ori.rotate_vec3(&vec::Vec3::new(0f64,0f64,100f64));
+                self.camera.transform.position = pos;
+                self.camera.set_center(&center);
+                return ui::Event::CameraChange;
+            },
+            "f" => {
+                let center = util::objects_center(&context.selected);
+                let ori = self.camera.transform.orientation;
+                let pos = center + ori.rotate_vec3(&vec::Vec3::new(0f64,0f64,100f64));
+                self.camera.transform.position = pos;
+                return ui::Event::CameraChange;
+            },
+            _ => {
+                println!("key not implemented : {}", key);
+            }
+        }
+
         self.control.key_down(&mut self.camera, modifier, keyname, key, timestamp)
     }
-
 }
 
 impl ui::Widget for View {
@@ -668,39 +690,12 @@ pub extern fn key_down(
                 }
                 return;
             },
-            "c" => {
-                let view = &mut container.views[wcb.index];
-                {
-                    let camera = &mut view.get_camera_mut();
-                    let ori = camera.transform.orientation;
-                    let center = vec::Vec3::zero();
-                    let pos = center + ori.rotate_vec3(&vec::Vec3::new(0f64,0f64,100f64));
-                    camera.transform.position = pos;
-                    camera.set_center(&center);
-                }
-                view.request_update();
-                return;
-            },
-            "f" => {
-                let center = util::objects_center(&container.state.context.selected);
-                let view = &mut container.views[wcb.index];
-                {
-                    let camera = &mut view.get_camera_mut();
-                    let ori = camera.transform.orientation;
-                    let pos = center + ori.rotate_vec3(&vec::Vec3::new(0f64,0f64,100f64));
-                    camera.transform.position = pos;
-                }
-                view.request_update();
-                return;
-            },
-            _ => {
-                println!("key not implemented : {}", key_str);
-            }
+            _ => {}
         }
 
         {
             let v = &mut container.views[wcb.index];
-            v.key_down(modifier, keyname_str.as_ref(), key_str.as_ref(), timestamp)
+            v.key_down(&container.state.context, modifier, keyname_str.as_ref(), key_str.as_ref(), timestamp)
         }
     };
 
