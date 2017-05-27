@@ -46,7 +46,6 @@ pub trait EditView<S:SceneT> : ui::Widget {
 
     //TODO clean camera functions
     fn get_camera(&self) -> &CameraView;
-    fn get_camera_mut(&mut self) -> &mut CameraView;
 
     fn request_update(&self);
 
@@ -105,7 +104,7 @@ pub trait EditView<S:SceneT> : ui::Widget {
         keyname : &str,
         key : &str,
         timestamp : i32
-        ) ->  ui::EventOld;
+        ) ->  Vec<ui::EventOld>;
 
 }
 
@@ -200,11 +199,6 @@ impl<S:SceneT> EditView<S> for View
     fn get_camera(&self) -> &CameraView
     {
        &self.camera
-    }
-
-    fn get_camera_mut(&mut self) -> &mut CameraView
-    {
-       &mut self.camera
     }
 
     fn request_update(&self)
@@ -392,7 +386,7 @@ impl<S:SceneT> EditView<S> for View
         keyname : &str,
         key : &str,
         timestamp : i32
-        ) ->  ui::EventOld
+        ) ->  Vec<ui::EventOld>
     {
         match key {
             "c" => {
@@ -401,14 +395,14 @@ impl<S:SceneT> EditView<S> for View
                 let pos = center + ori.rotate_vec3(&vec::Vec3::new(0f64,0f64,100f64));
                 self.camera.transform.position = pos;
                 self.camera.set_center(&center);
-                return ui::Event::CameraChange;
+                return vec![ui::Event::CameraChange];
             },
             "f" => {
                 let center = util::objects_center(&context.selected);
                 let ori = self.camera.transform.orientation;
                 let pos = center + ori.rotate_vec3(&vec::Vec3::new(0f64,0f64,100f64));
                 self.camera.transform.position = pos;
-                return ui::Event::CameraChange;
+                return vec![ui::Event::CameraChange];
             },
             _ => {
                 println!("key not implemented : {}", key);
@@ -699,9 +693,14 @@ pub extern fn key_down(
         }
     };
 
-    container.views[wcb.index].handle_event(&event);
-    let id = container.views[wcb.index].get_id();
-    container.handle_event(event, id);
+    for e in event {
+        let id = {
+            let view = &container.views[wcb.index];
+            view.handle_event(&e);
+            view.get_id()
+        };
+        container.handle_event(e, id);
+    }
 }
 
 pub extern fn init_cb(data : *const c_void) -> () {

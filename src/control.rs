@@ -404,9 +404,10 @@ impl Control
         keyname : &str,
         key : &str,
         timestamp : i32
-        ) ->  ui::EventOld
+        ) ->  Vec<ui::EventOld>
     {
         let mut t = vec::Vec3::zero();
+        let mut v = Vec::new();
 
         match key {
             "e" => t.z = -50f64,
@@ -414,25 +415,29 @@ impl Control
             "f" => t.x = 50f64,
             "s" => t.x = -50f64,
             "z" => {
-                return ui::Event::Undo;
+                v.push(ui::Event::Undo);
             },
             "r" => {
-                return ui::Event::Redo;
+                v.push(ui::Event::Redo);
             },
             "space" => {
                 self.dragger.change();
+                v.push(ui::Event::DraggerChange);
             },
             _ => {
                 println!("key not implemented : {}", key);
             }
         }
 
+        if !t.is_zero()
         {
             let p = camera.transform.position;
             camera.transform.position = p + t;
+            v.push(ui::Event::CameraChange);
         }
 
-        return ui::Event::DraggerChange;
+        v
+
     }
 }
 
