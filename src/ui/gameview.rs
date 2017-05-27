@@ -1,20 +1,17 @@
 use std::rc::Rc;
-use std::cell::{Cell,RefCell, BorrowState};
-use std::sync::{RwLock, Arc,Mutex};
+use std::cell::{RefCell};
+use std::sync::{Arc,Mutex};
 use libc::{c_char, c_void, c_int, c_uint};
 use std::mem;
 use std::ptr;
 use uuid;
 
 use ui;
-use dormin::render::{Render, GameRender};
-use dormin::resource;
-use dormin::camera;
+use dormin::render;
+use dormin::render::{GameRender};
 use dormin::scene;
-use util::Arw;
 use dormin::input;
 use ui::def::Widget;
-use data;
 use data::{Data,DataT,SceneT};
 
 
@@ -182,7 +179,17 @@ impl GameView {
 
         if let Some(scene) = s
         {
-            self.render.draw(&scene.borrow().objects, self.loading_resource.clone())
+            let scene = scene.borrow();
+            if let Some(ref camera) = scene.camera {
+                let camera = camera.borrow();
+                self.render.draw(
+                    &render::CameraIdMat::from_camera(&camera),
+                    &scene.objects,
+                    self.loading_resource.clone())
+            }
+            else {
+                false
+            }
         }
         else {
             false

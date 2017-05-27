@@ -5,12 +5,14 @@ use std::f64::consts;
 
 use dormin::transform;
 use dormin::camera;
+use dormin::camera2;
 use context;
 use dragger;
 use dormin::intersection;
 use dormin::vec;
 use dormin::resource;
 use ui;
+use ui::view::CameraView;
 
 use util;
 
@@ -25,25 +27,24 @@ pub enum State
 
 pub struct Control
 {
-    pub camera : Rc<RefCell<camera::Camera>>,
     state : State,
-    dragger : Rc<RefCell<dragger::DraggerManager>>,
+    pub dragger : dragger::DraggerManager,
     mouse_start : Option<vec::Vec2>,
+
+    // For mesh collision.
+    // TODO put only the mesh manager? or can we get this out of here
     resource : Rc<resource::ResourceGroup>
 }
 
 impl Control
 {
     pub fn new(
-        camera : Rc<RefCell<camera::Camera>>,
-        dragger : Rc<RefCell<dragger::DraggerManager>>,
         resource : Rc<resource::ResourceGroup>
         ) -> Control
     {
+        let dragger = dragger::DraggerManager::new();
+
         Control {
-            //factory : Rc::new(RefCell::new(factory::Factory::new())),
-            camera : camera,
-            //tree : None,
             state : State::Idle,
             dragger : dragger,
             mouse_start : None,
@@ -53,6 +54,7 @@ impl Control
 
     pub fn mouse_down(
             &mut self,
+            camera : &camera2::CameraTransform,
             context : &context::ContextOld,
             modifier : i32,
             button : i32,
@@ -74,10 +76,9 @@ impl Control
             return v;
         }
 
-        let objs = context.selected.clone();
-        if !objs.is_empty() {
-            let click = self.dragger.borrow_mut().mouse_down(
-                &*self.camera.borrow(),button, x, y, &*self.resource);
+        if !context.selected.is_empty() {
+            let click = self.dragger.mouse_down(
+                camera, button, x, y, &*self.resource);
             if click {
                 self.state = State::Dragger;
                 v.push(ui::Event::DraggerClicked);
@@ -89,6 +90,7 @@ impl Control
 
     pub fn mouse_up(
             &mut self,
+            camera : &camera2::CameraTransform,
             context : &context::ContextOld,
             button : i32,
             x : i32,
@@ -103,8 +105,8 @@ impl Control
             },
             State::Dragger => {
                 self.state = State::Idle;
-                let o = self.dragger.borrow_mut().mouse_up(
-                    &*self.camera.borrow(),
+                let o = self.dragger.mouse_up(
+                    camera,
                     button,
                     x,
                     y);
@@ -122,15 +124,7 @@ impl Control
         }
 
         //println!("rust mouse up button {}, pos: {}, {}", button, x, y);
-        let r = match self.camera.borrow_state(){
-            BorrowState::Writing => {
-                println!("cannot borrow camera");
-                return ui::Event::Empty;
-            },
-            _ => {
-                self.camera.borrow().ray_from_screen(x as f64, y as f64, 10000f64)
-            }
-        };
+        let r = camera.ray_from_screen(x as f64, y as f64, 10000f64);
 
         /*
         let scene = match self.context.borrow_state(){
@@ -172,7 +166,7 @@ impl Control
             let o = cam.object.read().unwrap();
             let pos = o.world_position();
             let ori = o.world_orientation();
-            let cam_scale = get_camera_scale(&*self.camera.borrow(), &o.get_world_matrix());
+            let cam_scale = get_camera_scale(camera, &o.get_world_matrix());
             let scale = o.world_scale() * cam_scale;
             let ir = intersection::ray_mesh(&r, cam_mesh, &pos, &ori, &scale);
             if ir.hit {
@@ -224,32 +218,36 @@ impl Control
         return ui::Event::ChangeSelected(v);
     }
 
-    fn rotate_camera(&mut self, context : &context::ContextOld, x : f64, y : f64)
+    fn rotate_camera(
+        &mut self,
+        camera : &mut CameraView,
+        context : &context::ContextOld,
+        x : f64,
+        y : f64
+        )
     {
         self.state = State::CameraRotation;
 
-        let mut camera = self.camera.borrow_mut();
-        let cori = camera.object.read().unwrap().orientation;
+        let cori = camera.transform.orientation;
 
         let (result, angle_x, angle_y) = {
-            let cam = &mut camera.data;
 
             if vec::Vec3::up().dot(&cori.rotate_vec3(&vec::Vec3::up())) <0f64 {
-                cam.yaw = cam.yaw + 0.005*x;
+                camera.yaw = camera.yaw + 0.005*x;
             }
             else {
-                cam.yaw = cam.yaw - 0.005*x;
+                camera.yaw = camera.yaw - 0.005*x;
             }
 
-            cam.pitch -= 0.005*y;
+            camera.pitch -= 0.005*y;
 
-            let qy = vec::Quat::new_axis_angle_rad(vec::Vec3::up(), cam.yaw);
-            let qp = vec::Quat::new_axis_angle_rad(vec::Vec3::right(), cam.pitch);
+            let qy = vec::Quat::new_axis_angle_rad(vec::Vec3::up(), camera.yaw);
+            let qp = vec::Quat::new_axis_angle_rad(vec::Vec3::right(), camera.pitch);
 
             (
                 qy * qp,
-                cam.pitch/consts::PI*180f64,
-                cam.yaw/consts::PI*180f64,
+                camera.pitch/consts::PI*180f64,
+                camera.yaw/consts::PI*180f64,
                 )
         };
 
@@ -259,15 +257,13 @@ impl Control
         }
 
         camera.rotate_around_center(&result);
-
-        let mut c = camera.object.write().unwrap();
-        //(*c).orientation = vec::Quat::new_yaw_pitch_roll_deg(angle_y, angle_x, 0f64);
-        (*c).orientation = transform::Orientation::Quat(vec::Quat::new_yaw_pitch_roll_deg(angle_y, angle_x, 0f64));
+        camera.transform.orientation = transform::Orientation::Quat(vec::Quat::new_yaw_pitch_roll_deg(angle_y, angle_x, 0f64));
         //self.state = CameraRotation;
     }
 
     pub fn mouse_move(
         &mut self,
+        camera : &mut CameraView,
         context : &context::ContextOld,
         mod_flag : i32,
         button : i32,
@@ -284,33 +280,24 @@ impl Control
                 let x : f64 = curx as f64;
                 let y : f64 = cury as f64;
 
-                let r = match self.camera.borrow_state(){
-                    BorrowState::Writing => {
-                        println!("cannot borrow camera");
-                        return list;
-                    },
-                    _ => {
-                        self.camera.borrow().ray_from_screen(x as f64, y as f64, 10000f64)
-                    }
-                };
+                let r = camera.to_camera2_transform().ray_from_screen(x as f64, y as f64, 10000f64);
 
                 let update =
-                    self.dragger.borrow_mut().mouse_move_hover(r, button, &*self.resource) || button == 1;
+                    self.dragger.mouse_move_hover(r, button, &*self.resource) || button == 1;
 
                 if button == 1 {
 
-                    self.dragger.borrow_mut().set_state(dragger::State::Idle);
+                    self.dragger.set_state(dragger::State::Idle);
 
                     let x : f64 = curx as f64 - prevx as f64;
                     let y : f64 = cury as f64 - prevy as f64;
 
                     if (mod_flag & 1) != 0 {
                         let t = vec::Vec3::new(-x*0.5f64, y*0.5f64, 0f64);
-                        let mut camera = self.camera.borrow_mut();
                         camera.pan(&t);
                     }
                     else {
-                        self.rotate_camera(context, x, y);
+                        self.rotate_camera(camera, context, x, y);
                         //let camera = self.camera.borrow();
                         println!("remove from update and move here");
                         //self.dragger.borrow_mut().set_orienation(&*camera);
@@ -323,18 +310,9 @@ impl Control
             },
             State::Dragger =>
             {
-                let camera_clone = self.camera.clone();
-                let camera = match camera_clone.borrow_state(){
-                    BorrowState::Writing => {
-                        println!("cannot borrow camera");
-                        return list;
-                    },
-                    _ => camera_clone.borrow(),
-                };
-
                 let x : f64 = curx as f64;// - prevx as f64;
                 let y : f64 = cury as f64;// - prevy as f64;
-                let opsome = self.dragger.borrow_mut().mouse_move(&*camera,x,y);
+                let opsome = self.dragger.mouse_move(&camera.to_camera2_transform(),x,y);
                 if let Some(op) = opsome {
                     match op {
                         dragger::Operation::Translation(v) => {
@@ -362,7 +340,7 @@ impl Control
                     let (starty, endy) = if y < ey {(y, ey - y)} else {(ey, y - ey)};
                     list.push(ui::Event::RectSet(startx, starty, endx, endy));
 
-                    let planes = self.camera.borrow().get_frustum_planes_rect(
+                    let planes = camera.to_camera2_transform().get_frustum_planes_rect(
                         startx as f64,
                         starty as f64,
                         endx as f64,
@@ -404,6 +382,7 @@ impl Control
 
     pub fn mouse_wheel(
         &self,
+        camera : &mut CameraView,
         modifier : i32,
         direction : i32,
         z : i32,
@@ -415,19 +394,20 @@ impl Control
         let mut axis = vec::Vec3::new(0f64, 0f64, z as f64);
         //axis = axis * 10.5f64;
         axis = axis * 0.2f64;
-        let mut camera = self.camera.borrow_mut();
         camera.pan(&axis);
     }
 
     pub fn key_down(
         &mut self,
+        camera : &mut CameraView,
         modifier : i32,
         keyname : &str,
         key : &str,
         timestamp : i32
-        ) ->  ui::EventOld
+        ) ->  Vec<ui::EventOld>
     {
         let mut t = vec::Vec3::zero();
+        let mut v = Vec::new();
 
         match key {
             "e" => t.z = -50f64,
@@ -435,26 +415,29 @@ impl Control
             "f" => t.x = 50f64,
             "s" => t.x = -50f64,
             "z" => {
-                return ui::Event::Undo;
+                v.push(ui::Event::Undo);
             },
             "r" => {
-                return ui::Event::Redo;
+                v.push(ui::Event::Redo);
             },
             "space" => {
-                self.dragger.borrow_mut().change();
+                self.dragger.change();
+                v.push(ui::Event::DraggerChange);
             },
             _ => {
                 println!("key not implemented : {}", key);
             }
         }
 
+        if !t.is_zero()
         {
-            let mut camera = self.camera.borrow_mut();
-            let p = camera.object.read().unwrap().position;
-            camera.object.write().unwrap().position = p + t;
+            let p = camera.transform.position;
+            camera.transform.position = p + t;
+            v.push(ui::Event::CameraChange);
         }
 
-        return ui::Event::DraggerChange;
+        v
+
     }
 }
 
@@ -470,10 +453,10 @@ pub trait WidgetUpdate {
 
 
 use dormin::matrix;
-fn get_camera_scale(camera : &camera::Camera, world_matrix : &matrix::Matrix4) -> f64
+fn get_camera_scale(camera : &camera2::CameraTransform, world_matrix : &matrix::Matrix4) -> f64
 {
-    let cam_mat = camera.object.read().unwrap().get_world_matrix();
-    let projection = camera.get_perspective();
+    let cam_mat = camera.transform.get_computed_local_matrix();
+    let projection = camera.camera.get_perspective();
     let cam_mat_inv = cam_mat.get_inverse();
 
     let world_inv = &cam_mat_inv * world_matrix;

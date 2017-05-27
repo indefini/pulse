@@ -1,16 +1,11 @@
-use std::rc::{Rc,Weak};
-use std::cell::RefCell;
-use std::sync::{RwLock, Arc};
-use dormin::object;
 use dormin::mesh;
 use dormin::vec;
 use dormin::resource;
-use dormin::resource::Create;
 use dormin::transform;
 use dormin::geometry;
 use dormin::intersection;
-use dormin::factory;
 use dormin::camera;
+use dormin::camera2;
 
 use dragger::manager::{
     Repere,
@@ -20,7 +15,7 @@ use dragger::manager::{
     Kind,
     Collision,
     Dragger,
-    create_dragger
+    create_dragger,
 };
 
 pub struct RotationOperation
@@ -50,7 +45,7 @@ impl RotationOperation {
 
     pub fn local_global( 
         &self,
-        camera : &camera::Camera,
+        camera : &camera2::CameraTransform,
         mouse_start : vec::Vec2,
         mouse_end : vec::Vec2) -> Option<Operation>
     {
@@ -58,7 +53,7 @@ impl RotationOperation {
 
         let r = camera.ray_from_screen(mouse_end.x, mouse_end.y, 1f64);
 
-        let normal = camera.object.read().unwrap().orientation.rotate_vec3(&vec::Vec3::new(0f64,0f64,1f64));
+        let normal = camera.transform.orientation.rotate_vec3(&vec::Vec3::new(0f64,0f64,1f64));
         let p = geometry::Plane { point : self.start, normal : normal };
 
         let irstart =  intersection::intersection_ray_plane(&rstart, &p);
@@ -73,7 +68,7 @@ impl RotationOperation {
         let sign = normal.dot(&cross);
         let mut angle = mdot.acos();
 
-        let diff = self.start - camera.object.read().unwrap().position;
+        let diff = self.start - camera.transform.position;
         let cons = if let Repere::Local = self.repere {
             self.ori.rotate_vec3(&self.constraint)
         }
@@ -100,7 +95,7 @@ impl RotationOperation {
     }
 }
 
-pub fn create_rotation_draggers(factory : &factory::Factory)
+pub fn create_rotation_draggers()
     -> DraggerGroup
 {
     let red = vec::Vec4::new(1.0f64,0.247f64,0.188f64,0.5f64);
@@ -111,7 +106,7 @@ pub fn create_rotation_draggers(factory : &factory::Factory)
     let collider_mesh : resource::ResTT<mesh::Mesh> = resource::ResTT::new(collider);
 
     let dragger_x = Dragger::new(
-        create_dragger(factory, "rotate_x", mesh, red),
+        create_dragger("rotate_x", mesh, red),
         vec::Vec3::new(1f64,0f64,0f64),
         transform::Orientation::Quat(vec::Quat::new_axis_angle_deg(
                 vec::Vec3::new(0f64,1f64,0f64), -90f64)),
@@ -121,7 +116,7 @@ pub fn create_rotation_draggers(factory : &factory::Factory)
         );
 
     let dragger_y = Dragger::new(
-        create_dragger(factory, "rotate_y", mesh, green),
+        create_dragger("rotate_y", mesh, green),
         vec::Vec3::new(0f64,1f64,0f64),
         transform::Orientation::Quat(vec::Quat::new_axis_angle_deg(
                 vec::Vec3::new(1f64,0f64,0f64), 90f64)), 
@@ -131,7 +126,7 @@ pub fn create_rotation_draggers(factory : &factory::Factory)
         );
 
     let dragger_z = Dragger::new(
-        create_dragger(factory, "rotate_z", mesh, blue),
+        create_dragger("rotate_z", mesh, blue),
         vec::Vec3::new(0f64,0f64,1f64),
         transform::Orientation::Quat(vec::Quat::identity()), 
         Kind::Rotate,
@@ -141,9 +136,9 @@ pub fn create_rotation_draggers(factory : &factory::Factory)
 
     let mut group = Vec::with_capacity(3);
 
-    group.push(Rc::new(RefCell::new(dragger_x)));
-    group.push(Rc::new(RefCell::new(dragger_y)));
-    group.push(Rc::new(RefCell::new(dragger_z)));
+    group.push(dragger_x);
+    group.push(dragger_y);
+    group.push(dragger_z);
 
     return group;
 }
@@ -152,7 +147,7 @@ impl DraggerMouse for RotationOperation {
 
     fn mouse_move(
         &self,
-        camera : &camera::Camera,
+        camera : &camera2::CameraTransform,
         mouse_start : vec::Vec2,
         mouse_end : vec::Vec2) -> Option<Operation>
     {

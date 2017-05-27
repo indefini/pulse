@@ -1,7 +1,3 @@
-use std::rc::{Rc,Weak};
-use std::cell::RefCell;
-use std::sync::{RwLock, Arc};
-use dormin::object;
 use dormin::mesh;
 use dormin::vec;
 use dormin::resource;
@@ -12,8 +8,9 @@ use dormin::component::mesh_render;
 use dormin::geometry;
 use dormin::intersection;
 use dormin::matrix;
-use dormin::factory;
 use dormin::camera;
+use dormin::camera2;
+use dormin::render::MatrixMeshRender;
 use uuid;
 
 use dragger::{
@@ -29,14 +26,14 @@ use dragger::{
     create_rotation_draggers
 };
 
-pub type DraggerGroup = Vec<Rc<RefCell<DraggerOld>>>;
+pub type DraggerGroup = Vec<Dragger>;
 
 pub struct DraggerManager
 {
-    pub draggers : Vec<DraggerGroup>, //Vec<Rc<RefCell<Dragger>>>,
+    draggers : Vec<DraggerGroup>,
     mouse_start : vec::Vec2,
     mouse : Option<Box<DraggerMouse+'static>>,
-    pub ori : vec::Quat,
+    ori : vec::Quat,
     current_group : usize,
     dragger_focus : Option<uuid::Uuid>
 }
@@ -80,12 +77,26 @@ pub enum Collision
     SpecialMesh(resource::ResTT<mesh::Mesh>)
 }
 
-type DraggerOld = Dragger<Arc<RwLock<object::Object>>>;
-
-pub struct Dragger<O>
+#[derive(Clone, Debug)]
+pub struct TransformMeshRender
 {
-    //object : Arc<RwLock<object::Object>>,
-    object : O,
+    pub transform : transform::Transform,
+    pub mesh_render : mesh_render::MeshRender
+}
+
+impl TransformMeshRender {
+    pub fn new(t : transform::Transform, mr : mesh_render::MeshRender) -> TransformMeshRender
+    {
+        TransformMeshRender {
+        transform : t,
+        mesh_render : mr
+        }
+    }
+}
+
+pub struct Dragger
+{
+    object : TransformMeshRender,
     pub ori : transform::Orientation,
     pub constraint : vec::Vec3,
     kind : Kind,
@@ -99,7 +110,7 @@ pub struct Dragger<O>
 
 impl DraggerManager
 {
-    pub fn new(factory : &factory::Factory) -> DraggerManager
+    pub fn new() -> DraggerManager
     {
         let mut dm = DraggerManager {
             draggers : Vec::with_capacity(3),
@@ -110,13 +121,13 @@ impl DraggerManager
             dragger_focus : None
         };
 
-        let tr = create_dragger_translation_group(factory);
+        let tr = create_dragger_translation_group();
         dm.draggers.push(tr);
 
-        let sc = create_scale_draggers(factory);
+        let sc = create_scale_draggers();
         dm.draggers.push(sc);
 
-        let sc = create_rotation_draggers(factory);
+        let sc = create_rotation_draggers();
         dm.draggers.push(sc);
 
         dm
@@ -124,7 +135,7 @@ impl DraggerManager
 
     pub fn mouse_down(
         &mut self,
-        c : &camera::Camera,
+        c : &camera2::CameraTransform,
         button : i32,
         x : i32,
         y : i32,
@@ -138,7 +149,7 @@ impl DraggerManager
         self.check_collision(r, button, resource).is_some()
     }
 
-    pub fn mouse_up(&mut self, c : &camera::Camera, button : i32, x : i32, y : i32)
+    pub fn mouse_up(&mut self, c : &camera2::CameraTransform, button : i32, x : i32, y : i32)
         -> Option<Operation>
     {
         self.set_state(State::Idle);
@@ -165,56 +176,51 @@ impl DraggerManager
     {
         let mut found_length = 0f64;
         let mut closest_dragger = None;
-        for dragger in &mut self.draggers[self.current_group] {
-            let mut d = dragger.borrow_mut();
-            d.set_state(State::Idle);
-            let (hit, len) = d.check_collision(&r, d.scale, resource);
+        for (i, dragger) in self.draggers[self.current_group].iter_mut().enumerate() {
+            dragger.set_state(State::Idle);
+            let (hit, len) = dragger.check_collision(&r, dragger.scale, resource);
             if hit {
                 if let None = closest_dragger {
-                    closest_dragger = Some(dragger.clone());
+                    closest_dragger = Some(i);
                     found_length = len;
                 }
                 else if len < found_length {
-                    closest_dragger = Some(dragger.clone());
+                    closest_dragger = Some(i);
                     found_length = len;
                 }
             }
         }
 
-        if let Some(d) = closest_dragger {
+        if let Some(i) = closest_dragger {
+            let mut dragger = &mut self.draggers[self.current_group][i];
             match button {
-                0i32 => d.borrow_mut().set_state(State::Highlight),
+                0i32 => dragger.set_state(State::Highlight),
                 1i32 => {
-                    let mut dragger = d.borrow_mut();
                     dragger.set_state(State::Selected);
                     match dragger.kind {
                         Kind::Translate => {
-                            let ob = dragger.object.read().unwrap();
                             //println!("ori : {:?}", self.ori);
 
                             self.mouse = Some(box TranslationMove::new(
-                                    ob.position.clone(),
+                                    dragger.object.transform.position,
                                     dragger.constraint,
                                     dragger.repere,
                                     self.ori
                                     ) as Box<DraggerMouse>);
                         }
                         Kind::Scale => {
-                            let ob = dragger.object.read().unwrap();
-
                             self.mouse = Some(box ScaleOperation::new(
-                                    ob.position.clone(),
+                                    dragger.object.transform.position,
                                     dragger.constraint,
                                     dragger.repere,
                                     self.ori
                                     ) as Box<DraggerMouse>);
                         }
                         Kind::Rotate => {
-                            let ob = dragger.object.read().unwrap();
                             //println!("ori : {:?}", self.ori);
 
                             self.mouse = Some(box RotationOperation::new(
-                                    ob.position.clone(),
+                                    dragger.object.transform.position,
                                     dragger.constraint,
                                     dragger.repere,
                                     self.ori
@@ -224,7 +230,7 @@ impl DraggerManager
                 }
                 _ => {}
             };
-            Some(d.borrow().id)
+            Some(dragger.id)
         }
         else {
             None
@@ -258,42 +264,41 @@ impl DraggerManager
 
     pub fn set_position(&mut self, p : vec::Vec3) {
         for d in &mut self.draggers[self.current_group] {
-            let mut db =d.borrow_mut();
-            db.object.write().unwrap().position = p;
+            d.object.transform.position = p;
         }
 
     }
 
-    pub fn set_orientation(&mut self, ori : transform::Orientation, camera : &camera::Camera) {
+    pub fn set_orientation(&mut self, ori : transform::Orientation, camera_position : &vec::Vec3) {
         self.ori = ori.as_quat();
         for d in &mut self.draggers[self.current_group] {
-            let mut d = d.borrow_mut();
             if self.current_group == 2usize {
-                d.face_camera(camera, self.ori);
+                d.face_camera(camera_position, self.ori);
             }
             else {
-            d.object.write().unwrap().orientation = ori * d.ori;
+                d.object.transform.orientation = ori * d.ori;
             }
         }
     }
 
-    pub fn scale_to_camera(&mut self, camera : &camera::Camera)
+    pub fn scale_to_camera(&mut self,
+        cam_mat_inv : &matrix::Matrix4,
+        projection : &matrix::Matrix4)
     {
-        let cam_mat = camera.object.read().unwrap().get_world_matrix();
-        let projection = camera.get_perspective();
-        let cam_mat_inv = cam_mat.get_inverse();
-
         for d in &mut self.draggers[self.current_group] {
 
-            d.borrow_mut().scale_to_camera_data(&cam_mat_inv, &projection);
+            d.scale_to_camera_data(&cam_mat_inv, &projection);
         }
     }
 
-    pub fn get_objects(&self) -> Vec<Arc<RwLock<object::Object>>>
+    pub fn get_mmr(&mut self) -> Vec<MatrixMeshRender>
     {
         let mut l = Vec::new();
-        for d in &self.draggers[self.current_group] {
-            l.push(d.borrow().object.clone());
+        for d in &mut self.draggers[self.current_group] {
+            d.object.transform.set_as_dirty();
+            let mat = d.object.transform.get_or_compute_local_matrix().clone();
+            let mmr = MatrixMeshRender::new(mat, d.object.mesh_render.clone());
+            l.push(mmr);
         }
 
         l
@@ -301,13 +306,13 @@ impl DraggerManager
 
     pub fn set_state(&mut self, state : State) {
         for d in &mut self.draggers[self.current_group] {
-            d.borrow_mut().set_state(state);
+            d.set_state(state);
         }
     }
 
     pub fn mouse_move(
         &mut self,
-        camera : &camera::Camera,
+        camera : &camera2::CameraTransform,
         cur_x : f64,
         cur_y : f64) -> Option<Operation>
     {
@@ -334,21 +339,20 @@ impl DraggerManager
 }
 
 pub fn create_dragger(
-    factory : &factory::Factory,
     name : &str,
     mesh : &str,
-    color : vec::Vec4) -> Arc<RwLock<object::Object>>
+    color : vec::Vec4) -> TransformMeshRender
 {
-    let mut dragger = factory.create_object(name);
     let mat = create_mat(color, name);
 
-    dragger.mesh_render = Some(mesh_render::MeshRender::new_with_mat2(
+    let mr = mesh_render::MeshRender::new_with_mat2(
         mesh,
         mat,
-        ));
+        );
 
-    Arc::new(RwLock::new(dragger))
+    TransformMeshRender::new(Default::default(), mr)
 }
+
 
 fn create_mat(color : vec::Vec4, name : &str) -> material::Material
 {
@@ -361,16 +365,16 @@ fn create_mat(color : vec::Vec4, name : &str) -> material::Material
     mat
 }
 
-impl<O> Dragger<O>
+impl Dragger
 {
     pub fn new(
-        object : O,
+        object : TransformMeshRender,
         constraint : vec::Vec3,
         ori : transform::Orientation,
         kind : Kind,
         color : vec::Vec4,
         collision : Collision
-        ) -> Dragger<O>
+        ) -> Dragger
     {
         Dragger {
             object : object,
@@ -395,7 +399,7 @@ impl<O> Dragger<O>
     }
 }
 
-impl Dragger<Arc<RwLock<object::Object>>>
+impl Dragger
 {
     //TODO
     // We change object transform and object material (color)
@@ -405,7 +409,8 @@ impl Dragger<Arc<RwLock<object::Object>>>
         cam_mat_inv : &matrix::Matrix4,
         projection : &matrix::Matrix4)
     {
-        let world_inv = cam_mat_inv * &self.object.read().unwrap().get_world_matrix();
+        self.object.transform.set_as_dirty();
+        let world_inv = cam_mat_inv * self.object.transform.get_or_compute_local_matrix();
 
         let mut tm = projection * &world_inv;
         tm = tm.transpose();
@@ -419,8 +424,9 @@ impl Dragger<Arc<RwLock<object::Object>>>
 
     fn set_state(&mut self, state : State)
     {
-        fn set_color(s : &DraggerOld, color : vec::Vec4){
-            if let Some(mat) = s.object.write().unwrap().get_material() {
+        fn set_color(s : &mut Dragger, color : vec::Vec4){
+            //TODO material instance
+            if let Some(ref mut mat) = s.object.mesh_render.material.get_instance() {
                 mat.set_uniform_data(
                     "color",
                     shader::UniformData::Vec4(color));
@@ -436,7 +442,8 @@ impl Dragger<Arc<RwLock<object::Object>>>
                 set_color(self, vec::Vec4::new(1f64,1f64,1f64, 1f64));
             },
             State::Idle => {
-                set_color(self, self.color);
+                let c = self.color;
+                set_color(self, c);
             }
             _ => {}
         }
@@ -446,27 +453,26 @@ impl Dragger<Arc<RwLock<object::Object>>>
 
     fn check_collision(&self, r : &geometry::Ray, s : f64, resource : &resource::ResourceGroup) -> (bool, f64)
     {
-        let ob = self.object.read().unwrap();
-        let position = ob.position;
-        let rotation = ob.orientation.as_quat();
+        let ob = &self.object;
+        let position = ob.transform.position;
+        let rotation = ob.transform.orientation.as_quat();
         let scale = vec::Vec3::new(s, s, s);
 
         let mut mm = resource.mesh_manager.borrow_mut();
 
         let ir = 
         {
-            let mesh = match ob.mesh_render {
-                None => return (false,0f64),
-                Some(ref mr) => {
-                    match mr.mesh.as_ref(&mm) {
-                        None => return (false,0f64),
-                        Some(m) => m
-                    }
+            let mesh = match ob.mesh_render.mesh.get_or_load_ref(&mut mm) {
+                None => {
+                    return (false,0f64);
                 },
+                Some(m) => m
             };
 
             let aabox = match mesh.aabox {
-                None => return (false,0f64),
+                None => {
+                    return (false,0f64);
+                },
                 Some(ref aa) => aa
             };
 
@@ -505,20 +511,17 @@ impl Dragger<Arc<RwLock<object::Object>>>
     }
 
     pub fn face_camera(
-        &self,
-        camera : &camera::Camera,
+        &mut self,
+        camera_position : &vec::Vec3,
         manager_ori : vec::Quat,
         )
     {
         let qo = manager_ori;
-        let mut o = self.object.write().unwrap();
+        let mut o = &mut self.object;
         let constraint = self.constraint;
         let dragger_ori = self.ori.as_quat();
 
-
-        let camera_object = camera.object.read().unwrap();
-
-        let diff = o.position - camera_object.position;
+        let diff = o.transform.position - *camera_position;
         let dotx = diff.dot(&qo.rotate_vec3(&vec::Vec3::x()));
         let doty = diff.dot(&qo.rotate_vec3(&vec::Vec3::y()));
         let dotz = diff.dot(&qo.rotate_vec3(&vec::Vec3::z()));
@@ -571,7 +574,7 @@ impl Dragger<Arc<RwLock<object::Object>>>
         let qoo = dragger_ori *q;
         let qf = qo * qoo;
 
-        o.orientation = transform::Orientation::Quat(qf);
+        o.transform.orientation = transform::Orientation::Quat(qf);
     }
 
 }
@@ -580,7 +583,7 @@ pub trait DraggerMouse
 {
     fn mouse_move(
         &self,
-        camera : &camera ::Camera,
+        camera : &camera2::CameraTransform,
         mouse_start : vec::Vec2,
         mouse_end : vec::Vec2)
         -> Option<Operation>;

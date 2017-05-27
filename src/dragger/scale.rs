@@ -1,20 +1,7 @@
-use std::collections::LinkedList;
-use std::rc::{Rc,Weak};
-use std::cell::RefCell;
-use std::sync::{RwLock, Arc};
-use dormin::object;
-use dormin::mesh;
 use dormin::vec;
-use dormin::resource;
-use dormin::resource::Create;
-use dormin::shader;
-use dormin::material;
 use dormin::transform;
-use dormin::geometry;
-use dormin::intersection;
-use dormin::matrix;
-use dormin::factory;
 use dormin::camera;
+use dormin::camera2;
 
 use dragger::manager::{
     Repere,
@@ -24,9 +11,8 @@ use dragger::manager::{
     Kind,
     Collision,
     Dragger,
-    create_dragger
+    create_dragger,
 };
-
 
 pub struct ScaleOperation
 {
@@ -55,7 +41,7 @@ impl ScaleOperation {
 
     fn local(
         &self,
-        camera : &camera::Camera,
+        camera : &camera2::CameraTransform,
         mouse_start : vec::Vec2,
         mouse_end : vec::Vec2) -> Option<Operation>
     {
@@ -92,7 +78,7 @@ impl DraggerMouse for ScaleOperation {
 
     fn mouse_move(
         &self,
-        camera : &camera::Camera,
+        camera : &camera2::CameraTransform,
         mouse_start : vec::Vec2,
         mouse_end : vec::Vec2) -> Option<Operation>
     {
@@ -100,10 +86,7 @@ impl DraggerMouse for ScaleOperation {
     }
 }
 
-pub fn create_scale_draggers(
-    factory : &factory::Factory,
-    )
-    -> DraggerGroup
+pub fn create_scale_draggers() -> DraggerGroup
 {
     let red = vec::Vec4::new(1.0f64,0.247f64,0.188f64,0.5f64);
     let green = vec::Vec4::new(0.2117f64,0.949f64,0.4156f64,0.5f64);
@@ -112,7 +95,7 @@ pub fn create_scale_draggers(
     //let mesh_cube = "model/dragger_cube.mesh";
 
     let dragger_x = Dragger::new(
-        create_dragger(factory, "scale_x", mesh, red),
+        create_dragger("scale_x", mesh, red),
         vec::Vec3::new(1f64,0f64,0f64),
         transform::Orientation::Quat(vec::Quat::new_axis_angle_deg(vec::Vec3::new(0f64,1f64,0f64), 90f64)),
         Kind::Scale,
@@ -121,7 +104,7 @@ pub fn create_scale_draggers(
         );
 
     let dragger_y = Dragger::new(
-        create_dragger(factory, "scale_y", mesh, green),
+        create_dragger("scale_y", mesh, green),
         vec::Vec3::new(0f64,1f64,0f64),
         transform::Orientation::Quat(vec::Quat::new_axis_angle_deg(vec::Vec3::new(1f64,0f64,0f64), -90f64)), 
         Kind::Scale,
@@ -130,7 +113,7 @@ pub fn create_scale_draggers(
         );
 
     let dragger_z = Dragger::new(
-        create_dragger(factory, "scale_z", mesh, blue),
+        create_dragger("scale_z", mesh, blue),
         vec::Vec3::new(0f64,0f64,1f64),
         transform::Orientation::Quat(vec::Quat::identity()), 
         Kind::Scale,
@@ -153,9 +136,9 @@ pub fn create_scale_draggers(
 
     let mut group = Vec::with_capacity(4);
 
-    group.push(Rc::new(RefCell::new(dragger_x)));
-    group.push(Rc::new(RefCell::new(dragger_y)));
-    group.push(Rc::new(RefCell::new(dragger_z)));
+    group.push(dragger_x);
+    group.push(dragger_y);
+    group.push(dragger_z);
     //group.push(Rc::new(RefCell::new(dragger_xyz)));
 
     return group;

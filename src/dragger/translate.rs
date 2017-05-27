@@ -1,12 +1,9 @@
-use std::rc::{Rc};
-use std::cell::RefCell;
 use dormin::vec;
-use dormin::resource;
 use dormin::transform;
 use dormin::geometry;
 use dormin::intersection;
-use dormin::factory;
 use dormin::camera;
+use dormin::camera2;
 
 use dragger::manager::{
     Repere,
@@ -16,7 +13,7 @@ use dragger::manager::{
     Kind,
     Collision,
     Dragger,
-    create_dragger
+    create_dragger,
 };
 
 pub struct TranslationMove
@@ -46,13 +43,13 @@ impl TranslationMove {
 
     fn global(
         &self,
-        camera : &camera::Camera,
+        camera : &camera2::CameraTransform,
         mouse_start : vec::Vec2,
         mouse_end : vec::Vec2) -> Option<Operation>
     {
         let mut p = geometry::Plane {
             point : self.translation_start,
-            normal : camera.object.read().unwrap().orientation.rotate_vec3(
+            normal : camera.transform.orientation.rotate_vec3(
                 &vec::Vec3::new(0f64,0f64,-1f64))
         };
 
@@ -93,14 +90,14 @@ impl TranslationMove {
 
     fn local(
         &self,
-        camera : &camera::Camera,
+        camera : &camera2::CameraTransform,
         mouse_start : vec::Vec2,
         mouse_end : vec::Vec2) -> Option<Operation>
     {
         let constraint = self.constraint;
         let ori = self.ori;
 
-        let camup = camera.object.read().unwrap().orientation.rotate_vec3(&vec::Vec3::new(0f64,1f64,0f64));
+        let camup = camera.transform.orientation.rotate_vec3(&vec::Vec3::new(0f64,1f64,0f64));
 
         //printf("dragger ori : %f, %f, %f %f \n ", c->dragger_ori.x, c->dragger_ori.y, c->dragger_ori.z, c->dragger_ori.w);
         let ca = ori.rotate_vec3(&constraint);
@@ -124,7 +121,7 @@ impl TranslationMove {
         //printf("n %f, %f, %f \n", n.x, n.y, n.z);
 
         if constraint == vec::Vec3::new(0f64,1f64,0f64) {//TODO change this by checking the angle between camup and ca
-            let camright = camera.object.read().unwrap().orientation.rotate_vec3(&vec::Vec3::new(1f64,0f64,0f64));
+            let camright = camera.transform.orientation.rotate_vec3(&vec::Vec3::new(1f64,0f64,0f64));
             p.normal = camright ^ ca;
         }
 
@@ -159,7 +156,7 @@ impl DraggerMouse for TranslationMove {
 
     fn mouse_move(
         &self,
-        camera : &camera::Camera,
+        camera : &camera2::CameraTransform,
         mouse_start : vec::Vec2,
         mouse_end : vec::Vec2) -> Option<Operation>
     {
@@ -174,10 +171,7 @@ impl DraggerMouse for TranslationMove {
     }
 }
 
-pub fn create_dragger_translation_group(
-    factory : &factory::Factory
-    )
-    -> DraggerGroup
+pub fn create_dragger_translation_group() -> DraggerGroup
 {
     let red = vec::Vec4::new(1.0f64,0.247f64,0.188f64,0.5f64);
     let green = vec::Vec4::new(0.2117f64,0.949f64,0.4156f64,0.5f64);
@@ -186,7 +180,7 @@ pub fn create_dragger_translation_group(
     let mesh_plane = "model/dragger_plane.mesh";
 
     let dragger_x = Dragger::new(
-        create_dragger(factory, "dragger_x", mesh, red),
+        create_dragger("dragger_x", mesh, red),
         vec::Vec3::new(1f64,0f64,0f64),
         transform::Orientation::Quat(vec::Quat::new_axis_angle_deg(vec::Vec3::new(0f64,1f64,0f64), 90f64)),
         Kind::Translate,
@@ -195,7 +189,7 @@ pub fn create_dragger_translation_group(
         );
 
     let dragger_y = Dragger::new(
-        create_dragger(factory, "dragger_y", mesh, green),
+        create_dragger("dragger_y", mesh, green),
         vec::Vec3::new(0f64,1f64,0f64),
         transform::Orientation::Quat(vec::Quat::new_axis_angle_deg(vec::Vec3::new(1f64,0f64,0f64), -90f64)),
         Kind::Translate,
@@ -204,7 +198,7 @@ pub fn create_dragger_translation_group(
         );
 
     let dragger_z = Dragger::new(
-        create_dragger(factory, "dragger_z", mesh, blue),
+        create_dragger("dragger_z", mesh, blue),
         vec::Vec3::new(0f64,0f64,1f64),
         transform::Orientation::Quat(vec::Quat::identity()),
         Kind::Translate,
@@ -213,7 +207,7 @@ pub fn create_dragger_translation_group(
         );
 
     let dragger_xy = Dragger::new(
-        create_dragger(factory, "dragger_xy", mesh_plane, red),
+        create_dragger("dragger_xy", mesh_plane, red),
         vec::Vec3::new(1f64,1f64,0f64),
         transform::Orientation::Quat(vec::Quat::new_axis_angle_deg(
                 vec::Vec3::new(0f64,1f64,0f64), 90f64)),
@@ -223,7 +217,7 @@ pub fn create_dragger_translation_group(
         );
 
     let dragger_xz = Dragger::new(
-        create_dragger(factory, "dragger_xz", mesh_plane, green),
+        create_dragger("dragger_xz", mesh_plane, green),
         vec::Vec3::new(1f64,0f64,1f64),
         transform::Orientation::Quat(
             vec::Quat::new_axis_angle_deg(vec::Vec3::new(0f64,0f64,1f64), -90f64)),
@@ -233,7 +227,7 @@ pub fn create_dragger_translation_group(
         );
 
     let dragger_yz = Dragger::new(
-        create_dragger(factory, "dragger_yz", mesh_plane, blue),
+        create_dragger("dragger_yz", mesh_plane, blue),
         vec::Vec3::new(0f64,1f64,1f64),
         //transform::Orientation::Quat(vec::Quat::new_axis_angle_deg(vec::Vec3::new(1f64,0f64,0f64), 90f64)),
         transform::Orientation::Quat(vec::Quat::identity()),
@@ -244,13 +238,13 @@ pub fn create_dragger_translation_group(
 
     let mut group = Vec::with_capacity(6);
 
-    group.push(Rc::new(RefCell::new(dragger_x)));
-    group.push(Rc::new(RefCell::new(dragger_y)));
-    group.push(Rc::new(RefCell::new(dragger_z)));
+    group.push(dragger_x);
+    group.push(dragger_y);
+    group.push(dragger_z);
 
-    group.push(Rc::new(RefCell::new(dragger_xy)));
-    group.push(Rc::new(RefCell::new(dragger_xz)));
-    group.push(Rc::new(RefCell::new(dragger_yz)));
+    group.push(dragger_xy);
+    group.push(dragger_xz);
+    group.push(dragger_yz);
 
     return group;
 }
