@@ -254,6 +254,7 @@ trait SceneUpdate {
 struct SceneS;
 impl SceneT for SceneS {
     type Id = usize;
+    type Object = usize;
     fn update(&mut self, dt : f64, input : &input::Input, res :&resource::ResourceGroup)
     {
     }

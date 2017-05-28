@@ -1,12 +1,13 @@
 use std::rc::{Rc};
 use std::cell::{RefCell};
+use std::sync::{Arc, RwLock};
 use std::collections::HashMap;
 use std::fs;
 
 use uuid;
 
 use dormin;
-use dormin::{vec, resource, scene, factory, world};
+use dormin::{vec, resource, scene, factory, world, object};
 use context;
 use util;
 use dormin::input;
@@ -26,12 +27,14 @@ pub struct Data<S:SceneT>
 
 pub trait SceneT : ToId<<Self as SceneT>::Id> {
     type Id : Default + Eq + Clone;
+    type Object : ToId<Self::Id> + Clone;
     fn init_for_play(&mut self, resource : &resource::ResourceGroup);
     fn update(&mut self, dt : f64, input : &input::Input, &resource::ResourceGroup);
 }
 
 impl SceneT for Rc<RefCell<scene::Scene>> {
     type Id = uuid::Uuid;
+    type Object = Arc<RwLock<object::Object>>;
     fn update(&mut self, dt : f64, input : &input::Input, res :&resource::ResourceGroup)
     {
         self.borrow_mut().update(dt, input, res);
@@ -52,9 +55,17 @@ impl ToId<usize> for world::World
     }
 }
 
+impl ToId<usize> for usize
+{
+    fn to_id(&self) -> usize
+    {
+        *self
+    }
+}
 
 impl SceneT for world::World {
     type Id = usize;
+    type Object = usize;
     fn update(&mut self, dt : f64, input : &input::Input, res :&resource::ResourceGroup)
     {
         println!("TODO !!!!!!!!!!!!!!!!!!!!!!");

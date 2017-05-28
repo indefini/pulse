@@ -4,11 +4,11 @@ use uuid;
 
 use std::sync::{RwLock, Arc};
 use std::rc::Rc;
-use std::cell::{RefCell, BorrowState};
+use std::cell::{RefCell};
 use std::marker::PhantomData;
-use data::ToId;
+use data::{ToId, SceneT};
 
-pub type ContextOld = Context<Rc<RefCell<scene::Scene>>, Arc<RwLock<object::Object>>, uuid::Uuid>;
+pub type ContextOld = Context<Rc<RefCell<scene::Scene>>, uuid::Uuid>;
 
 impl ToId<uuid::Uuid> for Arc<RwLock<object::Object>>
 {
@@ -26,17 +26,17 @@ impl ToId<uuid::Uuid> for Rc<RefCell<scene::Scene>>
     }
 }
 
-pub struct Context<S, O, I>
+pub struct Context<S:SceneT, I>
 {
-    pub selected : Vec<O>,
+    pub selected : Vec<S::Object>,
     pub scene : Option<S>,
     id : PhantomData<I>
 }
 
 
-impl<S : Clone, O, I> Context<S,O,I>
+impl<S : Clone+SceneT, I> Context<S,I>
 {
-    pub fn new() -> Context<S, O, I>
+    pub fn new() -> Context<S, I>
     {
         Context {
             selected: Vec::new(),
@@ -57,9 +57,9 @@ impl<S : Clone, O, I> Context<S,O,I>
     }
 }
 
-impl<S, O : ToId<I> + Clone, I : Eq+Clone> Context<S, O, I>
+impl<S:SceneT, I : Eq+Clone> Context<S, I>
 {
-    pub fn get_vec_selected_ids(&self) -> Vec<I>
+    pub fn get_vec_selected_ids(&self) -> Vec<S::Id>
     {
         let mut v = Vec::with_capacity(self.selected.len());
         for o in &self.selected {
@@ -69,7 +69,7 @@ impl<S, O : ToId<I> + Clone, I : Eq+Clone> Context<S, O, I>
         v
     }
 
-    pub fn remove_objects_by_id(&mut self, ids : &[I])
+    pub fn remove_objects_by_id(&mut self, ids : &[S::Id])
     {
         let mut new_list = Vec::new();
         for o in &self.selected {
@@ -88,7 +88,7 @@ impl<S, O : ToId<I> + Clone, I : Eq+Clone> Context<S, O, I>
         self.selected = new_list;
     }
 
-    pub fn has_object_with_id(&self, id : &I) -> bool
+    pub fn has_object_with_id(&self, id : &S::Id) -> bool
     {
         for o in &self.selected {
             if *id == o.to_id() {
@@ -99,7 +99,7 @@ impl<S, O : ToId<I> + Clone, I : Eq+Clone> Context<S, O, I>
         false
     }
 
-    pub fn has_object(&self, ob : O) -> bool
+    pub fn has_object(&self, ob : S::Object) -> bool
     {
         for o in &self.selected {
             if ob.to_id() == o.to_id() {
@@ -111,7 +111,7 @@ impl<S, O : ToId<I> + Clone, I : Eq+Clone> Context<S, O, I>
     }
 }
 
-impl Context<Rc<RefCell<scene::Scene>>, Arc<RwLock<object::Object>>, uuid::Uuid>
+impl Context<Rc<RefCell<scene::Scene>>, uuid::Uuid>
 {
 
     pub fn select_by_id(&mut self, ids : &mut Vec<uuid::Uuid>)
