@@ -5,10 +5,9 @@ use uuid;
 use std::sync::{RwLock, Arc};
 use std::rc::Rc;
 use std::cell::{RefCell};
-use std::marker::PhantomData;
 use data::{ToId, SceneT};
 
-pub type ContextOld = Context<Rc<RefCell<scene::Scene>>, uuid::Uuid>;
+pub type ContextOld = Context<Rc<RefCell<scene::Scene>>>;
 
 impl ToId<uuid::Uuid> for Arc<RwLock<object::Object>>
 {
@@ -26,22 +25,19 @@ impl ToId<uuid::Uuid> for Rc<RefCell<scene::Scene>>
     }
 }
 
-pub struct Context<S:SceneT, I>
+pub struct Context<S:SceneT>
 {
     pub selected : Vec<S::Object>,
     pub scene : Option<S>,
-    id : PhantomData<I>
 }
 
-
-impl<S : Clone+SceneT, I> Context<S,I>
+impl<S : Clone+SceneT> Context<S>
 {
-    pub fn new() -> Context<S, I>
+    pub fn new() -> Context<S>
     {
         Context {
             selected: Vec::new(),
             scene : None,
-            id : PhantomData
         }
     }
 
@@ -57,7 +53,7 @@ impl<S : Clone+SceneT, I> Context<S,I>
     }
 }
 
-impl<S:SceneT, I : Eq+Clone> Context<S, I>
+impl<S:SceneT> Context<S>
 {
     pub fn get_vec_selected_ids(&self) -> Vec<S::Id>
     {
@@ -111,7 +107,7 @@ impl<S:SceneT, I : Eq+Clone> Context<S, I>
     }
 }
 
-impl Context<Rc<RefCell<scene::Scene>>, uuid::Uuid>
+impl Context<Rc<RefCell<scene::Scene>>>
 {
 
     pub fn select_by_id(&mut self, ids : &mut Vec<uuid::Uuid>)
