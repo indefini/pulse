@@ -3,6 +3,7 @@ use std::cell::{RefCell, BorrowState};
 use std::any::{Any};//, AnyRefExt};
 use std::f64::consts;
 
+use dormin::object;
 use dormin::transform;
 use dormin::camera;
 use dormin::camera2;
@@ -191,7 +192,9 @@ impl Control
         }
 
         for o in &scene.borrow().objects {
-            let ir = intersection::ray_object(&r, &*o.read().unwrap(), &*self.resource);
+            let mm = &mut *self.resource.mesh_manager.borrow_mut();
+            if let Some(ref mt) = object::object_to_mt(&*o.read().unwrap(), mm) {
+            let ir = intersection::ray_mesh_transform(&r, mt);
             if ir.hit {
                 let length = (ir.position - r.start).length2();
                 match closest_obj {
@@ -206,6 +209,7 @@ impl Control
                         }
                     }
                 }
+            }
             }
         }
 
@@ -354,7 +358,7 @@ impl Control
                     let mut obvec = Vec::new();
                     let mut has_changed = false;
                     for o in &s.borrow().objects {
-                        let b = intersection::is_object_in_planes(planes.as_ref(), &*o.read().unwrap(), &*self.resource);
+                        let b = object::is_object_in_planes(planes.as_ref(), &*o.read().unwrap(), &*self.resource);
                         if b {
                             if !context.has_object(o.clone()) {
                                 has_changed = true;
