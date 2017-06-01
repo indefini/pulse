@@ -8,6 +8,7 @@ use uuid;
 
 use dormin;
 use dormin::{vec, resource, scene, factory, world, object};
+use dormin::component::mesh_render;
 use context;
 use util;
 use dormin::input;
@@ -27,10 +28,14 @@ pub struct Data<S:SceneT>
 
 pub trait SceneT : ToId<<Self as SceneT>::Id> {
     type Id : Default + Eq + Clone;
-    type Object : ToId<Self::Id> + Clone;
+    type Object : ToId<Self::Id> + Clone + world::GetWorld + GetComponent;
     fn init_for_play(&mut self, resource : &resource::ResourceGroup);
     fn update(&mut self, dt : f64, input : &input::Input, &resource::ResourceGroup);
     fn get_objects(&self) -> &[Self::Object];
+    fn get_objects_vec(&self) -> Vec<Self::Object>
+    {
+        Vec::new()
+    }
 }
 
 impl SceneT for Rc<RefCell<scene::Scene>> {
@@ -48,8 +53,14 @@ impl SceneT for Rc<RefCell<scene::Scene>> {
 
     fn get_objects(&self) -> &[Self::Object]
     {
-        &self.borrow().objects
+        &[]//&self.borrow().objects
     }
+
+    fn get_objects_vec(&self) -> Vec<Self::Object>
+    {
+        Vec::new()
+    }
+
 }
 
 impl ToId<usize> for world::World
@@ -251,4 +262,38 @@ pub trait ToId2 {
     fn to_id(&self) -> Self::Id;
 }
 
+pub trait GetComponent
+{
+    fn get_comp<C>(&self, data : &GetDataT) -> Option<C>;
+}
+
+impl GetComponent for Arc<RwLock<object::Object>>
+{
+    fn get_comp<C>(&self, data : &GetDataT) -> Option<C>
+    {
+        None
+    }
+}
+
+pub trait GetDataT{
+    fn get_data(&self, id : usize) -> Option<mesh_render::MeshRender>;
+}
+
+pub struct NoData;
+impl GetDataT for NoData {
+    fn get_data(&self, id : usize) -> Option<mesh_render::MeshRender>
+    {
+        None
+    }
+}
+
+
+//TODO remove this
+impl GetComponent for usize
+{
+    fn get_comp<C>(&self, data : &GetDataT) -> Option<C>
+    {
+        None
+    }
+}
 

@@ -194,10 +194,20 @@ impl Control
         }
         */
 
+            use dormin::world;
+        use dormin::world::GetWorld;
+        use data;
+        use data::GetComponent;
+        use dormin::component::mesh_render;
         for o in scene.get_objects() {
             let mm = &mut *self.resource.mesh_manager.borrow_mut();
-            if let Some(ref mt) = object::object_to_mt(&*o.read().unwrap(), mm) {
-            let ir = intersection::ray_mesh_transform(&r, mt);
+            let t = o.get_world_transform(&world::NoGraph);
+            if let Some(mr) = o.get_comp::<mesh_render::MeshRender>(&data::NoData) {
+                if let Some(mesh) = mr.mesh.get_ref(mm) {
+
+            let mt = intersection::MeshTransform::with_transform(mesh, &t);
+            //if let Some(ref mt) = object::object_to_mt(o, mm)
+            let ir = intersection::ray_mesh_transform(&r, &mt);
             if ir.hit {
                 let length = (ir.position - r.start).length2();
                 match closest_obj {
@@ -214,6 +224,7 @@ impl Control
                 }
             }
             }
+            }
         }
 
         let mut v = Vec::new();
@@ -222,7 +233,9 @@ impl Control
             Some(o) => v.push(o)
         }
 
-        return ui::Event::ChangeSelected(v);
+        //TODO
+        //return ui::Event::ChangeSelected(v);
+        return ui::Event::Empty;
     }
 
     fn rotate_camera(
