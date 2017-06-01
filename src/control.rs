@@ -14,6 +14,7 @@ use dormin::vec;
 use dormin::resource;
 use ui;
 use ui::view::CameraView;
+use data::SceneT;
 
 use util;
 
@@ -53,10 +54,10 @@ impl Control
         }
     }
 
-    pub fn mouse_down(
+    pub fn mouse_down<S:SceneT>(
             &mut self,
             camera : &camera2::CameraTransform,
-            context : &context::ContextOld,
+            context : &context::Context<S>,
             modifier : i32,
             button : i32,
             x : i32,
@@ -89,10 +90,10 @@ impl Control
         return v;
     }
 
-    pub fn mouse_up(
+    pub fn mouse_up<S:SceneT>(
             &mut self,
             camera : &camera2::CameraTransform,
-            context : &context::ContextOld,
+            context : &context::Context<S>,
             button : i32,
             x : i32,
             y : i32,
@@ -152,11 +153,12 @@ impl Control
         };
 
         //TODO
-        println!("TODO dont test all objects in the scene, but only visible ones : {}", scene.borrow().objects.len());
+        println!("TODO dont test all objects in the scene, but only visible ones : {}", scene.get_objects().len());
 
         let mut found_length = 0f64;
         let mut closest_obj = None;
 
+        /*
         //TODO collision for cameras.
         {
         let mut mesh_manager = self.resource.mesh_manager.borrow_mut();
@@ -190,8 +192,9 @@ impl Control
             }
         }
         }
+        */
 
-        for o in &scene.borrow().objects {
+        for o in scene.get_objects() {
             let mm = &mut *self.resource.mesh_manager.borrow_mut();
             if let Some(ref mt) = object::object_to_mt(&*o.read().unwrap(), mm) {
             let ir = intersection::ray_mesh_transform(&r, mt);

@@ -30,6 +30,7 @@ pub trait SceneT : ToId<<Self as SceneT>::Id> {
     type Object : ToId<Self::Id> + Clone;
     fn init_for_play(&mut self, resource : &resource::ResourceGroup);
     fn update(&mut self, dt : f64, input : &input::Input, &resource::ResourceGroup);
+    fn get_objects(&self) -> &[Self::Object];
 }
 
 impl SceneT for Rc<RefCell<scene::Scene>> {
@@ -43,6 +44,11 @@ impl SceneT for Rc<RefCell<scene::Scene>> {
     fn init_for_play(&mut self, resource : &resource::ResourceGroup)
     {
         self.borrow().init_components(resource);
+    }
+
+    fn get_objects(&self) -> &[Self::Object]
+    {
+        &self.borrow().objects
     }
 }
 
@@ -74,6 +80,12 @@ impl SceneT for world::World {
     fn init_for_play(&mut self, resource : &resource::ResourceGroup)
     {
         println!("TODO !!!!!!!!!!!!!!!!!!!!!! {}, {} ", file!(), line!());
+    }
+
+    fn get_objects(&self) -> &[Self::Object]
+    {
+        //TODO
+        &[]
     }
 }
 

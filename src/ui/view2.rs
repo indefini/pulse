@@ -262,6 +262,11 @@ impl SceneT for SceneS {
     fn init_for_play(&mut self, resource : &resource::ResourceGroup)
     {
     }
+
+    fn get_objects(&self) -> &[Self::Object]
+    {
+        &[]
+    }
 }
 
 use data;
