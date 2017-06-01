@@ -58,7 +58,7 @@ impl SceneT for Rc<RefCell<scene::Scene>> {
 
     fn get_objects_vec(&self) -> Vec<Self::Object>
     {
-        Vec::new()
+        self.borrow().objects.clone()
     }
 
 }
@@ -264,13 +264,21 @@ pub trait ToId2 {
 
 pub trait GetComponent
 {
-    fn get_comp<C>(&self, data : &GetDataT) -> Option<C>;
+    fn get_comp<C:Clone+'static>(&self, data : &GetDataT) -> Option<C>;
 }
 
+use std::any::Any;
 impl GetComponent for Arc<RwLock<object::Object>>
 {
-    fn get_comp<C>(&self, data : &GetDataT) -> Option<C>
+    fn get_comp<C:Clone+'static>(&self, data : &GetDataT) -> Option<C>
     {
+        let o = self.read().unwrap();
+        if let Some(ref mr) = o.mesh_render {
+            if let Some(mmr) = (mr as &Any).downcast_ref::<C>() {
+                return Some(mmr.clone());
+            }
+        }
+
         None
     }
 }

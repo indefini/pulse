@@ -97,7 +97,7 @@ impl Control
             button : i32,
             x : i32,
             y : i32,
-            timestamp : i32) -> ui::EventOld
+            timestamp : i32) -> ui::Event<S::Object>
     {
         match self.state {
             State::CameraRotation => {
@@ -199,14 +199,13 @@ impl Control
         use data;
         use data::GetComponent;
         use dormin::component::mesh_render;
-        for o in scene.get_objects() {
+        for o in &scene.get_objects_vec() {
             let mm = &mut *self.resource.mesh_manager.borrow_mut();
             let t = o.get_world_transform(&world::NoGraph);
             if let Some(mr) = o.get_comp::<mesh_render::MeshRender>(&data::NoData) {
                 if let Some(mesh) = mr.mesh.get_ref(mm) {
 
             let mt = intersection::MeshTransform::with_transform(mesh, &t);
-            //if let Some(ref mt) = object::object_to_mt(o, mm)
             let ir = intersection::ray_mesh_transform(&r, &mt);
             if ir.hit {
                 let length = (ir.position - r.start).length2();
@@ -233,9 +232,7 @@ impl Control
             Some(o) => v.push(o)
         }
 
-        //TODO
-        //return ui::Event::ChangeSelected(v);
-        return ui::Event::Empty;
+        return ui::Event::ChangeSelected(v);
     }
 
     fn rotate_camera(
