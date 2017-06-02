@@ -28,7 +28,7 @@ pub struct Data<S:SceneT>
 
 pub trait SceneT : ToId<<Self as SceneT>::Id> {
     type Id : Default + Eq + Clone;
-    type Object : ToId<Self::Id> + Clone + world::GetWorld + GetComponent;
+    type Object : ToId<Self::Id> + Clone + world::GetWorld<Self::Object> + GetComponent;
     fn init_for_play(&mut self, resource : &resource::ResourceGroup);
     fn update(&mut self, dt : f64, input : &input::Input, &resource::ResourceGroup);
     fn get_objects(&self) -> &[Self::Object];

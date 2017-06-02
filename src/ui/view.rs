@@ -17,6 +17,7 @@ use dormin::material;
 use dormin::{camera2};
 use control::Control;
 use dormin::component::mesh_render;
+use dormin::world::GetWorld;
 use util;
 use context;
 use data::SceneT;
@@ -50,7 +51,7 @@ pub trait EditView<S:SceneT> : ui::Widget {
     fn request_update(&self);
 
     //TODO user input
-    fn handle_event(&self, event : &ui::EventOld);
+    fn handle_event(&self, event : &ui::Event<S::Object>);
 
 
     //TODO glview cb and draw stuff
@@ -61,31 +62,31 @@ pub trait EditView<S:SceneT> : ui::Widget {
 
     fn mouse_down(
             &mut self,
-            context : &context::ContextOld,
+            context : &context::Context<S>,
             modifier : i32,
             button : i32,
             x : i32,
             y : i32,
-            timestamp : i32) -> Vec<ui::EventOld>;
+            timestamp : i32) -> Vec<ui::Event<S::Object>>;
 
     fn mouse_up(
             &mut self,
-            context : &context::ContextOld,
+            context : &context::Context<S>,
             button : i32,
             x : i32,
             y : i32,
-            timestamp : i32) -> ui::EventOld;
+            timestamp : i32) -> ui::Event<S::Object>;
 
     fn mouse_move(
         &mut self,
-        context : &context::ContextOld,
+        context : &context::Context<S>,
         mod_flag : i32,
         button : i32,
         curx : i32,
         cury : i32,
         prevx : i32,
         prevy : i32,
-        timestamp : i32) -> Vec<ui::EventOld>;
+        timestamp : i32) -> Vec<ui::Event<S::Object>>;
 
     fn mouse_wheel(
         &mut self,
@@ -99,12 +100,12 @@ pub trait EditView<S:SceneT> : ui::Widget {
 
     fn key_down(
         &mut self,
-        context : &context::ContextOld,
+        context : &context::Context<S>,
         modifier : i32,
         keyname : &str,
         key : &str,
         timestamp : i32
-        ) ->  Vec<ui::EventOld>;
+        ) ->  Vec<ui::Event<S::Object>>;
 
 }
 
@@ -213,7 +214,7 @@ impl<S:SceneT> EditView<S> for View
         }
     }
 
-    fn handle_event(&self, event : &ui::EventOld)
+    fn handle_event(&self, event : &ui::Event<S::Object>)
     {
         match *event {
             ui::Event::RectVisibleSet(b) => {
@@ -331,37 +332,37 @@ impl<S:SceneT> EditView<S> for View
 
     fn mouse_down(
             &mut self,
-            context : &context::ContextOld,
+            context : &context::Context<S>,
             modifier : i32,
             button : i32,
             x : i32,
             y : i32,
-            timestamp : i32) -> Vec<ui::EventOld>
+            timestamp : i32) -> Vec<ui::Event<S::Object>>
     {
         self.control.mouse_down(&self.camera.to_camera2_transform(), context,  modifier, button, x, y, timestamp)
     }
 
     fn mouse_up(
             &mut self,
-            context : &context::ContextOld,
+            context : &context::Context<S>,
             button : i32,
             x : i32,
             y : i32,
-            timestamp : i32) -> ui::EventOld
+            timestamp : i32) -> ui::Event<S::Object>
     {
         self.control.mouse_up(&self.camera.to_camera2_transform(), context, button, x, y, timestamp)
     }
 
     fn mouse_move(
         &mut self,
-        context : &context::ContextOld,
+        context : &context::Context<S>,
         mod_flag : i32,
         button : i32,
         curx : i32,
         cury : i32,
         prevx : i32,
         prevy : i32,
-        timestamp : i32) -> Vec<ui::EventOld>
+        timestamp : i32) -> Vec<ui::Event<S::Object>>
     {
         self.control.mouse_move(&mut self.camera, context, mod_flag, button, curx, cury, prevx, prevy, timestamp)
     }
@@ -381,12 +382,12 @@ impl<S:SceneT> EditView<S> for View
 
     fn key_down(
         &mut self,
-        context : &context::ContextOld,
+        context : &context::Context<S>,
         modifier : i32,
         keyname : &str,
         key : &str,
         timestamp : i32
-        ) ->  Vec<ui::EventOld>
+        ) ->  Vec<ui::Event<S::Object>>
     {
         match key {
             "c" => {
@@ -398,7 +399,8 @@ impl<S:SceneT> EditView<S> for View
                 return vec![ui::Event::CameraChange];
             },
             "f" => {
-                let center = util::objects_center(&context.selected);
+                let objects : Vec<&GetWorld<S::Object>> = context.selected.iter().map(|x| x as &GetWorld<S::Object>).collect();
+                let center = util::objects_center(&objects);
                 let ori = self.camera.transform.orientation;
                 let pos = center + ori.rotate_vec3(&vec::Vec3::new(0f64,0f64,100f64));
                 self.camera.transform.position = pos;
@@ -409,7 +411,7 @@ impl<S:SceneT> EditView<S> for View
             }
         }
 
-        self.control.key_down(&mut self.camera, modifier, keyname, key, timestamp)
+        self.control.key_down::<S>(&mut self.camera, modifier, keyname, key, timestamp)
     }
 }
 

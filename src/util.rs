@@ -4,6 +4,8 @@ use std::mem;
 use std::ffi::{CString, CStr};
 use std::str;
 use libc::{c_void, c_int, size_t, c_char};
+use dormin::world::GetWorld;
+use dormin::world;
 
 
 use dormin::vec;
@@ -12,12 +14,25 @@ use dormin::object;
 pub type Arw<T> = Arc<RwLock<T>>;
 pub type Mx<T> = Arc<Mutex<T>>;
 
-pub fn objects_center(objects : &[Arc<RwLock<object::Object>>]) -> vec::Vec3
+pub fn objects_center2(objects : &[Arc<RwLock<object::Object>>]) -> vec::Vec3
 {
     let mut v = vec::Vec3::zero();
     for o in objects
     {
         v = v + o.read().unwrap().world_position();
+    }
+
+    v = v / objects.len() as f64;
+
+    v
+}
+
+pub fn objects_center<T>(objects : &[&GetWorld<T>]) -> vec::Vec3
+{
+    let mut v = vec::Vec3::zero();
+    for o in objects
+    {
+        v = v + o.get_world_transform(&world::NoGraph).position;
     }
 
     v = v / objects.len() as f64;
