@@ -6,6 +6,7 @@ use std::collections::{LinkedList};//,Deque};
 use std::ptr;
 use std::cell::{RefCell, BorrowState};
 use std::ffi::CString;
+use uuid::Uuid;
 
 use dormin::scene;
 use dormin::object;
