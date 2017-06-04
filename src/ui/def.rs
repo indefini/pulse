@@ -13,7 +13,6 @@ use std::fs::File;
 use serde_json;
 use std::io::{Read,Write};
 use std::ffi::{CString,CStr};
-
 use uuid::Uuid;
 
 use dormin::{vec, scene, object, camera, component, render, resource};
@@ -27,6 +26,8 @@ use dragger;
 use util;
 use util::Arw;
 use data::Data;
+use data::ToId;
+
 use state::State;
 use data::{DataT, SceneT};
 use ui::gameview::GameViewTrait;
@@ -832,7 +833,8 @@ pub struct ControlContainer
 }
 */
 
-type Scene = Rc<RefCell<scene::Scene>>;
+pub type Scene = Rc<RefCell<scene::Scene>>;
+pub type Object = Arc<RwLock<object::Object>>;
 
 pub struct WidgetContainer
 {
@@ -1154,18 +1156,18 @@ impl WidgetContainer
         self.update_all_views();
     }
 
-    pub fn handle_event(&mut self, event : EventOld, widget_origin: uuid::Uuid)
+    pub fn handle_event(&mut self, event : Event<Object>, widget_origin: uuid::Uuid)
     {
         match event {
             Event::SelectObject(ob) => {
-                println!("event, selected : {}", ob.read().unwrap().name);
-                let mut l = vec![ob.read().unwrap().id.clone()];
+                //println!("event, selected : {}", ob.read().unwrap().name);
+                let mut l = vec![ob.to_id()];
                 self.state.context.select_by_id(&mut l);
                 self.handle_event(Event::SelectedChange, widget_origin);
             },
             Event::UnselectObject(ob) => {
-                println!("event, unselected : {}", ob.read().unwrap().name);
-                let v = vec![ob.read().unwrap().id.clone()];
+                //println!("event, unselected : {}", ob.read().unwrap().name);
+                let v = vec![ob.to_id()];
                 self.state.context.remove_objects_by_id(&v);
                 self.handle_event(Event::SelectedChange, widget_origin);
             },
@@ -1525,7 +1527,6 @@ impl AppCbData {
     }
 }
 
-pub type EventOld = Event<Arc<RwLock<object::Object>>>;
 
 //TODO choose how deep is the event, like between those 3 things
 pub enum Event<Object>

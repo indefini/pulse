@@ -5,9 +5,6 @@ use std::mem;
 use std::collections::{LinkedList};//,Deque};
 use std::ptr;
 use std::cell::{RefCell, BorrowState};
-use std::rc::Weak;
-use std::rc::Rc;
-use uuid::Uuid;
 use std::ffi::CString;
 
 use dormin::scene;
@@ -326,6 +323,7 @@ pub extern fn selected(
 
 
     println!("selected callback, TODO do the following in widget container 'handle' ");
+
     container.handle_event(ui::Event::SelectObject(o.clone()), tree_id);
 }
 

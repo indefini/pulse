@@ -36,6 +36,10 @@ pub trait SceneT : ToId<<Self as SceneT>::Id> {
     {
         Vec::new()
     }
+
+    fn find_objects_by_id(&self, ids : &mut Vec<Self::Id>) -> Vec<Self::Object> {
+        Vec::new()
+    }
 }
 
 impl SceneT for Rc<RefCell<scene::Scene>> {
@@ -61,6 +65,9 @@ impl SceneT for Rc<RefCell<scene::Scene>> {
         self.borrow().objects.clone()
     }
 
+    fn find_objects_by_id(&self, ids : &mut Vec<Self::Id>) -> Vec<Self::Object> {
+        self.borrow().find_objects_by_id(ids)
+    }
 }
 
 impl ToId<usize> for world::World

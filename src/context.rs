@@ -105,12 +105,8 @@ impl<S:SceneT> Context<S>
 
         false
     }
-}
 
-impl Context<Rc<RefCell<scene::Scene>>>
-{
-
-    pub fn select_by_id(&mut self, ids : &mut Vec<uuid::Uuid>)
+    pub fn select_by_id(&mut self, ids : &mut Vec<S::Id>)
     {
         //TODO same as the code at the end of mouse_up, so factorize
         println!("TODO check: is this find by id ok? : control will try to find object by id, .................select is called ");
@@ -122,7 +118,7 @@ impl Context<Rc<RefCell<scene::Scene>>>
             None => return
         };
 
-        let mut obs = scene.borrow().find_objects_by_id(ids);
+        let mut obs = scene.find_objects_by_id(ids);
         self.selected.append(&mut obs);
 
         //for id in ids.iter() {
