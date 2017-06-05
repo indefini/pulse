@@ -72,7 +72,7 @@ struct NoData;
 
 pub struct State
 {
-    pub context : Box<context::ContextOld>,
+    pub context : Box<context::Context<ui::def::Scene>>,
     pub op_mgr : operation::OperationManager,
     
     pub saved_positions : Vec<vec::Vec3>,

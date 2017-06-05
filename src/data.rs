@@ -3,11 +3,14 @@ use std::cell::{RefCell};
 use std::sync::{Arc, RwLock};
 use std::collections::HashMap;
 use std::fs;
+use dormin::matrix;
 
 use uuid;
 
 use dormin;
 use dormin::{vec, resource, scene, factory, world, object};
+use dormin::component::mesh_render;
+use dormin::render;
 use context;
 use util;
 use dormin::input;
@@ -27,9 +30,30 @@ pub struct Data<S:SceneT>
 
 pub trait SceneT : ToId<<Self as SceneT>::Id> {
     type Id : Default + Eq + Clone;
-    type Object : ToId<Self::Id> + Clone;
+    type Object : ToId<Self::Id> + Clone + world::GetWorld<Self::Object> + GetComponent;
     fn init_for_play(&mut self, resource : &resource::ResourceGroup);
     fn update(&mut self, dt : f64, input : &input::Input, &resource::ResourceGroup);
+    fn get_objects(&self) -> &[Self::Object];
+    fn get_objects_vec(&self) -> Vec<Self::Object>
+    {
+        Vec::new()
+    }
+
+    fn get_mmr(&self) -> Vec<render::MatrixMeshRender>
+    {
+        Vec::new()
+    }
+
+    fn get_cameras_vec(&self) -> Vec<matrix::Matrix4>
+    {
+        Vec::new()
+    }
+
+    fn find_objects_by_id(&self, ids : &mut Vec<Self::Id>) -> Vec<Self::Object> {
+        Vec::new()
+    }
+
+    fn get_name(&self) -> String;
 }
 
 impl SceneT for Rc<RefCell<scene::Scene>> {
@@ -43,6 +67,66 @@ impl SceneT for Rc<RefCell<scene::Scene>> {
     fn init_for_play(&mut self, resource : &resource::ResourceGroup)
     {
         self.borrow().init_components(resource);
+    }
+
+    fn get_objects(&self) -> &[Self::Object]
+    {
+        &[]//&self.borrow().objects
+    }
+
+    fn get_objects_vec(&self) -> Vec<Self::Object>
+    {
+        self.borrow().objects.clone()
+    }
+
+    fn find_objects_by_id(&self, ids : &mut Vec<Self::Id>) -> Vec<Self::Object> {
+        self.borrow().find_objects_by_id(ids)
+    }
+
+    fn get_name(&self) -> String
+    {
+        self.borrow().name.clone()
+    }
+
+    fn get_cameras_vec(&self) -> Vec<matrix::Matrix4>
+    {
+        //self.borrow().cameras.iter().map(|x| x.borrow().object.read().unwrap().get_world_matrix()).collect()
+        let mut cams = Vec::new();
+        for c in &self.borrow().cameras {
+            let cam = c.borrow();
+            cams.push(cam.object.read().unwrap().get_world_matrix());
+        }
+
+        cams
+    }
+
+    fn get_mmr(&self) -> Vec<render::MatrixMeshRender>
+    {
+        fn object_to_mmr(o : &object::Object) -> Option<render::MatrixMeshRender>
+        {
+            o.mesh_render.as_ref().map(|x| render::MatrixMeshRender::new(o.get_world_matrix().clone(), x.clone()))
+        }
+
+        fn children_mmr(o : &object::Object) -> Vec<render::MatrixMeshRender>
+        {
+            o.children.iter().filter_map(|x| object_to_mmr(&*x.read().unwrap())).collect()
+        }
+
+        fn object_and_child(o : &object::Object) -> Vec<render::MatrixMeshRender>
+        {
+            let mut v = children_mmr(o);
+            if let Some(m) = object_to_mmr(o) {
+                v.push(m);
+            }
+            v
+        }
+
+        let mut v = Vec::new();
+        for o in self.borrow().objects.iter() {
+            v.append(&mut object_and_child(&*o.read().unwrap()));
+        }
+
+        v
     }
 }
 
@@ -74,6 +158,17 @@ impl SceneT for world::World {
     fn init_for_play(&mut self, resource : &resource::ResourceGroup)
     {
         println!("TODO !!!!!!!!!!!!!!!!!!!!!! {}, {} ", file!(), line!());
+    }
+
+    fn get_objects(&self) -> &[Self::Object]
+    {
+        //TODO
+        &[]
+    }
+
+    fn get_name(&self) -> String
+    {
+        String::from("get_name not implemented")
     }
 }
 
@@ -187,19 +282,19 @@ impl Data<Rc<RefCell<scene::Scene>>>
     }
 }
 
-pub fn create_scene_name_with_context(context : &context::ContextOld)
+pub fn create_scene_name_with_context<S:SceneT>(context : &context::Context<S>)
     -> String
 {
     let newname = match context.scene {
         Some(ref sc) => {
-            let s = sc.borrow();
-            let old = if s.name.ends_with(SCENE_SUFFIX) {
-                let i = s.name.len() - SCENE_SUFFIX.len();
-                let (yep,_) = s.name.split_at(i);
+            let s_name = sc.get_name();
+            let old = if s_name.ends_with(SCENE_SUFFIX) {
+                let i = s_name.len() - SCENE_SUFFIX.len();
+                let (yep,_) = s_name.split_at(i);
                 yep
             }
             else {
-                s.name.as_ref()
+                s_name.as_ref()
             };
             String::from(old)
         },
@@ -239,4 +334,46 @@ pub trait ToId2 {
     fn to_id(&self) -> Self::Id;
 }
 
+pub trait GetComponent
+{
+    fn get_comp<C:Clone+'static>(&self, data : &GetDataT) -> Option<C>;
+}
+
+use std::any::Any;
+impl GetComponent for Arc<RwLock<object::Object>>
+{
+    fn get_comp<C:Clone+'static>(&self, data : &GetDataT) -> Option<C>
+    {
+        let o = self.read().unwrap();
+        if let Some(ref mr) = o.mesh_render {
+            if let Some(mmr) = (mr as &Any).downcast_ref::<C>() {
+                return Some(mmr.clone());
+            }
+        }
+
+        None
+    }
+}
+
+pub trait GetDataT{
+    fn get_data(&self, id : usize) -> Option<mesh_render::MeshRender>;
+}
+
+pub struct NoData;
+impl GetDataT for NoData {
+    fn get_data(&self, id : usize) -> Option<mesh_render::MeshRender>
+    {
+        None
+    }
+}
+
+
+//TODO remove this
+impl GetComponent for usize
+{
+    fn get_comp<C>(&self, data : &GetDataT) -> Option<C>
+    {
+        None
+    }
+}
 

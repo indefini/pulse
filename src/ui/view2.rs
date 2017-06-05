@@ -251,6 +251,7 @@ trait SceneUpdate {
     }
 }
 
+/*
 struct SceneS;
 impl SceneT for SceneS {
     type Id = usize;
@@ -262,6 +263,11 @@ impl SceneT for SceneS {
     fn init_for_play(&mut self, resource : &resource::ResourceGroup)
     {
     }
+
+    fn get_objects(&self) -> &[Self::Object]
+    {
+        &[]
+    }
 }
 
 use data;
@@ -271,6 +277,7 @@ impl data::ToId<usize> for SceneS {
         0usize
     }
 }
+*/
 
 pub struct Dispatcher
 {

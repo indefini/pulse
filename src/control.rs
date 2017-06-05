@@ -1,19 +1,24 @@
 use std::rc::Rc;
-use std::cell::{RefCell, BorrowState};
-use std::any::{Any};//, AnyRefExt};
+use std::any::{Any};
 use std::f64::consts;
 
 use dormin::object;
 use dormin::transform;
-use dormin::camera;
 use dormin::camera2;
 use context;
 use dragger;
 use dormin::intersection;
 use dormin::vec;
 use dormin::resource;
+use dormin::world::GetWorld;
 use ui;
 use ui::view::CameraView;
+use data::SceneT;
+
+use dormin::world;
+use data;
+use data::GetComponent;
+use dormin::component::mesh_render;
 
 use util;
 
@@ -53,15 +58,15 @@ impl Control
         }
     }
 
-    pub fn mouse_down(
+    pub fn mouse_down<S:SceneT>(
             &mut self,
             camera : &camera2::CameraTransform,
-            context : &context::ContextOld,
+            context : &context::Context<S>,
             modifier : i32,
             button : i32,
             x : i32,
             y : i32,
-            timestamp : i32) -> Vec<ui::EventOld>
+            timestamp : i32) -> Vec<ui::Event<S::Object>>
     {
         let mut v = Vec::new();
 
@@ -89,14 +94,14 @@ impl Control
         return v;
     }
 
-    pub fn mouse_up(
+    pub fn mouse_up<S:SceneT>(
             &mut self,
             camera : &camera2::CameraTransform,
-            context : &context::ContextOld,
+            context : &context::Context<S>,
             button : i32,
             x : i32,
             y : i32,
-            timestamp : i32) -> ui::EventOld
+            timestamp : i32) -> ui::Event<S::Object>
     {
         match self.state {
             State::CameraRotation => {
@@ -152,11 +157,12 @@ impl Control
         };
 
         //TODO
-        println!("TODO dont test all objects in the scene, but only visible ones : {}", scene.borrow().objects.len());
+        println!("TODO dont test all objects in the scene, but only visible ones : {}", scene.get_objects().len());
 
         let mut found_length = 0f64;
         let mut closest_obj = None;
 
+        /*
         //TODO collision for cameras.
         {
         let mut mesh_manager = self.resource.mesh_manager.borrow_mut();
@@ -190,11 +196,16 @@ impl Control
             }
         }
         }
+        */
 
-        for o in &scene.borrow().objects {
+        for o in &scene.get_objects_vec() {
             let mm = &mut *self.resource.mesh_manager.borrow_mut();
-            if let Some(ref mt) = object::object_to_mt(&*o.read().unwrap(), mm) {
-            let ir = intersection::ray_mesh_transform(&r, mt);
+            let t = o.get_world_transform(&world::NoGraph);
+            if let Some(mr) = o.get_comp::<mesh_render::MeshRender>(&data::NoData) {
+                if let Some(mesh) = mr.mesh.get_ref(mm) {
+
+            let mt = intersection::MeshTransform::with_transform(mesh, &t);
+            let ir = intersection::ray_mesh_transform(&r, &mt);
             if ir.hit {
                 let length = (ir.position - r.start).length2();
                 match closest_obj {
@@ -211,6 +222,7 @@ impl Control
                 }
             }
             }
+            }
         }
 
         let mut v = Vec::new();
@@ -222,10 +234,10 @@ impl Control
         return ui::Event::ChangeSelected(v);
     }
 
-    fn rotate_camera(
+    fn rotate_camera<S:SceneT>(
         &mut self,
         camera : &mut CameraView,
-        context : &context::ContextOld,
+        context : &context::Context<S>,
         x : f64,
         y : f64
         )
@@ -256,7 +268,8 @@ impl Control
         };
 
         if !context.selected.is_empty() {
-            let center = util::objects_center(&context.selected);
+            let yo : Vec<&GetWorld<S::Object>> = context.selected.iter().map(|x| x as &GetWorld<S::Object>).collect();
+            let center = util::objects_center(&yo);
             camera.set_center(&center);
         }
 
@@ -265,17 +278,17 @@ impl Control
         //self.state = CameraRotation;
     }
 
-    pub fn mouse_move(
+    pub fn mouse_move<S:SceneT>(
         &mut self,
         camera : &mut CameraView,
-        context : &context::ContextOld,
+        context : &context::Context<S>,
         mod_flag : i32,
         button : i32,
         curx : i32,
         cury : i32,
         prevx : i32,
         prevy : i32,
-        timestamp : i32) -> Vec<ui::EventOld>
+        timestamp : i32) -> Vec<ui::Event<S::Object>>
     {
         let mut list = Vec::new();
 
@@ -357,14 +370,23 @@ impl Control
 
                     let mut obvec = Vec::new();
                     let mut has_changed = false;
-                    for o in &s.borrow().objects {
-                        let b = object::is_object_in_planes(planes.as_ref(), &*o.read().unwrap(), &*self.resource);
+                    for o in &s.get_objects_vec() {
+
+                        let mm = &mut *self.resource.mesh_manager.borrow_mut();
+                        let t = o.get_world_transform(&world::NoGraph);
+                        if let Some(mr) = o.get_comp::<mesh_render::MeshRender>(&data::NoData) {
+                            if let Some(mesh) = mr.mesh.get_ref(mm) {
+                                let mt = intersection::MeshTransform::with_transform(mesh, &t);
+
+                        let b = intersection::is_mesh_transform_in_planes(planes.as_ref(), &mt);
                         if b {
                             if !context.has_object(o.clone()) {
                                 has_changed = true;
                             }
                             obvec.push(o.clone());
                         }
+                    }
+                    }
                     }
 
                     if !has_changed {
@@ -401,14 +423,14 @@ impl Control
         camera.pan(&axis);
     }
 
-    pub fn key_down(
+    pub fn key_down<S:SceneT>(
         &mut self,
         camera : &mut CameraView,
         modifier : i32,
         keyname : &str,
         key : &str,
         timestamp : i32
-        ) ->  Vec<ui::EventOld>
+        ) ->  Vec<ui::Event<S::Object>>
     {
         let mut t = vec::Vec3::zero();
         let mut v = Vec::new();
