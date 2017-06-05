@@ -17,7 +17,7 @@ use dormin::material;
 use dormin::{camera2};
 use control::Control;
 use dormin::component::mesh_render;
-use dormin::world::GetWorld;
+use dormin::world::{GetWorld, NoGraph};
 use util;
 use context;
 use data::SceneT;
@@ -56,7 +56,7 @@ pub trait EditView<S:SceneT> : ui::Widget {
 
     //TODO glview cb and draw stuff
     fn init_render(&mut self);
-    fn draw(&mut self, context : &context::ContextOld) -> bool;
+    fn draw(&mut self, context : &context::Context<S>) -> bool;
     fn resize(&mut self, w : c_int, h : c_int);
     fn is_loading_resource(&self) -> bool;
 
@@ -251,21 +251,22 @@ impl<S:SceneT> EditView<S> for View
         true
     }
 
-    fn draw(&mut self, context : &context::ContextOld) -> bool
+    fn draw(&mut self, context : &context::Context<S>) -> bool
     {
-        let scene = match context.scene {
-            Some(ref s) => s.borrow(),
+        let obs = match context.scene {
+            Some(ref s) => s.get_objects_vec(),
             None => return false
         };
 
-        let obs = &scene.objects;
+        //let obs = &scene.objects;
         let sel = &context.selected;
 
         let mut center = vec::Vec3::zero();
         let mut ori = vec::Quat::identity();
         for o in sel {
-            center = center + o.read().unwrap().world_position();
-            ori = ori * o.read().unwrap().world_orientation();
+            use data;
+            center = center + o.get_world_transform(&NoGraph).position;
+            ori = ori * o.get_world_transform(&NoGraph).orientation.as_quat();
         }
 
         if !sel.is_empty() {
@@ -289,7 +290,9 @@ impl<S:SceneT> EditView<S> for View
             //println!("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~render finished");
         };
 
+         //TODO
         let mut cams = Vec::new();
+        /*
         for c in &scene.cameras {
             let cb = c.borrow();
             let mat = cb.object.read().unwrap().get_world_matrix();
@@ -302,6 +305,7 @@ impl<S:SceneT> EditView<S> for View
         if cams.is_empty() {
             panic!("cam is empty");
         }
+        */
 
         self.camera.transform.set_as_dirty();
         self.camera.transform.compute_local_matrix();
@@ -310,7 +314,7 @@ impl<S:SceneT> EditView<S> for View
                 uuid::Uuid::new_v4(),
                 &self.camera.transform,
                 &self.camera.property),
-            obs,
+            &obs,
             &cams,
             sel,
             &self.control.dragger.get_mmr(),
