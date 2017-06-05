@@ -377,3 +377,19 @@ impl GetComponent for usize
     }
 }
 
+impl ToId<uuid::Uuid> for Arc<RwLock<object::Object>>
+{
+    fn to_id(&self) -> uuid::Uuid
+    {
+        self.read().unwrap().id
+    }
+}
+
+impl ToId<uuid::Uuid> for Rc<RefCell<scene::Scene>>
+{
+    fn to_id(&self) -> uuid::Uuid
+    {
+        self.borrow().id
+    }
+}
+

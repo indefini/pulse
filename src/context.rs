@@ -1,29 +1,4 @@
-use dormin::object;
-use dormin::scene;
-use uuid;
-
-use std::sync::{RwLock, Arc};
-use std::rc::Rc;
-use std::cell::{RefCell};
 use data::{ToId, SceneT};
-
-pub type ContextOld = Context<Rc<RefCell<scene::Scene>>>;
-
-impl ToId<uuid::Uuid> for Arc<RwLock<object::Object>>
-{
-    fn to_id(&self) -> uuid::Uuid
-    {
-        self.read().unwrap().id
-    }
-}
-
-impl ToId<uuid::Uuid> for Rc<RefCell<scene::Scene>>
-{
-    fn to_id(&self) -> uuid::Uuid
-    {
-        self.borrow().id
-    }
-}
 
 pub struct Context<S:SceneT>
 {

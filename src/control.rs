@@ -2,7 +2,6 @@ use std::rc::Rc;
 use std::any::{Any};
 use std::f64::consts;
 
-use dormin::object;
 use dormin::transform;
 use dormin::camera2;
 use context;
