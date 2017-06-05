@@ -3,12 +3,14 @@ use std::cell::{RefCell};
 use std::sync::{Arc, RwLock};
 use std::collections::HashMap;
 use std::fs;
+use dormin::matrix;
 
 use uuid;
 
 use dormin;
 use dormin::{vec, resource, scene, factory, world, object};
 use dormin::component::mesh_render;
+use dormin::render;
 use context;
 use util;
 use dormin::input;
@@ -33,6 +35,16 @@ pub trait SceneT : ToId<<Self as SceneT>::Id> {
     fn update(&mut self, dt : f64, input : &input::Input, &resource::ResourceGroup);
     fn get_objects(&self) -> &[Self::Object];
     fn get_objects_vec(&self) -> Vec<Self::Object>
+    {
+        Vec::new()
+    }
+
+    fn get_mmr(&self) -> Vec<render::MatrixMeshRender>
+    {
+        Vec::new()
+    }
+
+    fn get_cameras_vec(&self) -> Vec<matrix::Matrix4>
     {
         Vec::new()
     }
@@ -74,6 +86,47 @@ impl SceneT for Rc<RefCell<scene::Scene>> {
     fn get_name(&self) -> String
     {
         self.borrow().name.clone()
+    }
+
+    fn get_cameras_vec(&self) -> Vec<matrix::Matrix4>
+    {
+        //self.borrow().cameras.iter().map(|x| x.borrow().object.read().unwrap().get_world_matrix()).collect()
+        let mut cams = Vec::new();
+        for c in &self.borrow().cameras {
+            let cam = c.borrow();
+            cams.push(cam.object.read().unwrap().get_world_matrix());
+        }
+
+        cams
+    }
+
+    fn get_mmr(&self) -> Vec<render::MatrixMeshRender>
+    {
+        fn object_to_mmr(o : &object::Object) -> Option<render::MatrixMeshRender>
+        {
+            o.mesh_render.as_ref().map(|x| render::MatrixMeshRender::new(o.get_world_matrix().clone(), x.clone()))
+        }
+
+        fn children_mmr(o : &object::Object) -> Vec<render::MatrixMeshRender>
+        {
+            o.children.iter().filter_map(|x| object_to_mmr(&*x.read().unwrap())).collect()
+        }
+
+        fn object_and_child(o : &object::Object) -> Vec<render::MatrixMeshRender>
+        {
+            let mut v = children_mmr(o);
+            if let Some(m) = object_to_mmr(o) {
+                v.push(m);
+            }
+            v
+        }
+
+        let mut v = Vec::new();
+        for o in self.borrow().objects.iter() {
+            v.append(&mut object_and_child(&*o.read().unwrap()));
+        }
+
+        v
     }
 }
 

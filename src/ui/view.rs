@@ -20,7 +20,9 @@ use dormin::component::mesh_render;
 use dormin::world::{GetWorld, NoGraph};
 use util;
 use context;
+use data;
 use data::SceneT;
+use data::GetComponent;
 
 
 #[link(name = "joker")]
@@ -253,8 +255,8 @@ impl<S:SceneT> EditView<S> for View
 
     fn draw(&mut self, context : &context::Context<S>) -> bool
     {
-        let obs = match context.scene {
-            Some(ref s) => s.get_objects_vec(),
+        let (obs, cameras) = match context.scene {
+            Some(ref s) => (s.get_mmr(), s.get_cameras_vec()),
             None => return false
         };
 
@@ -290,22 +292,25 @@ impl<S:SceneT> EditView<S> for View
             //println!("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~render finished");
         };
 
-         //TODO
         let mut cams = Vec::new();
-        /*
-        for c in &scene.cameras {
-            let cb = c.borrow();
-            let mat = cb.object.read().unwrap().get_world_matrix();
+         //TODO
+        for mat in &cameras {
             let mr = mesh_render::MeshRender::new_with_mat2(
             "model/camera.mesh", create_mat());
 
-            let mmr = render::MatrixMeshRender::new(mat, mr);
+            let mmr = render::MatrixMeshRender::new(*mat, mr);
             cams.push(mmr);
         }
         if cams.is_empty() {
             panic!("cam is empty");
         }
-        */
+
+        let sel : Vec<render::MatrixMeshRender> = sel.iter().
+            filter_map(|x| x.get_comp::<mesh_render::MeshRender>(&data::NoData).
+                       map(|m| render::MatrixMeshRender::new(
+                               *x.get_world_transform(&NoGraph).get_or_compute_local_matrix(), m)
+                           )
+                       ).collect();
 
         self.camera.transform.set_as_dirty();
         self.camera.transform.compute_local_matrix();
@@ -314,9 +319,13 @@ impl<S:SceneT> EditView<S> for View
                 uuid::Uuid::new_v4(),
                 &self.camera.transform,
                 &self.camera.property),
-            &obs,
+            //&obs,
+                &[],
+                &obs,
             &cams,
-            sel,
+            //sel,
+                &[],
+                &sel,
             &self.control.dragger.get_mmr(),
             &finish,
             self.loading_resource.clone());
