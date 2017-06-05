@@ -251,6 +251,7 @@ trait SceneUpdate {
     }
 }
 
+/*
 struct SceneS;
 impl SceneT for SceneS {
     type Id = usize;
@@ -276,6 +277,7 @@ impl data::ToId<usize> for SceneS {
         0usize
     }
 }
+*/
 
 pub struct Dispatcher
 {

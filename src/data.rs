@@ -40,6 +40,8 @@ pub trait SceneT : ToId<<Self as SceneT>::Id> {
     fn find_objects_by_id(&self, ids : &mut Vec<Self::Id>) -> Vec<Self::Object> {
         Vec::new()
     }
+
+    fn get_name(&self) -> String;
 }
 
 impl SceneT for Rc<RefCell<scene::Scene>> {
@@ -67,6 +69,11 @@ impl SceneT for Rc<RefCell<scene::Scene>> {
 
     fn find_objects_by_id(&self, ids : &mut Vec<Self::Id>) -> Vec<Self::Object> {
         self.borrow().find_objects_by_id(ids)
+    }
+
+    fn get_name(&self) -> String
+    {
+        self.borrow().name.clone()
     }
 }
 
@@ -104,6 +111,11 @@ impl SceneT for world::World {
     {
         //TODO
         &[]
+    }
+
+    fn get_name(&self) -> String
+    {
+        String::from("get_name not implemented")
     }
 }
 
@@ -217,19 +229,19 @@ impl Data<Rc<RefCell<scene::Scene>>>
     }
 }
 
-pub fn create_scene_name_with_context(context : &context::ContextOld)
+pub fn create_scene_name_with_context<S:SceneT>(context : &context::Context<S>)
     -> String
 {
     let newname = match context.scene {
         Some(ref sc) => {
-            let s = sc.borrow();
-            let old = if s.name.ends_with(SCENE_SUFFIX) {
-                let i = s.name.len() - SCENE_SUFFIX.len();
-                let (yep,_) = s.name.split_at(i);
+            let s_name = sc.get_name();
+            let old = if s_name.ends_with(SCENE_SUFFIX) {
+                let i = s_name.len() - SCENE_SUFFIX.len();
+                let (yep,_) = s_name.split_at(i);
                 yep
             }
             else {
-                s.name.as_ref()
+                s_name.as_ref()
             };
             String::from(old)
         },
