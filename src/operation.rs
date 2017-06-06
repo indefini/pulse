@@ -12,7 +12,7 @@ use dormin::scene;
 use dormin::component::CompData;
 use ui::RefMut;
 use data;
-use data::{ToId, ToIdUuid};
+use data::{ToId, ToIdUuid, SceneT};
 
 use dragger;
 
@@ -42,18 +42,18 @@ trait OperationTrait
     fn undo(&self, rec : &mut OperationRec) -> Change;
 }
 
-pub type OperationDataOld = OperationData<Rc<RefCell<scene::Scene>>, Arc<RwLock<object::Object>>, uuid::Uuid>;
+pub type OperationDataOld = OperationData<Rc<RefCell<scene::Scene>>>;
 
-pub enum OperationData<Scene, Object, Id>
+pub enum OperationData<Scene : SceneT>
 {
     VecAdd(usize),
     VecDel(usize, Box<Any>),
     Vector(Vec<Box<Any>>, Vec<Box<Any>>),
-    SceneAddObjects(Scene, Vec<Id>, Vec<Object>), //scene, parent, objects
-    SceneRemoveObjects(Scene, Vec<Id>, Vec<Object>),
-    SetSceneCamera(Scene, Option<Object>, Option<Object>),
+    SceneAddObjects(Scene, Vec<Scene::Id>, Vec<Scene::Object>), //scene, parent, objects
+    SceneRemoveObjects(Scene, Vec<Scene::Id>, Vec<Scene::Object>),
+    SetSceneCamera(Scene, Option<Scene::Object>, Option<Scene::Object>),
     //AddComponent(uuid::Uuid, uuid::Uuid) //object id, component id?
-    AddComponent(Object, Box<CompData>),
+    AddComponent(Scene::Object, Box<CompData>),
     OldNewVec(Vec<Box<Any>>, Box<Any>),
 
     //To check
