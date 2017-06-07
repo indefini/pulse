@@ -855,7 +855,7 @@ pub struct WidgetContainer
 
     pub data : Box<Data<Scene>>,
     pub resource : Rc<resource::ResourceGroup>,
-    pub state : State
+    pub state : State<Scene>
 }
 
 impl WidgetContainer

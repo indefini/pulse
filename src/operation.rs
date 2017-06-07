@@ -88,35 +88,38 @@ pub struct OperationNew
 }
 */
 
-pub struct OldNew{
+pub struct OldNew<S:SceneT>
+{
     pub object : RefMut<PropertyUser>,
     pub name : String,
     pub old : Box<Any>,
-    pub new : Box<Any>
+    pub new : Box<Any>,
+    phantom : PhantomData<S>
 }
 
-impl OldNew
+impl<S:SceneT> OldNew<S>
 {
     pub fn new(
         object : RefMut<PropertyUser>,
         name : String,
         old : Box<Any>,
         new : Box<Any>
-        ) -> OldNew
+        ) -> OldNew<S>
     {
         OldNew{
             object : object,
             name : name,
             old : old,
-            new : new
+            new : new,
+            phantom : PhantomData
         }
     }
 
 }
 
-impl OperationTrait for OldNew
+impl<S:SceneT> OperationTrait for OldNew<S>
 {
-    type Id = ui::def::Id;
+    type Id = S::Id;
     //fn apply(&self ) -> Change
     fn apply(&self, rec : &mut OperationReceiver<Id=Self::Id>) -> Change<Self::Id>
     {
