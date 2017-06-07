@@ -10,7 +10,6 @@ use dormin::property::PropertyGet;
 use context;
 use operation;
 use uuid;
-use data::ToIdUuid;
 
 //TODO remove
 use ui;
@@ -73,7 +72,7 @@ struct NoData;
 pub struct State
 {
     pub context : Box<context::Context<ui::def::Scene>>,
-    pub op_mgr : operation::OperationManager,
+    pub op_mgr : operation::OperationManager<ui::def::Id>,
     
     pub saved_positions : Vec<vec::Vec3>,
     pub saved_scales : Vec<vec::Vec3>,
@@ -114,11 +113,11 @@ impl State {
     pub fn make_operation(
         &mut self,
         name : Vec<String>,
-        op_data : operation::OperationDataOld
-        ) -> operation::Operation
+        op_data : operation::OperationData<ui::def::Scene>
+        ) -> operation::Operation<ui::def::Scene>
     {
-        let obs : Vec<Box<ToIdUuid>> =
-            self.context.selected.iter().map(|x| (box x.clone()) as Box<ToIdUuid>).collect();
+        let obs : Vec<Box<ui::def::Object>> =
+            self.context.selected.iter().map(|x| (box x.clone())).collect();
 
         operation::Operation::new(
             //self.context.selected.iter().map(|x| box x.clone()).collect(),
@@ -131,9 +130,9 @@ impl State {
     pub fn request_operation(
         &mut self,
         name : Vec<String>,
-        op_data : operation::OperationDataOld,
-        rec : &mut operation::OperationRec
-        ) -> operation::Change
+        op_data : operation::OperationData<ui::def::Scene>,
+        rec : &mut operation::OperationReceiver<Id=ui::def::Id>
+        ) -> operation::ChangeOld
     {
         let op = self.make_operation(name, op_data);
         let change = self.op_mgr.add_with_trait(box op, rec);
@@ -162,20 +161,20 @@ impl State {
     }
     */
 
-    pub fn undo(&mut self, rec : &mut operation::OperationRec) -> operation::Change
+    pub fn undo(&mut self, rec : &mut operation::OperationReceiver<Id=ui::def::Id>) -> operation::ChangeOld
     {
         self.op_mgr.undo(rec)
     }
 
-    pub fn redo(&mut self, rec : &mut operation::OperationRec) -> operation::Change
+    pub fn redo(&mut self, rec : &mut operation::OperationReceiver<Id=ui::def::Id>) -> operation::ChangeOld
     {
         self.op_mgr.redo(rec)
     }
 
     pub fn remove_selected_objects(
         &mut self,
-        rec : &mut operation::OperationRec
-        ) -> operation::Change
+        rec : &mut operation::OperationReceiver<Id=ui::def::Id>
+        ) -> operation::ChangeOld
     {
         println!("state remove sel");
 
@@ -217,9 +216,9 @@ impl State {
     pub fn request_operation_vec_del(
         &mut self,
         node : Rc<RefCell<ui::PropertyNode>>,
-        rec : &mut operation::OperationRec
+        rec : &mut operation::OperationReceiver<Id=ui::def::Id>
         )
-        -> operation::Change
+        -> operation::ChangeOld
     {
         let node = node.borrow();
         let path = &node.get_path();
@@ -258,7 +257,7 @@ impl State {
 
     pub fn request_translation(
         &mut self,
-        translation : vec::Vec3) -> operation::Change
+        translation : vec::Vec3) -> operation::ChangeOld
     {
         let sp = self.saved_positions.clone();
 
@@ -271,7 +270,7 @@ impl State {
 
     pub fn request_scale(
         &mut self,
-        scale : vec::Vec3) -> operation::Change
+        scale : vec::Vec3) -> operation::ChangeOld
     {
         let sp = self.saved_scales.clone();
 
@@ -284,7 +283,7 @@ impl State {
 
     pub fn request_rotation(
         &mut self,
-        rotation : vec::Quat) -> operation::Change
+        rotation : vec::Quat) -> operation::ChangeOld
     {
         let so = self.saved_oris.clone();
 
@@ -301,8 +300,8 @@ impl State {
         name : &str,
         old : Box<Any>,
         new : Box<Any>,
-        rec : &mut operation::OperationRec
-        ) -> operation::Change
+        rec : &mut operation::OperationReceiver<Id=ui::def::Id>
+        ) -> operation::ChangeOld
     {
         let op = operation::OldNew::new(
             property,
@@ -321,8 +320,8 @@ impl State {
         name : &str,
         old : Box<T>,
         new : Box<T>,
-        rec : &mut operation::OperationRec
-        ) -> operation::Change
+        rec : &mut operation::OperationReceiver<Id=ui::def::Id>
+        ) -> operation::ChangeOld
     {
         if *old == *new {
             return operation::Change::None;
@@ -353,7 +352,7 @@ impl State {
         &mut self,
         property : &mut ui::PropertyUser,
         name : &str,
-        new : &Any) -> operation::Change
+        new : &Any) -> operation::ChangeOld
     {
         println!("call from here 00 : {}", name);
         property.test_set_property_hier(name, new);
@@ -395,9 +394,9 @@ impl State {
     pub fn request_operation_vec_add(
         &mut self,
         node : Rc<RefCell<ui::PropertyNode>>,
-        rec : &mut operation::OperationRec
+        rec : &mut operation::OperationReceiver<Id=ui::def::Id>
         )
-        -> operation::Change
+        -> operation::ChangeOld
     {
         let nodeb = node.borrow();
         let path = &nodeb.get_path();
@@ -431,8 +430,8 @@ impl State {
     pub fn copy_selected_objects(
         &mut self,
         //TODO factory : &factory::Factory,
-        rec : &mut operation::OperationRec
-        ) -> operation::Change
+        rec : &mut operation::OperationReceiver<Id=ui::def::Id>
+        ) -> operation::ChangeOld
     {
         let s = match self.context.scene {
             Some(ref s) => s.clone(),
@@ -469,8 +468,8 @@ impl State {
     pub fn add_component(
         &mut self,
         component_name : &str,
-        rec : &mut operation::OperationRec
-        ) -> operation::Change
+        rec : &mut operation::OperationReceiver<Id=ui::def::Id>
+        ) -> operation::ChangeOld
     {
         let o = if let Some(o) = self.context.selected.get(0) {
             o.clone()
@@ -498,8 +497,8 @@ impl State {
 
     pub fn set_scene_camera(
         &mut self,
-        rec : &mut operation::OperationRec
-        ) -> operation::Change
+        rec : &mut operation::OperationReceiver<Id=ui::def::Id>
+        ) -> operation::ChangeOld
     {
         println!("control remove sel");
 

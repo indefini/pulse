@@ -1,22 +1,21 @@
 use std::any::{Any};//, AnyRefExt};
 use std::sync::{RwLock, Arc};
-use std::cell::RefCell;
-use std::rc::{Rc};
+use std::marker::PhantomData;
 use uuid;
 
 use dormin::object;
 use dormin::property;
 use dormin::property::PropertyWrite;
 use ui::PropertyUser;
-use dormin::scene;
 use dormin::component::CompData;
 use ui::RefMut;
 use data;
-use data::{ToId, ToIdUuid, SceneT};
+use data::{ToId, SceneT};
+use ui;
 
 use dragger;
 
-trait OperationReceiver {
+pub trait OperationReceiver {
     type Id;
     fn getP(&mut self, id : Self::Id) -> Option<&mut PropertyWrite>
     {
@@ -24,10 +23,8 @@ trait OperationReceiver {
     }
 }
 
-pub type OperationRec = OperationReceiver<Id=uuid::Uuid>;
-
-impl OperationReceiver for data::DataOld {
-    type Id = uuid::Uuid;
+impl<S:SceneT> OperationReceiver for data::Data<S> {
+    type Id = S::Id;
     fn getP(&mut self, id : Self::Id) -> Option<&mut PropertyWrite>
     {
         None
@@ -38,11 +35,10 @@ impl OperationReceiver for data::DataOld {
 
 trait OperationTrait
 {
-    fn apply(&self, rec : &mut OperationRec) -> Change;
-    fn undo(&self, rec : &mut OperationRec) -> Change;
+    type Id;
+    fn apply(&self, rec : &mut OperationReceiver<Id=Self::Id>) -> Change<Self::Id>;
+    fn undo(&self, rec : &mut OperationReceiver<Id=Self::Id>) -> Change<Self::Id>;
 }
-
-pub type OperationDataOld = OperationData<Rc<RefCell<scene::Scene>>>;
 
 pub enum OperationData<Scene : SceneT>
 {
@@ -62,20 +58,18 @@ pub enum OperationData<Scene : SceneT>
     //Function(fn(Vec<Object>, Box<Any>), Box<Any>),
 }
 
-//pub type OperationOld = Operation<Arc<RwLock<object::Object>>>;
-pub type OperationOld = Operation;
 
-//pub struct Operation<Object>
-pub struct Operation
+pub struct Operation<S: SceneT>
 {
-    //pub objects : Vec<Box<Object>>,
-    pub objects : Vec<Box<ToIdUuid>>,
+    pub objects : Vec<Box<S::Object>>,
     pub name : Vec<String>,
-    pub change : OperationDataOld
+    pub change : OperationData<S>
     //pub old : Box<Any>,
     //pub new : Box<Any>,
 }
 
+//TODO check if use this or erase
+/*
 pub enum OperationActor{
     Scene(uuid::Uuid),
     Object(uuid::Uuid),
@@ -92,6 +86,7 @@ pub struct OperationNew
     //pub old : Box<Any>,
     //pub new : Box<Any>,
 }
+*/
 
 pub struct OldNew{
     pub object : RefMut<PropertyUser>,
@@ -121,8 +116,9 @@ impl OldNew
 
 impl OperationTrait for OldNew
 {
+    type Id = ui::def::Id;
     //fn apply(&self ) -> Change
-    fn apply(&self, rec : &mut OperationRec) -> Change
+    fn apply(&self, rec : &mut OperationReceiver<Id=Self::Id>) -> Change<Self::Id>
     {
         println!("NEW TEST operation set property hier {:?}", self.name);
         match self.object {
@@ -138,7 +134,7 @@ impl OperationTrait for OldNew
     }
 
     //fn undo(&self) -> Change
-    fn undo(&self, rec : &mut OperationRec) -> Change
+    fn undo(&self, rec : &mut OperationReceiver<Id=Self::Id>) -> Change<Self::Id>
     {
         match self.object {
             RefMut::Arc(ref a) => {
@@ -177,8 +173,9 @@ impl ToNone
 
 impl OperationTrait for ToNone
 {
+    type Id = ui::def::Id;
     //fn apply(&self) -> Change
-    fn apply(&self, rec : &mut OperationRec) -> Change
+    fn apply(&self, rec : &mut OperationReceiver<Id=Self::Id>) -> Change<Self::Id>
     {
         println!("TO NONE operation set property hier {:?}", self.name);
         match self.object {
@@ -194,7 +191,7 @@ impl OperationTrait for ToNone
     }
 
     //fn undo(&self) -> Change
-    fn undo(&self, rec : &mut OperationRec) -> Change
+    fn undo(&self, rec : &mut OperationReceiver<Id=Self::Id>) -> Change<Self::Id>
     {
         match self.object {
             RefMut::Arc(ref a) => {
@@ -230,8 +227,9 @@ impl ToSome
 
 impl OperationTrait for ToSome
 {
+    type Id = ui::def::Id;
     //fn apply(&self) -> Change
-    fn apply(&self, rec : &mut OperationRec) -> Change
+    fn apply(&self, rec : &mut OperationReceiver<Id=Self::Id>) -> Change<Self::Id>
     {
         println!("TO Some operation set property hier {:?}", self.name);
         match self.object {
@@ -247,7 +245,7 @@ impl OperationTrait for ToSome
     }
 
     //fn undo(&self) -> Change
-    fn undo(&self, rec : &mut OperationRec) -> Change
+    fn undo(&self, rec : &mut OperationReceiver<Id=Self::Id>) -> Change<Self::Id>
     {
         match self.object {
             RefMut::Arc(ref a) => {
@@ -262,40 +260,36 @@ impl OperationTrait for ToSome
     }
 }
 
+pub type ChangeOld = Change<uuid::Uuid>;
 
 //#[derive(PartialEq)]
-pub enum Change
+pub enum Change<Id>
 {
     None,
     Property(RefMut<PropertyUser>, String),
-    Objects(String, Vec<uuid::Uuid>),
+    Objects(String, Vec<Id>),
     DirectChange(String),
-    SceneAdd(uuid::Uuid, Vec<uuid::Uuid>, Vec<uuid::Uuid>),
-    SceneRemove(uuid::Uuid, Vec<uuid::Uuid>, Vec<uuid::Uuid>),
+    SceneAdd(Id, Vec<Id>, Vec<Id>),
+    SceneRemove(Id, Vec<Id>, Vec<Id>),
 
     //check
-    Scene(uuid::Uuid),
-    ComponentChanged(uuid::Uuid, String),
+    Scene(Id),
+    ComponentChanged(Id, String),
 
-    VecAdd(Vec<uuid::Uuid>, String, usize),
-    VecDel(Vec<uuid::Uuid>, String, usize),
+    VecAdd(Vec<Id>, String, usize),
+    VecDel(Vec<Id>, String, usize),
 
     DraggerOperation(dragger::Operation),
 }
 
-//impl<Object> Operation<Object>
-impl Operation
+impl<S:SceneT> Operation<S>
 {
     pub fn new(
-        //objects : Vec<Box<Object>>,
-        objects : Vec<Box<ToId<uuid::Uuid>>>,
+        objects : Vec<Box<S::Object>>,
         name : Vec<String>,
-        //old : Box<Any>,
-        //new : Box<Any>)
-        change : OperationDataOld
+        change : OperationData<S>
             )
-        //-> Operation<Object>
-        -> Operation
+        -> Operation<S>
     {
 
         /*
@@ -323,18 +317,19 @@ impl Operation
         Operation {
             objects : objects,
             name : name,
-            //old : old,
-            //new : new
             change : change
         }
     }
 
 }
 
-impl OperationTrait for OperationOld
+impl<S:SceneT> OperationTrait for Operation<S>
+//impl OperationTrait for Operation<ui::def::Scene>
 {
+    //type Id=ui::def::Id;
+    type Id=S::Id;
     //fn apply(&self) -> Change
-    fn apply(&self, rec : &mut OperationRec) -> Change
+    fn apply(&self, rec : &mut OperationReceiver<Id=Self::Id>) -> Change<Self::Id>
     {
         match self.change {
             /*
@@ -414,17 +409,22 @@ impl OperationTrait for OperationOld
                 return Change::Objects(s, ids);
             },
             OperationData::SceneAddObjects(ref s, ref parents, ref obs)  => {
-                let mut sc = s.borrow_mut();
-                sc.add_objects(parents, obs);
-                return Change::SceneAdd(sc.id.clone(), parents.clone(), get_ids(obs));
+                //let mut sc = s.borrow_mut();
+                //sc.add_objects(parents, obs);
+                //return Change::SceneAdd(sc.id.clone(), parents.clone(), get_ids(obs));
+                s.add_objects(parents, obs);
+                return Change::SceneAdd(s.to_id(), parents.clone(), get_ids::<S>(obs));
             },
             OperationData::SceneRemoveObjects(ref s, ref parents, ref obs)  => {
-                let mut sc = s.borrow_mut();
-                sc.remove_objects(parents, obs);
-                return Change::SceneRemove(sc.id.clone(), parents.clone(), get_ids(obs));
+                //let mut sc = s.borrow_mut();
+                //sc.remove_objects(parents, obs);
+                //return Change::SceneRemove(sc.id.clone(), parents.clone(), get_ids(obs));
+                s.remove_objects(parents, obs);
+                return Change::SceneRemove(s.to_id(), parents.clone(), get_ids::<S>(obs));
             },
             OperationData::SetSceneCamera(ref s, _, ref new)   => {
                 println!("operation set camera");
+                /*
                 let sc = s.borrow();
                 if let Some(ref c) = sc.camera {
                     if let Some(ref o) = *new {
@@ -441,11 +441,18 @@ impl OperationTrait for OperationOld
                 else {
                     println!("dame 00");
                 }
+                */
+                s.set_camera(new.clone());
+                return Change::Scene(s.to_id());
             },
             OperationData::AddComponent(ref o, ref compo)  => {
+                //TODO
+                println!("TODO add component is not working of course, {}, {}", file!(), line!());
+                /*
                 let mut ob = o.write().unwrap();
                 ob.add_comp_data(compo.clone());
                 return Change::ComponentChanged(ob.id.clone(), compo.get_kind_string());
+                */
             },
             _ => {}
         }
@@ -454,7 +461,7 @@ impl OperationTrait for OperationOld
     }
 
     //fn undo(&self) -> Change
-    fn undo(&self, rec : &mut OperationRec) -> Change
+    fn undo(&self, rec : &mut OperationReceiver<Id=Self::Id>) -> Change<Self::Id>
     {
         match self.change {
             /*
@@ -534,17 +541,22 @@ impl OperationTrait for OperationOld
             },
             OperationData::SceneAddObjects(ref s, ref parents, ref obs)  => {
                 println!("undo scene add objects !!!");
-                let mut sc = s.borrow_mut();
-                sc.remove_objects(parents, obs);
-                return Change::SceneRemove(sc.id.clone(), parents.clone(), get_ids(obs));
+                //let mut sc = s.borrow_mut();
+                //sc.remove_objects(parents, obs);
+                //return Change::SceneRemove(sc.id.clone(), parents.clone(), get_ids(obs));
+                s.remove_objects(parents, obs);
+                return Change::SceneRemove(s.to_id(), parents.clone(), get_ids::<S>(obs));
             },
             OperationData::SceneRemoveObjects(ref s, ref parents, ref obs)  => {
                 println!("undo scene remove objects !!!");
-                let mut sc = s.borrow_mut();
-                sc.add_objects(parents, obs);
-                return Change::SceneAdd(sc.id.clone(), parents.clone(), get_ids(obs));
+                //let mut sc = s.borrow_mut();
+                //sc.add_objects(parents, obs);
+                //return Change::SceneAdd(sc.id.clone(), parents.clone(), get_ids(obs));
+                s.remove_objects(parents, obs);
+                return Change::SceneRemove(s.to_id(), parents.clone(), get_ids::<S>(obs));
             },
             OperationData::SetSceneCamera(ref s, ref old, _)   => {
+                /*
                 let sc = s.borrow();
                 if let Some(ref c) = sc.camera {
                     if let Some(ref o) = *old {
@@ -556,11 +568,15 @@ impl OperationTrait for OperationOld
                         c.borrow_mut().object_id = None
                     }
                 }
+                */
+                s.set_camera(old.clone());
+                return Change::Scene(s.to_id());
             },
             OperationData::AddComponent(ref o, ref compo)  => {
-                let mut ob = o.write().unwrap();
-                ob.remove_comp_data(compo.clone());
-                return Change::ComponentChanged(ob.id.clone(), compo.get_kind_string());
+                println!("TODO add component is not working of course, {}, {}", file!(), line!());
+                //let mut ob = o.write().unwrap();
+                //ob.remove_comp_data(compo.clone());
+                //return Change::ComponentChanged(ob.id.clone(), compo.get_kind_string());
             },
             _ => {}
         }
@@ -573,26 +589,29 @@ trait AnyClone: Any + Clone {
 }
 impl<T: Any + Clone> AnyClone for T {}
 
-pub struct OperationManager
+pub struct OperationManager<Id>
 {
     //pub undo : Vec<Operation>,
     //pub redo : Vec<Operation>,
-    pub undo : Vec<Box<OperationTrait+'static>>,
-    pub redo : Vec<Box<OperationTrait+'static>>,
+    pub undo : Vec<Box<OperationTrait<Id=Id>+'static>>,
+    pub redo : Vec<Box<OperationTrait<Id=Id>+'static>>,
+    phantom : PhantomData<Id>
 }
 
-impl OperationManager
+impl<Id> OperationManager<Id>
 {
     pub fn new(
-        ) -> OperationManager
+        ) -> OperationManager<Id>
     {
         OperationManager {
             undo : Vec::new(),
             redo : Vec::new(),
+            phantom : PhantomData
         }
     }
 
-    pub fn add(&mut self, op : OperationOld, rec : &mut OperationRec) -> Change
+    /*
+    pub fn add(&mut self, op : OperationOld, rec : &mut OperationRec) -> ChangeOld
     {
         let change = op.apply(rec);
         self.add_undo(box op);
@@ -600,8 +619,9 @@ impl OperationManager
 
         change
     }
+    */
 
-    pub fn add_with_trait(&mut self, op : Box<OperationTrait>, rec : &mut OperationRec) -> Change
+    pub fn add_with_trait(&mut self, op : Box<OperationTrait<Id=Id>>, rec : &mut OperationReceiver<Id=Id>) -> Change<Id>
     {
         let change = op.apply(rec);
         self.add_undo(op);
@@ -610,34 +630,34 @@ impl OperationManager
         change
     }
 
-    pub fn add_with_trait2(&mut self, op : Box<OperationTrait>)
+    pub fn add_with_trait2(&mut self, op : Box<OperationTrait<Id=Id>>)
     {
         self.add_undo(op);
         self.redo.clear();
     }
 
-    fn add_undo(&mut self, op : Box<OperationTrait+'static>)
+    fn add_undo(&mut self, op : Box<OperationTrait<Id=Id>+'static>)
     {
         self.undo.push(op);
     }
 
-    fn add_redo(&mut self, op : Box<OperationTrait+'static>)
+    fn add_redo(&mut self, op : Box<OperationTrait<Id=Id>+'static>)
     {
         self.redo.push(op);
     }
 
 
-    fn pop_undo(&mut self) -> Option<Box<OperationTrait+'static>>
+    fn pop_undo(&mut self) -> Option<Box<OperationTrait<Id=Id>+'static>>
     {
         self.undo.pop()
     }
 
-    fn pop_redo(&mut self) -> Option<Box<OperationTrait+'static>>
+    fn pop_redo(&mut self) -> Option<Box<OperationTrait<Id=Id>+'static>>
     {
         self.redo.pop()
     }
 
-    pub fn undo(&mut self, rec : &mut OperationRec) -> Change
+    pub fn undo(&mut self, rec : &mut OperationReceiver<Id=Id>) -> Change<Id>
     {
         let op = match self.pop_undo() {
             Some(o) => o,
@@ -654,7 +674,7 @@ impl OperationManager
         return change;
     }
 
-    pub fn redo(&mut self, rec : &mut OperationRec) -> Change
+    pub fn redo(&mut self, rec : &mut OperationReceiver<Id=Id>) -> Change<Id>
     {
         let op = match self.pop_redo() {
             Some(o) => o,
@@ -689,11 +709,21 @@ fn join_string(path : &[String]) -> String
     s
 }
 
-fn get_ids(obs : &[Arc<RwLock<object::Object>>]) -> Vec<uuid::Uuid>
+fn get_ids_old(obs : &[Arc<RwLock<object::Object>>]) -> Vec<uuid::Uuid>
 {
     let mut list = Vec::new();
     for o in obs {
         list.push(o.read().unwrap().id.clone());
+    }
+
+    list
+}
+
+fn get_ids<S:SceneT>(obs : &[S::Object]) -> Vec<S::Id>
+{
+    let mut list = Vec::new();
+    for o in obs {
+        list.push(o.to_id());
     }
 
     list

@@ -54,6 +54,21 @@ pub trait SceneT : ToId<<Self as SceneT>::Id> {
     }
 
     fn get_name(&self) -> String;
+
+    fn add_objects(&self, parents : &[Self::Id], obs : &[Self::Object])
+    {
+        println!("TODO, {}, {}", file!(), line!());
+    }
+
+    fn remove_objects(&self, parents : &[Self::Id], obs : &[Self::Object])
+    {
+        println!("TODO, {}, {}", file!(), line!());
+    }
+
+    fn set_camera(&self, ob : Option<Self::Object>)
+    {
+        println!("TODO, {}, {}", file!(), line!());
+    }
 }
 
 impl SceneT for Rc<RefCell<scene::Scene>> {
@@ -127,6 +142,32 @@ impl SceneT for Rc<RefCell<scene::Scene>> {
         }
 
         v
+    }
+
+    fn add_objects(&self, parents : &[Self::Id], obs : &[Self::Object])
+    {
+        self.borrow_mut().add_objects(parents, obs);
+    }
+
+    fn remove_objects(&self, parents : &[Self::Id], obs : &[Self::Object])
+    {
+        self.borrow_mut().remove_objects(parents, obs);
+    }
+
+    fn set_camera(&self, ob : Option<Self::Object>)
+    {
+        let sc = self.borrow();
+        if let Some(ref c) = sc.camera {
+            if let Some(o) = ob {
+                println!("I set thhe camera !!!!!!!");
+                c.borrow_mut().object_id = Some(o.read().unwrap().id.clone());
+                c.borrow_mut().object = o;
+            }
+            else {
+                println!("dame 10");
+                c.borrow_mut().object_id = None;
+            }
+        }
     }
 }
 

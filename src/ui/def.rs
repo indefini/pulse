@@ -632,7 +632,7 @@ pub extern fn exit_cb(data: *const c_void) -> ()
 
 pub trait Widget
 {
-    fn handle_change(&self, change : operation::Change)
+    fn handle_change(&self, change : operation::ChangeOld)
     {
         println!("please implement me");
     }
@@ -835,6 +835,7 @@ pub struct ControlContainer
 
 pub type Scene = Rc<RefCell<scene::Scene>>;
 pub type Object = Arc<RwLock<object::Object>>;
+pub type Id = uuid::Uuid;
 
 pub struct WidgetContainer
 {
@@ -882,7 +883,7 @@ impl WidgetContainer
         }
     }
 
-    pub fn handle_change(&mut self, change : &operation::Change, widget_origin: uuid::Uuid)
+    pub fn handle_change(&mut self, change : &operation::Change<Id>, widget_origin: uuid::Uuid)
     {
         //if *change == operation::Change::None {
         if let operation::Change::None = *change {
