@@ -69,6 +69,12 @@ pub trait SceneT : ToId<<Self as SceneT>::Id> {
     {
         println!("TODO, {}, {}", file!(), line!());
     }
+
+    fn get_parent(&self, o : Self::Object) -> Option<Self::Object>
+    {
+        println!("TODO, {}, {}", file!(), line!());
+        None
+    }
 }
 
 impl SceneT for Rc<RefCell<scene::Scene>> {
@@ -168,6 +174,11 @@ impl SceneT for Rc<RefCell<scene::Scene>> {
                 c.borrow_mut().object_id = None;
             }
         }
+    }
+
+    fn get_parent(&self, o : Self::Object) -> Option<Self::Object>
+    {
+        o.read().unwrap().parent.clone()
     }
 }
 

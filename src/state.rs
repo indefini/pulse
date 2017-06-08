@@ -16,18 +16,6 @@ use data::{SceneT,ToId};
 //TODO remove
 use ui;
 
-trait GetParent<Graph, Id> {
-    fn get_parent(&self, graph : &Graph) -> Option<Id>;
-}
-
-impl<Graph> GetParent<Graph, uuid::Uuid> for Arc<RwLock<object::Object>>
-{
-    fn get_parent(&self, graph : &Graph) -> Option<uuid::Uuid>
-    {
-        self.read().unwrap().parent.as_ref().map(|p| p.read().unwrap().id.clone())
-    }
-}
-
 trait Transformable<Data> {
     fn set_position(&self, data : &mut Data, v : vec::Vec3);
 }
@@ -188,10 +176,7 @@ impl<S:SceneT+Clone+'static> State<S> {
         let mut parent = Vec::new();
         for o in &list {
             vec.push(o.clone());
-            //TODO chris
-            //let parent_id = o.get_parent(&NoGraph).unwrap_or(uuid::Uuid::nil());
-            //let parent_id = o.get_parent(&NoGraph).unwrap_or(S::Id::default());
-            let parent_id = S::Id::default();
+            let parent_id = s.get_parent(o.clone()).map_or(S::Id::default(), |x| x.to_id());
             parent.push(parent_id);
         }
 
