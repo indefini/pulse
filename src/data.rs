@@ -3,7 +3,6 @@ use std::cell::{RefCell};
 use std::sync::{Arc, RwLock};
 use std::collections::HashMap;
 use std::fs;
-use dormin::matrix;
 
 use uuid;
 
@@ -12,9 +11,12 @@ use dormin::{vec, resource, scene, factory, world, object};
 use dormin::component::mesh_render;
 use dormin::render;
 use dormin::property::PropertyGet;
+use dormin::input;
+use dormin::matrix;
+use dormin::transform;
+
 use context;
 use util;
-use dormin::input;
 
 static SCENE_SUFFIX: &str = ".scene";
 //static WORLD_SUFFIX: &str = ".world";
@@ -50,6 +52,12 @@ pub trait SceneT : ToId<<Self as SceneT>::Id> {
         Vec::new()
     }
 
+    fn get_camera_obj(&self) -> Option<Self::Object>
+    {
+        println!("TODO, {}, {}", file!(), line!());
+        None
+    }
+
     fn find_objects_by_id(&self, ids : &mut Vec<Self::Id>) -> Vec<Self::Object> {
         Vec::new()
     }
@@ -76,6 +84,40 @@ pub trait SceneT : ToId<<Self as SceneT>::Id> {
         println!("TODO, {}, {}", file!(), line!());
         None
     }
+
+    fn set_position(&self, o : Self::Object, v : vec::Vec3)
+    {
+        println!("TODO, {}, {}", file!(), line!());
+    }
+
+    fn set_scale(&self, o : Self::Object, v : vec::Vec3)
+    {
+        println!("TODO, {}, {}", file!(), line!());
+    }
+
+    fn set_orientation(&self, o : Self::Object, ori : transform::Orientation)
+    {
+        println!("TODO, {}, {}", file!(), line!());
+    }
+
+    fn get_position(&self, o : Self::Object) -> vec::Vec3
+    {
+        println!("TODO, {}, {}", file!(), line!());
+        vec::Vec3::default()
+    }
+
+    fn get_scale(&self, o : Self::Object) -> vec::Vec3
+    {
+        println!("TODO, {}, {}", file!(), line!());
+        vec::Vec3::default()
+    }
+
+    fn get_orientation(&self, o : Self::Object) -> transform::Orientation
+    {
+        println!("TODO, {}, {}", file!(), line!());
+        transform::Orientation::default()
+    }
+
 }
 
 impl SceneT for Rc<RefCell<scene::Scene>> {
@@ -120,6 +162,11 @@ impl SceneT for Rc<RefCell<scene::Scene>> {
         }
 
         cams
+    }
+
+    fn get_camera_obj(&self) -> Option<Self::Object>
+    {
+        self.borrow().camera.as_ref().map(|x| x.borrow().object.clone())
     }
 
     fn get_mmr(&self) -> Vec<render::MatrixMeshRender>
@@ -180,6 +227,36 @@ impl SceneT for Rc<RefCell<scene::Scene>> {
     fn get_parent(&self, o : Self::Object) -> Option<Self::Object>
     {
         o.read().unwrap().parent.clone()
+    }
+
+    fn set_position(&self, o : Self::Object, v : vec::Vec3)
+    {
+        o.write().unwrap().position = v;
+    }
+
+    fn set_scale(&self, o : Self::Object, v : vec::Vec3)
+    {
+        o.write().unwrap().scale = v;
+    }
+
+    fn set_orientation(&self, o : Self::Object, ori : transform::Orientation)
+    {
+        o.write().unwrap().orientation = ori;
+    }
+
+    fn get_position(&self, o : Self::Object) -> vec::Vec3
+    {
+        o.write().unwrap().position
+    }
+
+    fn get_scale(&self, o : Self::Object) -> vec::Vec3
+    {
+        o.write().unwrap().scale
+    }
+
+    fn get_orientation(&self, o : Self::Object) -> transform::Orientation
+    {
+        o.write().unwrap().orientation
     }
 }
 

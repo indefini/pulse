@@ -1,10 +1,8 @@
-use std::sync::{Arc,RwLock};
 use std::rc::{Rc};
 use std::cell::{RefCell};
 use std::any::Any;
 
-use dormin;
-use dormin::{vec, transform, object, component};
+use dormin::{vec, transform, component};
 use dormin::property::PropertyGet;
 
 use context;
@@ -13,43 +11,14 @@ use data::{SceneT,ToId};
 
 use ui;
 
-trait Transformable<Data> {
-    fn set_position(&self, data : &mut Data, v : vec::Vec3);
-}
-
-impl<Data> Transformable<Data> for Arc<RwLock<object::Object>>
-{
-    fn set_position(&self, data : &mut Data, v : vec::Vec3)
-    {
-        self.write().unwrap().position = v;
-    }
-}
-
-impl<'a> Transformable<dormin::world::WorldRefDataMut<'a>> for dormin::world::EntityMut
-{
-    fn set_position(&self, data : &mut dormin::world::WorldRefDataMut, v : vec::Vec3)
-    {
-        if let Some(t) = data.world.get_comp_mut::<transform::Transform>(data.data, self)
-        {
-            t.position = v;
-        }
-    }
-}
-
+/*
 struct WorldChange
 {
     ob : dormin::world::EntityRef,
     what : String,
     value : vec::Vec3
 }
-
-impl Transformable<Vec<WorldChange>> for dormin::world::EntityRef
-{
-    fn set_position(&self, data : &mut Vec<WorldChange>, v : vec::Vec3)
-    {
-        data.push(WorldChange { ob : self.clone(), what : "position".to_owned(), value :v});
-    }
-}
+*/
 
 
 pub struct State<S:SceneT>
@@ -77,22 +46,23 @@ impl<S:SceneT+Clone+'static> State<S> {
 
     pub fn save_positions(&mut self)
     {
-        /*
+        let s = self.context.scene.as_ref().unwrap();
         self.saved_positions = 
             self.context.selected.iter().map(
-                |o| o.read().unwrap().position
+                |o| s.get_position(o.clone())
                 ).collect();
-                */
     }
 
     pub fn save_scales(&mut self)
     {
-        //self.saved_scales = self.context.selected.iter().map(|o| o.read().unwrap().scale).collect();
+        let s = self.context.scene.as_ref().unwrap();
+        self.saved_scales = self.context.selected.iter().map(|o| s.get_scale(o.clone())).collect();
     }
 
     pub fn save_oris(&mut self)
     {
-        //self.saved_oris = self.context.selected.iter().map(|o| o.read().unwrap().orientation).collect();
+        let s = self.context.scene.as_ref().unwrap();
+        self.saved_oris = self.context.selected.iter().map(|o| s.get_orientation(o.clone())).collect();
     }
 
     pub fn make_operation(
@@ -105,7 +75,6 @@ impl<S:SceneT+Clone+'static> State<S> {
             self.context.selected.iter().map(|x| (box x.clone())).collect();
 
         operation::Operation::new(
-            //self.context.selected.iter().map(|x| box x.clone()).collect(),
             obs,
             name.clone(),
             op_data
@@ -244,11 +213,12 @@ impl<S:SceneT+Clone+'static> State<S> {
         &mut self,
         translation : vec::Vec3) -> operation::Change<S::Id>
     {
+        let s = self.context.scene.as_ref().unwrap();
+
         let sp = self.saved_positions.clone();
 
         for (i,o) in self.context.selected.iter().enumerate() {
-            //TODO chris
-            //o.set_position(&mut NoData, sp[i] + translation);
+            s.set_position(o.clone(), sp[i] + translation);
         }
 
         return operation::Change::DirectChange("position".to_owned());
@@ -258,11 +228,11 @@ impl<S:SceneT+Clone+'static> State<S> {
         &mut self,
         scale : vec::Vec3) -> operation::Change<S::Id>
     {
+        let s = self.context.scene.as_ref().unwrap();
         let sp = self.saved_scales.clone();
 
         for (i,o) in self.context.selected.iter().enumerate() {
-            //TODO chris
-            //o.write().unwrap().scale = sp[i] * scale;
+            s.set_scale(o.clone(), sp[i] * scale);
         }
 
         return operation::Change::DirectChange("scale".to_owned());
@@ -272,11 +242,11 @@ impl<S:SceneT+Clone+'static> State<S> {
         &mut self,
         rotation : vec::Quat) -> operation::Change<S::Id>
     {
+        let s = self.context.scene.as_ref().unwrap();
         let so = self.saved_oris.clone();
 
         for (i,o) in self.context.selected.iter().enumerate() {
-            //TODO chris
-            //o.write().unwrap().orientation = so[i] * transform::Orientation::new_with_quat(&rotation);
+            s.set_orientation(o.clone(), so[i] * transform::Orientation::new_with_quat(&rotation));
         }
 
         operation::Change::DirectChange("orientation/*".to_owned())
@@ -431,8 +401,6 @@ impl<S:SceneT+Clone+'static> State<S> {
         for o in &self.context.selected {
             println!("COPY is not working because of this TODO");
             //TODO vec.push(Arc::new(RwLock::new(factory.copy_object(&*ob))));
-            //TODO
-            //let parent_id = S::Id::default();
             let parent_id = s.get_parent(o.clone()).map_or(S::Id::default(), |x| x.to_id());
 
             parents.push(parent_id);
@@ -488,7 +456,7 @@ impl<S:SceneT+Clone+'static> State<S> {
             None => return operation::Change::None
         };
 
-        return operation::Change::None;
+        //return operation::Change::None;
         //TODO chris
 
         /*
@@ -496,6 +464,8 @@ impl<S:SceneT+Clone+'static> State<S> {
             None => None,
             Some(ref c) => Some(c.borrow().object.clone())
         };
+        */
+        let current = s.get_camera_obj();
 
         let o = self.get_selected_object();
         println!("control set camera");
@@ -508,7 +478,6 @@ impl<S:SceneT+Clone+'static> State<S> {
             );
 
         //return operation::Change::SceneRemove(s.read().unwrap().id, vec);
-        */
 
     }
 
