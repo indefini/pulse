@@ -5,6 +5,7 @@ use std::any::Any;
 
 use dormin;
 use dormin::{vec, transform, object, component};
+use dormin::property::PropertyGet;
 
 use context;
 use operation;
@@ -214,10 +215,6 @@ impl<S:SceneT+Clone+'static> State<S> {
             vs.push(i.to_string());
         }
 
-        return operation::Change::None;
-        //TODO chris
-        /*
-
         let  prop = if let Some(o) = self.get_selected_object(){
             let p : Option<Box<Any>> = o.get_property_hier(path);
             match p {
@@ -241,7 +238,6 @@ impl<S:SceneT+Clone+'static> State<S> {
             },
                 _ => operation::Change::None
         }
-        */
     }
 
     pub fn request_translation(
