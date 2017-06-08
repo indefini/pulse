@@ -429,20 +429,11 @@ impl<S:SceneT+Clone+'static> State<S> {
         let mut vec = Vec::new();
         let mut parents = Vec::new();
         for o in &self.context.selected {
-            //vec.push(o.clone());
-            /*
-            let ob = o.read().unwrap();
             println!("COPY is not working because of this TODO");
             //TODO vec.push(Arc::new(RwLock::new(factory.copy_object(&*ob))));
-            let parent_id = if let Some(ref p) = ob.parent {
-                p.read().unwrap().id
-            }
-            else {
-                uuid::Uuid::nil()
-            };
-            */
             //TODO
-            let parent_id = S::Id::default();
+            //let parent_id = S::Id::default();
+            let parent_id = s.get_parent(o.clone()).map_or(S::Id::default(), |x| x.to_id());
 
             parents.push(parent_id);
         }
@@ -453,8 +444,6 @@ impl<S:SceneT+Clone+'static> State<S> {
             operation::OperationData::SceneAddObjects(s, parents, vec),
             rec
             );
-
-        //return operation::Change::SceneRemove(s.read().unwrap().id, vec);
     }
 
     pub fn add_component(
