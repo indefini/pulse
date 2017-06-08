@@ -5,15 +5,11 @@ use std::any::Any;
 
 use dormin;
 use dormin::{vec, transform, object, component};
-use dormin::property::PropertyGet;
-use dormin::world::{NoGraph, Graph};
 
 use context;
 use operation;
-use uuid;
 use data::{SceneT,ToId};
 
-//TODO remove
 use ui;
 
 trait Transformable<Data> {
