@@ -24,7 +24,7 @@ pub trait OperationReceiver {
 
     fn getP_copy(&mut self, id : Self::Id) -> Option<Box<PropertyWrite>>
     {
-        println!("TODO {}, {}", file!(), line!());
+        println!("TODO or erase {}, {}", file!(), line!());
         None
     }
 }
