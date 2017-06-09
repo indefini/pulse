@@ -1642,24 +1642,10 @@ pub fn scene_list(container : &Arw<WidgetContainer>, view_id : Uuid, obj : Optio
 pub extern fn select_list(data : *const c_void, name : *const c_char)
 {
     let wcb : & ui::WidgetCbData = unsafe {mem::transmute(data)};
-    let list : &ListWidget = unsafe {mem::transmute(wcb.widget)};
     let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
 
     let s = unsafe {CStr::from_ptr(name)}.to_str().unwrap();
     println!("selection ..........{},  {}", container.name, s);
-    //let scene = container.factory.create_scene(s);
-    /*
-    let mut scene = scene::Scene::new_from_file(s, &*container.resource);
-    if let None = scene.camera {
-        let mut cam = container.factory.create_camera();
-        cam.pan(&vec::Vec3::new(-100f64,20f64,100f64));
-        cam.lookat(vec::Vec3::new(0f64,5f64,0f64));
-        scene.camera = Some(Rc::new(RefCell::new(cam)));
-    }
-    //let scene = Rc::new(RefCell::new(ss));
-    */
-
-    //container.set_scene(scene);
     let scene = container.data.get_or_load_scene(s).clone();
     container.set_scene(scene);
 }
