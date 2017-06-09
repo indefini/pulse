@@ -456,15 +456,6 @@ impl<S:SceneT+Clone+'static> State<S> {
             None => return operation::Change::None
         };
 
-        //return operation::Change::None;
-        //TODO chris
-
-        /*
-        let current = match s.borrow().camera {
-            None => None,
-            Some(ref c) => Some(c.borrow().object.clone())
-        };
-        */
         let current = s.get_camera_obj();
 
         let o = self.get_selected_object();
@@ -476,9 +467,6 @@ impl<S:SceneT+Clone+'static> State<S> {
             operation::OperationData::SetSceneCamera(s,current, o.clone()),
             rec
             );
-
-        //return operation::Change::SceneRemove(s.read().unwrap().id, vec);
-
     }
 
 }

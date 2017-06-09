@@ -365,9 +365,6 @@ impl<S:SceneT> OperationTrait for Operation<S>
                 let s = join_string(&self.name);
                 let mut ids = Vec::new();
                 for o in &self.objects {
-                    //let mut ob = o.write().unwrap();
-                    //TODO chris
-                    //println!("yeeeeeeeeeeeee call del_item : {}", ob.name);
                     if let Some(p) = rec.getP(o.to_id()) {
                         p.del_item(s.as_ref(), i);
                     }
@@ -496,7 +493,6 @@ impl<S:SceneT> OperationTrait for Operation<S>
                 let s = join_string(&self.name);
                 let mut ids = Vec::new();
                 for o in &self.objects {
-                    //let mut ob = o.write().unwrap();
                     if let Some(p) = rec.getP(o.to_id()) {
                         p.del_item(s.as_ref(), i);
                     }
