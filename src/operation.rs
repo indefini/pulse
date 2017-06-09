@@ -9,7 +9,6 @@ use dormin::property::PropertyWrite;
 use ui::PropertyUser;
 use dormin::component::CompData;
 use ui::RefMut;
-use data;
 use data::{ToId, SceneT};
 use ui;
 
@@ -19,18 +18,15 @@ pub trait OperationReceiver {
     type Id;
     fn getP(&mut self, id : Self::Id) -> Option<&mut PropertyWrite>
     {
+        println!("TODO {}, {}", file!(), line!());
         None
     }
-}
 
-impl<S:SceneT> OperationReceiver for data::Data<S> {
-    type Id = S::Id;
-    fn getP(&mut self, id : Self::Id) -> Option<&mut PropertyWrite>
+    fn getP_copy(&mut self, id : Self::Id) -> Option<Box<PropertyWrite>>
     {
+        println!("TODO {}, {}", file!(), line!());
         None
     }
-
-    //fn copy_object(
 }
 
 trait OperationTrait
@@ -353,7 +349,7 @@ impl<S:SceneT> OperationTrait for Operation<S>
                 let s = join_string(&self.name);
                 let mut ids = Vec::new();
                 for o in &self.objects {
-                    if let Some(p) = rec.getP(o.to_id()) {
+                    if let Some(mut p) = rec.getP_copy(o.to_id()) {
                         p.add_item(s.as_ref(), i, &String::from("empty"));
                     }
                     ids.push(o.to_id());
@@ -365,7 +361,7 @@ impl<S:SceneT> OperationTrait for Operation<S>
                 let s = join_string(&self.name);
                 let mut ids = Vec::new();
                 for o in &self.objects {
-                    if let Some(p) = rec.getP(o.to_id()) {
+                    if let Some(mut p) = rec.getP_copy(o.to_id()) {
                         p.del_item(s.as_ref(), i);
                     }
                     ids.push(o.to_id().clone());
@@ -398,7 +394,7 @@ impl<S:SceneT> OperationTrait for Operation<S>
                 };
                 let mut ids = Vec::new();
                 for o in &self.objects {
-                    if let Some(p) = rec.getP(o.to_id()) {
+                    if let Some(mut p) = rec.getP_copy(o.to_id()) {
                     p.test_set_property_hier(
                         sp.as_str(),
                         &*new[i]);
@@ -493,7 +489,7 @@ impl<S:SceneT> OperationTrait for Operation<S>
                 let s = join_string(&self.name);
                 let mut ids = Vec::new();
                 for o in &self.objects {
-                    if let Some(p) = rec.getP(o.to_id()) {
+                    if let Some(mut p) = rec.getP_copy(o.to_id()) {
                         p.del_item(s.as_ref(), i);
                     }
                     ids.push(o.to_id());
@@ -506,7 +502,7 @@ impl<S:SceneT> OperationTrait for Operation<S>
                 let mut ids = Vec::new();
                 for o in &self.objects {
                     //let mut ob = o.write().unwrap();
-                    if let Some(p) = rec.getP(o.to_id()) {
+                    if let Some(mut p) = rec.getP_copy(o.to_id()) {
                         p.add_item(s.as_ref(), i, &**value);
                     }
                     ids.push(o.to_id());
@@ -528,10 +524,10 @@ impl<S:SceneT> OperationTrait for Operation<S>
                 let mut ids = Vec::new();
                 for o in &self.objects {
                     //let mut ob = o.write().unwrap();
-                    if let Some(p) = rec.getP(o.to_id()) {
-                    p.test_set_property_hier(
-                        sp.as_str(),
-                        &*old[i]);
+                    if let Some(mut p) = rec.getP_copy(o.to_id()) {
+                        p.test_set_property_hier(
+                            sp.as_str(),
+                            &*old[i]);
                     }
                     i = i +1;
                     ids.push(o.to_id());

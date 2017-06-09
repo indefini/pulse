@@ -31,6 +31,42 @@ pub struct Data<S:SceneT>
     pub worlds : HashMap<String, Box<dormin::world::World>>,
 }
 
+use operation;
+use dormin::property::PropertyWrite;
+
+/*
+impl<S:SceneT> operation::OperationReceiver for Data<S> {
+    type Id = S::Id;
+    fn getP(&mut self, id : Self::Id) -> Option<&mut PropertyWrite>
+    {
+        None
+    }
+
+    //fn copy_object(
+}
+*/
+
+use ui;
+impl operation::OperationReceiver for Data<ui::def::Scene> {
+    type Id = ui::def::Id;
+    fn getP_copy(&mut self, id : Self::Id) -> Option<Box<PropertyWrite>>
+    {
+        for s in self.scenes.values() {
+            for o in &s.borrow().objects {
+                if o.to_id() == id {
+                    return Some(box o.clone());
+                }
+            }
+
+        }
+
+        None
+    }
+
+    //fn copy_object(
+}
+
+
 pub trait SceneT : ToId<<Self as SceneT>::Id> {
     type Id : Default + Eq + Clone;
     type Object : ToId<Self::Id> + Clone + world::GetWorld<Self::Object> + GetComponent + PropertyGet;

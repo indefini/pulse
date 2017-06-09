@@ -119,6 +119,7 @@ impl Control
                 if let Some(op) = o {
                     return ui::Event::DraggerOperation(op);
                 }
+
                 return ui::Event::Empty;
             },
             State::MultipleSelect => {

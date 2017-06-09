@@ -1075,69 +1075,7 @@ impl WidgetContainer
                 }
             },
             operation::Change::DraggerOperation(ref op) => {
-                let (prop, operation) = {
-                    let context = &self.state.context;;
-                    match *op {
-                        dragger::Operation::Translation(v) => {
-                            let prop = vec!["position".to_owned()];
-                            let cxpos = self.state.saved_positions.clone();
-                            let mut saved_positions = Vec::with_capacity(cxpos.len());
-                            for p in &cxpos {
-                                saved_positions.push((box *p ) as Box<Any>);
-                            }
-                            let mut new_pos = Vec::with_capacity(cxpos.len());
-                            for p in &cxpos {
-                                let np = *p + v;
-                                new_pos.push((box np) as Box<Any>);
-                            }
-                            let change = operation::OperationData::Vector(
-                                saved_positions,
-                                new_pos);
-
-                            (prop, change)
-                        },
-                        dragger::Operation::Scale(v) => {
-                            let prop = vec!["scale".to_owned()];
-                            let cxsc = self.state.saved_scales.clone();
-                            let mut saved_scales = Vec::with_capacity(cxsc.len());
-                            for p in &cxsc {
-                                saved_scales.push((box *p ) as Box<Any>);
-                            }
-                            let mut new_sc = Vec::with_capacity(cxsc.len());
-                            for s in &cxsc {
-                                let ns = *s * v;
-                                new_sc.push((box ns) as Box<Any>);
-                            }
-                            let change = operation::OperationData::Vector(
-                                saved_scales,
-                                new_sc);
-
-                            (prop, change)
-                        },
-                        dragger::Operation::Rotation(q) => {
-                            let prop = vec!["orientation".to_owned(), "*".to_owned()];
-                            let cxoris = self.state.saved_oris.clone();
-                            let mut saved_oris = Vec::with_capacity(cxoris.len());
-                            for p in &cxoris {
-                                saved_oris.push((box *p ) as Box<Any>);
-                            }
-                            let mut new_ori = Vec::with_capacity(cxoris.len());
-                            for p in &cxoris {
-                                let no = *p * q;
-                                new_ori.push((box no) as Box<Any>);
-                            }
-                            let change = operation::OperationData::Vector(
-                                saved_oris,
-                                new_ori);
-
-                            (prop, change)
-                        }
-                    }
-                };
-                self.state.request_operation(prop, operation, &mut *self.data);
-                //let op = self.state.make_operation(prop, operation);
-                //self.state.op_mgr.add_with_trait2(box op);
-                //self.state.op_mgr.redo(self.data)
+                self.handle_dragger_operation(op);
             },
             operation::Change::Property(ref p, ref name) => {
                 match *p {
@@ -1155,6 +1093,72 @@ impl WidgetContainer
         }
 
         self.update_all_views();
+    }
+
+    fn handle_dragger_operation(&mut self, op : &dragger::Operation) {
+        let (prop, operation) = {
+            let context = &self.state.context;;
+            match *op {
+                dragger::Operation::Translation(v) => {
+                    let prop = vec!["position".to_owned()];
+                    let cxpos = &self.state.saved_positions;;
+                    let mut saved_positions = Vec::with_capacity(cxpos.len());
+                    for p in cxpos {
+                        saved_positions.push((box *p ) as Box<Any>);
+                    }
+                    let mut new_pos = Vec::with_capacity(cxpos.len());
+                    for p in cxpos {
+                        let np = *p + v;
+                        new_pos.push((box np) as Box<Any>);
+                    }
+                    let change = operation::OperationData::Vector(
+                        saved_positions,
+                        new_pos);
+
+                    (prop, change)
+                },
+                dragger::Operation::Scale(v) => {
+                    let prop = vec!["scale".to_owned()];
+                    let cxsc = self.state.saved_scales.clone();
+                    let mut saved_scales = Vec::with_capacity(cxsc.len());
+                    for p in &cxsc {
+                        saved_scales.push((box *p ) as Box<Any>);
+                    }
+                    let mut new_sc = Vec::with_capacity(cxsc.len());
+                    for s in &cxsc {
+                        let ns = *s * v;
+                        new_sc.push((box ns) as Box<Any>);
+                    }
+                    let change = operation::OperationData::Vector(
+                        saved_scales,
+                        new_sc);
+
+                    (prop, change)
+                },
+                dragger::Operation::Rotation(q) => {
+                    let prop = vec!["orientation".to_owned(), "*".to_owned()];
+                    let cxoris = self.state.saved_oris.clone();
+                    let mut saved_oris = Vec::with_capacity(cxoris.len());
+                    for p in &cxoris {
+                        saved_oris.push((box *p ) as Box<Any>);
+                    }
+                    let mut new_ori = Vec::with_capacity(cxoris.len());
+                    for p in &cxoris {
+                        let no = *p * q;
+                        new_ori.push((box no) as Box<Any>);
+                    }
+                    let change = operation::OperationData::Vector(
+                        saved_oris,
+                        new_ori);
+
+                    (prop, change)
+                }
+            }
+        };
+        self.state.request_operation(prop, operation, &mut *self.data);
+        //let op = self.state.make_operation(prop, operation);
+        //self.state.op_mgr.add_with_trait2(box op);
+        //self.state.op_mgr.redo(self.data)
     }
 
     pub fn handle_event(&mut self, event : Event<Object>, widget_origin: uuid::Uuid)
@@ -1181,6 +1185,9 @@ impl WidgetContainer
                 //if self.data.apply_change(wanted_change) {
                 //  self.ui.reflect_change(wanted_change); //or something else than wanted_change
                 //}
+            },
+            Event::DraggerOperation(ref o) => {
+                self.handle_dragger_operation(o);
             },
             Event::DraggerScale(s) => {
                 let change = self.state.request_scale(s);
