@@ -58,7 +58,7 @@ pub enum OperationData<Scene : SceneT>
     VecDel(usize, Box<Any>),
     Vector(Vec<Box<Any>>, Vec<Box<Any>>),
     SceneAddObjects(Scene::Id, Vec<Scene::Id>, Vec<Scene::Object>), //scene, parent, objects
-    SceneRemoveObjects(Scene, Vec<Scene::Id>, Vec<Scene::Object>),
+    SceneRemoveObjects(Scene::Id, Vec<Scene::Id>, Vec<Scene::Object>),
     SetSceneCamera(Scene, Option<Scene::Object>, Option<Scene::Object>),
     //AddComponent(uuid::Uuid, uuid::Uuid) //object id, component id?
     AddComponent(Scene::Object, Box<CompData>),
@@ -429,8 +429,8 @@ impl<S:SceneT> OperationTrait for Operation<S>
                 return Change::SceneAdd(s.clone(), parents.clone(), get_ids::<S>(obs));
             },
             OperationData::SceneRemoveObjects(ref s, ref parents, ref obs)  => {
-                rec.remove_objects(s.to_id(), parents, obs);
-                return Change::SceneRemove(s.to_id(), parents.clone(), get_ids::<S>(obs));
+                rec.remove_objects(s.clone(), parents, obs);
+                return Change::SceneRemove(s.clone(), parents.clone(), get_ids::<S>(obs));
             },
             OperationData::SetSceneCamera(ref s, _, ref new)   => {
                 println!("operation set camera");
@@ -537,8 +537,8 @@ impl<S:SceneT> OperationTrait for Operation<S>
             },
             OperationData::SceneRemoveObjects(ref s, ref parents, ref obs)  => {
                 println!("undo scene remove objects !!!");
-                rec.add_objects(s.to_id(), parents, obs);
-                return Change::SceneAdd(s.to_id(), parents.clone(), get_ids::<S>(obs));
+                rec.add_objects(s.clone(), parents, obs);
+                return Change::SceneAdd(s.clone(), parents.clone(), get_ids::<S>(obs));
             },
             OperationData::SetSceneCamera(ref s, ref old, _)   => {
                 rec.set_camera(s.to_id(), old.clone());

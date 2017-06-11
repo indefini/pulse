@@ -149,7 +149,7 @@ impl<S:SceneT+Clone+'static> State<S> {
         let vs = Vec::new();
         return self.request_operation(
             vs,
-            operation::OperationData::SceneRemoveObjects(s.clone(), parent, vec),
+            operation::OperationData::SceneRemoveObjects(s.to_id(), parent, vec),
             rec
             );
 
