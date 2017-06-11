@@ -632,7 +632,7 @@ pub extern fn exit_cb(data: *const c_void) -> ()
 
 pub trait Widget
 {
-    fn handle_change(&self, change : operation::ChangeOld)
+    fn handle_change(&self, change : operation::Change<Id>)
     {
         println!("please implement me");
     }
@@ -838,9 +838,17 @@ pub type Object = Arc<RwLock<object::Object>>;
 pub type Id = uuid::Uuid;
 
 use dormin;
+//*
 pub type Scene2 = Scene;// dormin::world::World;
 pub type Object2 = Object;//usize;
 pub type Id2 = Id;//usize;
+//*/
+
+/*
+pub type Scene = dormin::world::World;
+pub type Object = usize;
+pub type Id = usize;
+*/
 
 pub struct WidgetContainer
 {
@@ -1430,7 +1438,8 @@ impl WidgetContainer
         }
     }
 
-    fn get_selected_object(&self) -> Option<Arc<RwLock<object::Object>>>
+    //fn get_selected_object(&self) -> Option<Arc<RwLock<object::Object>>>
+    fn get_selected_object(&self) -> Option<Object>
     {
         self.state.get_selected_object()
     }

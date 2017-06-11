@@ -279,8 +279,6 @@ impl OperationTrait for ToSome
     }
 }
 
-pub type ChangeOld = Change<uuid::Uuid>;
-
 //#[derive(PartialEq)]
 pub enum Change<Id>
 {
