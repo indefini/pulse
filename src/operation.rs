@@ -434,8 +434,8 @@ impl<S:SceneT> OperationTrait for Operation<S>
             },
             OperationData::SetSceneCamera(ref s, _, ref new)   => {
                 println!("operation set camera");
-                rec.set_camera(s.to_id(), new.clone());
-                return Change::Scene(s.to_id());
+                rec.set_camera(s.clone(), new.clone());
+                return Change::Scene(s.clone());
             },
             OperationData::AddComponent(ref o, ref compo)  => {
                 //TODO
@@ -541,8 +541,8 @@ impl<S:SceneT> OperationTrait for Operation<S>
                 return Change::SceneAdd(s.clone(), parents.clone(), get_ids::<S>(obs));
             },
             OperationData::SetSceneCamera(ref s, ref old, _)   => {
-                rec.set_camera(s.to_id(), old.clone());
-                return Change::Scene(s.to_id());
+                rec.set_camera(s.clone(), old.clone());
+                return Change::Scene(s.clone());
             },
             OperationData::AddComponent(ref o, ref compo)  => {
                 println!("TODO add component is not working of course, {}, {}", file!(), line!());

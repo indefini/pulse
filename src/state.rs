@@ -464,7 +464,7 @@ impl<S:SceneT+Clone+'static> State<S> {
         let vs = Vec::new();
         return self.request_operation(
             vs,
-            operation::OperationData::SetSceneCamera(s,current, o.clone()),
+            operation::OperationData::SetSceneCamera(s.to_id(),current, o.clone()),
             rec
             );
     }
