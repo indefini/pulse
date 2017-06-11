@@ -27,6 +27,14 @@ pub trait OperationReceiver {
         println!("TODO or erase {}, {}", file!(), line!());
         None
     }
+
+    fn add_objects(&mut self, scene_id : Self::Id, parents : &[Self::Id], objects : &[Self::Id])
+    {
+    }
+
+    fn remove_objects(&mut self, scene_id : Self::Id, parents : Vec<Self::Id>, objects : Vec<Self::Id>)
+    {
+    }
 }
 
 trait OperationTrait
@@ -409,6 +417,8 @@ impl<S:SceneT> OperationTrait for Operation<S>
                 //sc.add_objects(parents, obs);
                 //return Change::SceneAdd(sc.id.clone(), parents.clone(), get_ids(obs));
                 s.add_objects(parents, obs);
+                let ids : Vec<S::Id> = obs.iter().map(|x| x.to_id()).collect();
+                rec.add_objects(s.to_id(), parents, &ids);
                 return Change::SceneAdd(s.to_id(), parents.clone(), get_ids::<S>(obs));
             },
             OperationData::SceneRemoveObjects(ref s, ref parents, ref obs)  => {
