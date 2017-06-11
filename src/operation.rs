@@ -30,17 +30,18 @@ pub trait OperationReceiver {
 
     fn add_objects(&mut self, scene_id : <Self::Scene as SceneT>::Id, parents : &[<Self::Scene as SceneT>::Id], objects : &[<Self::Scene as SceneT>::Object])
     {
-        println!("TODO or erase {}, {}", file!(), line!());
+        println!("TODO {}, {}", file!(), line!());
     }
 
     fn remove_objects(&mut self, scene_id : <Self::Scene as SceneT>::Id, parents : &[<Self::Scene as SceneT>::Id], objects : &[<Self::Scene as SceneT>::Object])
     {
-        println!("TODO or erase {}, {}", file!(), line!());
+        println!("TODO {}, {}", file!(), line!());
     }
 
     fn set_camera(&mut self, scene_id : <Self::Scene as SceneT>::Id,
                   camera : Option<<Self::Scene as SceneT>::Object>)
     {
+        println!("TODO {}, {}", file!(), line!());
     }
 }
 

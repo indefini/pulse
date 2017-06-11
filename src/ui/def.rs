@@ -837,15 +837,20 @@ pub type Scene = Rc<RefCell<scene::Scene>>;
 pub type Object = Arc<RwLock<object::Object>>;
 pub type Id = uuid::Uuid;
 
+use dormin;
+pub type Scene2 = dormin::world::World;
+pub type Object2 = usize;
+pub type Id2 = usize;
+
 pub struct WidgetContainer
 {
     pub tree : Option<Box<Tree>>,
     pub property : Box<WidgetPanel<PropertyBox>>,
     pub command : Option<Box<Command>>,
     pub action : Option<Box<Action>>,
-    pub views : Vec<Box<EditView<Scene>>>,
+    pub views : Vec<Box<EditView<Scene2>>>,
     //pub views : Vec<Box<View>>,
-    pub gameview : Option<Box<GameViewTrait<Scene>>>,
+    pub gameview : Option<Box<GameViewTrait<Scene2>>>,
     pub menu : Option<Box<Action>>,
 
     pub list : Box<ListWidget>,
@@ -853,9 +858,9 @@ pub struct WidgetContainer
     pub visible_prop : HashMap<Uuid, Weak<Widget>>,
     pub anim : Option<*const Ecore_Animator>,
 
-    pub data : Box<Data<Scene>>,
+    pub data : Box<Data<Scene2>>,
     pub resource : Rc<resource::ResourceGroup>,
-    pub state : State<Scene>
+    pub state : State<Scene2>
 }
 
 impl WidgetContainer
