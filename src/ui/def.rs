@@ -243,7 +243,7 @@ pub extern fn init_cb(data: *const c_void) -> () {
     unsafe { jk_monitor_add(file_changed, Box::into_raw(box container_arw.clone()) as *const c_void, path.as_ptr()); }
 }
 
-fn create_views(container_arw : Arw<WidgetContainer>, views_config : &[ViewConfig]) -> Vec<Box<EditView<Scene>>>
+fn create_views(container_arw : Arw<WidgetContainer>, views_config : &[ViewConfig]) -> Vec<Box<EditView<Scene2>>>
 {
     let mut views = Vec::with_capacity(views_config.len());
 
@@ -258,7 +258,7 @@ fn create_views(container_arw : Arw<WidgetContainer>, views_config : &[ViewConfi
             v.window.h,
             v.camera.clone());
 
-        views.push(view as Box<EditView<Scene>>);
+        views.push(view as Box<EditView<Scene2>>);
         let scene = if let Some(ref scene) = v.scene {
             container.data.get_or_load_scene(scene.as_str())
         }
@@ -357,8 +357,9 @@ fn init_tree(container : &Arw<WidgetContainer>, win : *const Window, tree_config
 
     match container.state.context.scene {
         Some(ref s) => {
-            let sb = &*s.borrow();
-            t.set_scene(sb);
+            println!("TODO chris, scene tree, {}, {}", file!(), line!());
+            //let sb = &*s.borrow();
+            //t.set_scene(sb);
         },
         None => {
         }
@@ -409,8 +410,7 @@ fn init_action(container : &Arw<WidgetContainer>, win : *const Window, view_id :
 
     let name = match container.state.context.scene {
         Some(ref s) => {
-            let sb = &*s.borrow();
-            sb.name.clone()
+            s.get_name()
         },
         None => {
             String::from("none")
@@ -542,7 +542,7 @@ impl WindowConfig {
                 window : v.get_config().clone(),
                 scene : match c.state.context.scene {
                     Some(ref s) => {
-                        Some(s.borrow().name.clone())
+                        Some(s.get_name())
                     },
                     None => None
                 },
@@ -622,8 +622,8 @@ pub extern fn exit_cb(data: *const c_void) -> ()
     let container = &mut *app_data.container.write().unwrap();
 
     if let Some(ref s) = container.state.context.scene {
-        println!("going to save: {}", s.borrow().name);
-        s.borrow().save();
+        println!("going to save: {}", s.get_name());
+        s.save();
     }
 
     let wc = WindowConfig::new(&*container);
@@ -838,9 +838,9 @@ pub type Object = Arc<RwLock<object::Object>>;
 pub type Id = uuid::Uuid;
 
 use dormin;
-pub type Scene2 = dormin::world::World;
-pub type Object2 = usize;
-pub type Id2 = usize;
+pub type Scene2 = Scene;// dormin::world::World;
+pub type Object2 = Object;//usize;
+pub type Id2 = Id;//usize;
 
 pub struct WidgetContainer
 {
@@ -888,7 +888,7 @@ impl WidgetContainer
         }
     }
 
-    pub fn handle_change(&mut self, change : &operation::Change<Id>, widget_origin: uuid::Uuid)
+    pub fn handle_change(&mut self, change : &operation::Change<Id2>, widget_origin: uuid::Uuid)
     {
         //if *change == operation::Change::None {
         if let operation::Change::None = *change {
@@ -939,10 +939,13 @@ impl WidgetContainer
                 let sel = self.get_selected_object();
                 for id in id_list {
 
+                    
                     if name == "name" {
                         if let Some(ref t) = self.tree {
                             if widget_origin != t.id {
-                                t.update_object(id);
+                                //TODO tree
+                                println!("TODO, {}, {}", file!(), line!());
+                                //t.update_object(id);
                             }
                         };
                     }
@@ -954,7 +957,7 @@ impl WidgetContainer
                     if let Some(ref o) = sel {
                         let ob = o.read().unwrap();
 
-                        if *id == ob.id  {
+                        if *id == o.to_id()  {
                             if let Some(ref mut p) = self.property.widget {
                                 if widget_origin != p.id {
                                     println!("hangle change, calling update objects");
@@ -976,7 +979,7 @@ impl WidgetContainer
                     if let Some(ref o) = sel {
                         let ob = o.read().unwrap();
 
-                        if *id == ob.id  {
+                        if *id == o.to_id()  {
                             if let Some(ref mut p) = self.property.widget {
                                 //if widget_origin != p.id 
 				{
@@ -1400,10 +1403,12 @@ impl WidgetContainer
         }
     }
 
-    pub fn set_scene(&mut self, scene : Scene)
+    pub fn set_scene(&mut self, scene : Scene2)
     {
         if let Some(ref mut t) = self.tree {
-            t.set_scene(&scene.borrow());
+            //TODO chris
+            println!("TODO set scene tree {}, {}", file!(), line!());
+            //t.set_scene(&scene.borrow());
         }
 
         if let Some(ref mut p) = self.property.widget {
@@ -1414,7 +1419,7 @@ impl WidgetContainer
             if let Entry::Occupied(en) = m.entries.entry(String::from("scene")) {
                 elm_object_text_set(
                     unsafe {mem::transmute(*en.get())},
-                    CString::new(scene.borrow().name.as_str()).unwrap().as_ptr());
+                    CString::new(scene.get_name().as_str()).unwrap().as_ptr());
             }
         }
 
@@ -1810,7 +1815,7 @@ fn create_gameview_window(
 
 }
 
-fn check_mesh(name : &str, wc : &WidgetContainer, id : uuid::Uuid)
+fn check_mesh(name : &str, wc : &WidgetContainer, id : Id2)
 {
     if name.starts_with("comp_data") {
         println!("TODO, only update when it was a mesh.
@@ -1819,8 +1824,7 @@ fn check_mesh(name : &str, wc : &WidgetContainer, id : uuid::Uuid)
                                  or check serde first");
         let scene = wc.get_scene();
         let oob = if let Some(ref sc) = scene {
-            let s = sc.borrow();
-            s.find_object_by_id(&id)
+            sc.find_object_by_id(id)
         } else {
             None
         };

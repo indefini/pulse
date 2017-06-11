@@ -90,6 +90,10 @@ impl operation::OperationReceiver for Data<ui::def::Scene> {
     //fn copy_object(
 }
 
+impl operation::OperationReceiver for Data<dormin::world::World> {
+    type Scene = dormin::world::World;
+}
+
 
 pub trait SceneT : ToId<<Self as SceneT>::Id> {
     type Id : Default + Eq + Clone;
@@ -122,7 +126,13 @@ pub trait SceneT : ToId<<Self as SceneT>::Id> {
         Vec::new()
     }
 
+    fn find_object_by_id(&self, id : Self::Id) -> Option<Self::Object> {
+        None
+    }
+
     fn get_name(&self) -> String;
+
+    fn save(&self);
 
     fn add_objects(&self, parents : &[Self::Id], obs : &[Self::Object])
     {
@@ -207,9 +217,19 @@ impl SceneT for Rc<RefCell<scene::Scene>> {
         self.borrow().find_objects_by_id(ids)
     }
 
+    fn find_object_by_id(&self, id : Self::Id) -> Option<Self::Object>
+    {
+        self.borrow().find_object_by_id(&id)
+    }
+
     fn get_name(&self) -> String
     {
         self.borrow().name.clone()
+    }
+
+    fn save(&self)
+    {
+        self.borrow().save();
     }
 
     fn get_cameras_vec(&self) -> Vec<matrix::Matrix4>
@@ -359,6 +379,11 @@ impl SceneT for world::World {
     fn get_name(&self) -> String
     {
         String::from("get_name not implemented")
+    }
+
+    fn save(&self)
+    {
+        println!("TODO !!!!!!!!!!!!!!!!!!!!!! {}, {}", file!(), line!());
     }
 }
 
