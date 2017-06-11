@@ -1599,7 +1599,7 @@ pub fn add_empty(container : &mut WidgetContainer, view_id : Uuid)
     let vs = Vec::new();
     let addob = container.state.request_operation(
             vs,
-            operation::OperationData::SceneAddObjects(s.clone(),parent,vec.clone()),
+            operation::OperationData::SceneAddObjects(s.to_id(),parent,vec.clone()),
             &mut *container.data
             );
 

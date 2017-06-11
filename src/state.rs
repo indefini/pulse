@@ -409,7 +409,7 @@ impl<S:SceneT+Clone+'static> State<S> {
         let vs = Vec::new();
         return self.request_operation(
             vs,
-            operation::OperationData::SceneAddObjects(s, parents, vec),
+            operation::OperationData::SceneAddObjects(s.to_id(), parents, vec),
             rec
             );
     }
