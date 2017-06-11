@@ -59,7 +59,7 @@ pub enum OperationData<Scene : SceneT>
     Vector(Vec<Box<Any>>, Vec<Box<Any>>),
     SceneAddObjects(Scene::Id, Vec<Scene::Id>, Vec<Scene::Object>), //scene, parent, objects
     SceneRemoveObjects(Scene::Id, Vec<Scene::Id>, Vec<Scene::Object>),
-    SetSceneCamera(Scene, Option<Scene::Object>, Option<Scene::Object>),
+    SetSceneCamera(Scene::Id, Option<Scene::Object>, Option<Scene::Object>),
     //AddComponent(uuid::Uuid, uuid::Uuid) //object id, component id?
     AddComponent(Scene::Object, Box<CompData>),
     OldNewVec(Vec<Box<Any>>, Box<Any>),
