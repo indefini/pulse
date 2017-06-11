@@ -24,7 +24,7 @@ struct WorldChange
 pub struct State<S:SceneT>
 {
     pub context : Box<context::Context<S>>,
-    pub op_mgr : operation::OperationManager<S::Id>,
+    pub op_mgr : operation::OperationManager<S>,
     
     pub saved_positions : Vec<vec::Vec3>,
     pub saved_scales : Vec<vec::Vec3>,
@@ -85,7 +85,7 @@ impl<S:SceneT+Clone+'static> State<S> {
         &mut self,
         name : Vec<String>,
         op_data : operation::OperationData<S>,
-        rec : &mut operation::OperationReceiver<Id=S::Id>
+        rec : &mut operation::OperationReceiver<Scene=S>
         ) -> operation::Change<S::Id>
     {
         let op = self.make_operation(name, op_data);
@@ -115,19 +115,19 @@ impl<S:SceneT+Clone+'static> State<S> {
     }
     */
 
-    pub fn undo(&mut self, rec : &mut operation::OperationReceiver<Id=S::Id>) -> operation::Change<S::Id>
+    pub fn undo(&mut self, rec : &mut operation::OperationReceiver<Scene=S>) -> operation::Change<S::Id>
     {
         self.op_mgr.undo(rec)
     }
 
-    pub fn redo(&mut self, rec : &mut operation::OperationReceiver<Id=S::Id>) -> operation::Change<S::Id>
+    pub fn redo(&mut self, rec : &mut operation::OperationReceiver<Scene=S>) -> operation::Change<S::Id>
     {
         self.op_mgr.redo(rec)
     }
 
     pub fn remove_selected_objects(
         &mut self,
-        rec : &mut operation::OperationReceiver<Id=S::Id>
+        rec : &mut operation::OperationReceiver<Scene=S>
         ) -> operation::Change<S::Id>
     {
         println!("state remove sel");
@@ -170,7 +170,7 @@ impl<S:SceneT+Clone+'static> State<S> {
     pub fn request_operation_vec_del(
         &mut self,
         node : Rc<RefCell<ui::PropertyNode>>,
-        rec : &mut operation::OperationReceiver<Id=S::Id>
+        rec : &mut operation::OperationReceiver<Scene=S>
         )
         -> operation::Change<S::Id>
     {
@@ -258,7 +258,7 @@ impl<S:SceneT+Clone+'static> State<S> {
         name : &str,
         old : Box<Any>,
         new : Box<Any>,
-        rec : &mut operation::OperationReceiver<Id=S::Id>
+        rec : &mut operation::OperationReceiver<Scene=S>
         ) -> operation::Change<S::Id>
     {
         let op : operation::OldNew<S> = operation::OldNew::new(
@@ -278,7 +278,7 @@ impl<S:SceneT+Clone+'static> State<S> {
         name : &str,
         old : Box<T>,
         new : Box<T>,
-        rec : &mut operation::OperationReceiver<Id=S::Id>
+        rec : &mut operation::OperationReceiver<Scene=S>
         ) -> operation::Change<S::Id>
     {
         if *old == *new {
@@ -352,7 +352,7 @@ impl<S:SceneT+Clone+'static> State<S> {
     pub fn request_operation_vec_add(
         &mut self,
         node : Rc<RefCell<ui::PropertyNode>>,
-        rec : &mut operation::OperationReceiver<Id=S::Id>
+        rec : &mut operation::OperationReceiver<Scene=S>
         )
         -> operation::Change<S::Id>
     {
@@ -388,7 +388,7 @@ impl<S:SceneT+Clone+'static> State<S> {
     pub fn copy_selected_objects(
         &mut self,
         //TODO factory : &factory::Factory,
-        rec : &mut operation::OperationReceiver<Id=S::Id>
+        rec : &mut operation::OperationReceiver<Scene=S>
         ) -> operation::Change<S::Id>
     {
         let s = match self.context.scene {
@@ -417,7 +417,7 @@ impl<S:SceneT+Clone+'static> State<S> {
     pub fn add_component(
         &mut self,
         component_name : &str,
-        rec : &mut operation::OperationReceiver<Id=S::Id>
+        rec : &mut operation::OperationReceiver<Scene=S>
         ) -> operation::Change<S::Id>
     {
         let o = if let Some(o) = self.context.selected.get(0) {
@@ -446,7 +446,7 @@ impl<S:SceneT+Clone+'static> State<S> {
 
     pub fn set_scene_camera(
         &mut self,
-        rec : &mut operation::OperationReceiver<Id=S::Id>
+        rec : &mut operation::OperationReceiver<Scene=S>
         ) -> operation::Change<S::Id>
     {
         println!("control remove sel");

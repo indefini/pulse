@@ -15,33 +15,36 @@ use ui;
 use dragger;
 
 pub trait OperationReceiver {
-    type Id;
-    fn getP(&mut self, id : Self::Id) -> Option<&mut PropertyWrite>
+    type Scene: SceneT;
+    fn getP(&mut self, id : <Self::Scene as SceneT>::Id) -> Option<&mut PropertyWrite>
     {
         println!("TODO {}, {}", file!(), line!());
         None
     }
 
-    fn getP_copy(&mut self, id : Self::Id) -> Option<Box<PropertyWrite>>
+    fn getP_copy(&mut self, id : <Self::Scene as SceneT>::Id) -> Option<Box<PropertyWrite>>
     {
         println!("TODO or erase {}, {}", file!(), line!());
         None
     }
 
-    fn add_objects(&mut self, scene_id : Self::Id, parents : &[Self::Id], objects : &[Self::Id])
+    fn add_objects(&mut self, scene_id : <Self::Scene as SceneT>::Id, parents : &[<Self::Scene as SceneT>::Id], objects : &[<Self::Scene as SceneT>::Id])
     {
     }
 
+    /*
     fn remove_objects(&mut self, scene_id : Self::Id, parents : Vec<Self::Id>, objects : Vec<Self::Id>)
     {
     }
+    */
 }
 
 trait OperationTrait
 {
+    type Scene : SceneT;
     type Id;
-    fn apply(&self, rec : &mut OperationReceiver<Id=Self::Id>) -> Change<Self::Id>;
-    fn undo(&self, rec : &mut OperationReceiver<Id=Self::Id>) -> Change<Self::Id>;
+    fn apply(&self, rec : &mut OperationReceiver<Scene=Self::Scene>) -> Change<Self::Id>;
+    fn undo(&self, rec : &mut OperationReceiver<Scene=Self::Scene>) -> Change<Self::Id>;
 }
 
 pub enum OperationData<Scene : SceneT>
@@ -124,8 +127,9 @@ impl<S:SceneT> OldNew<S>
 impl<S:SceneT> OperationTrait for OldNew<S>
 {
     type Id = S::Id;
+    type Scene = S;
     //fn apply(&self ) -> Change
-    fn apply(&self, rec : &mut OperationReceiver<Id=Self::Id>) -> Change<Self::Id>
+    fn apply(&self, rec : &mut OperationReceiver<Scene=S>) -> Change<Self::Id>
     {
         println!("NEW TEST operation set property hier {:?}", self.name);
         match self.object {
@@ -141,7 +145,7 @@ impl<S:SceneT> OperationTrait for OldNew<S>
     }
 
     //fn undo(&self) -> Change
-    fn undo(&self, rec : &mut OperationReceiver<Id=Self::Id>) -> Change<Self::Id>
+    fn undo(&self, rec : &mut OperationReceiver<Scene=S>) -> Change<Self::Id>
     {
         match self.object {
             RefMut::Arc(ref a) => {
@@ -181,8 +185,9 @@ impl ToNone
 impl OperationTrait for ToNone
 {
     type Id = ui::def::Id;
+    type Scene = ui::def::Scene;
     //fn apply(&self) -> Change
-    fn apply(&self, rec : &mut OperationReceiver<Id=Self::Id>) -> Change<Self::Id>
+    fn apply(&self, rec : &mut OperationReceiver<Scene=ui::def::Scene>) -> Change<Self::Id>
     {
         println!("TO NONE operation set property hier {:?}", self.name);
         match self.object {
@@ -198,7 +203,7 @@ impl OperationTrait for ToNone
     }
 
     //fn undo(&self) -> Change
-    fn undo(&self, rec : &mut OperationReceiver<Id=Self::Id>) -> Change<Self::Id>
+    fn undo(&self, rec : &mut OperationReceiver<Scene=ui::def::Scene>) -> Change<Self::Id>
     {
         match self.object {
             RefMut::Arc(ref a) => {
@@ -235,8 +240,9 @@ impl ToSome
 impl OperationTrait for ToSome
 {
     type Id = ui::def::Id;
+    type Scene = ui::def::Scene;
     //fn apply(&self) -> Change
-    fn apply(&self, rec : &mut OperationReceiver<Id=Self::Id>) -> Change<Self::Id>
+    fn apply(&self, rec : &mut OperationReceiver<Scene=ui::def::Scene>) -> Change<Self::Id>
     {
         println!("TO Some operation set property hier {:?}", self.name);
         match self.object {
@@ -252,7 +258,7 @@ impl OperationTrait for ToSome
     }
 
     //fn undo(&self) -> Change
-    fn undo(&self, rec : &mut OperationReceiver<Id=Self::Id>) -> Change<Self::Id>
+    fn undo(&self, rec : &mut OperationReceiver<Scene=ui::def::Scene>) -> Change<Self::Id>
     {
         match self.object {
             RefMut::Arc(ref a) => {
@@ -335,8 +341,9 @@ impl<S:SceneT> OperationTrait for Operation<S>
 {
     //type Id=ui::def::Id;
     type Id=S::Id;
+    type Scene=S;
     //fn apply(&self) -> Change
-    fn apply(&self, rec : &mut OperationReceiver<Id=Self::Id>) -> Change<Self::Id>
+    fn apply(&self, rec : &mut OperationReceiver<Scene=S>) -> Change<Self::Id>
     {
         match self.change {
             /*
@@ -467,7 +474,7 @@ impl<S:SceneT> OperationTrait for Operation<S>
     }
 
     //fn undo(&self) -> Change
-    fn undo(&self, rec : &mut OperationReceiver<Id=Self::Id>) -> Change<Self::Id>
+    fn undo(&self, rec : &mut OperationReceiver<Scene=S>) -> Change<Self::Id>
     {
         match self.change {
             /*
@@ -594,19 +601,19 @@ trait AnyClone: Any + Clone {
 }
 impl<T: Any + Clone> AnyClone for T {}
 
-pub struct OperationManager<Id>
+pub struct OperationManager<S:SceneT>
 {
     //pub undo : Vec<Operation>,
     //pub redo : Vec<Operation>,
-    pub undo : Vec<Box<OperationTrait<Id=Id>+'static>>,
-    pub redo : Vec<Box<OperationTrait<Id=Id>+'static>>,
-    phantom : PhantomData<Id>
+    pub undo : Vec<Box<OperationTrait<Id=S::Id,Scene=S>+'static>>,
+    pub redo : Vec<Box<OperationTrait<Id=S::Id,Scene=S>+'static>>,
+    phantom : PhantomData<S>
 }
 
-impl<Id> OperationManager<Id>
+impl<S:SceneT> OperationManager<S>
 {
     pub fn new(
-        ) -> OperationManager<Id>
+        ) -> OperationManager<S>
     {
         OperationManager {
             undo : Vec::new(),
@@ -626,7 +633,7 @@ impl<Id> OperationManager<Id>
     }
     */
 
-    pub fn add_with_trait(&mut self, op : Box<OperationTrait<Id=Id>>, rec : &mut OperationReceiver<Id=Id>) -> Change<Id>
+    pub fn add_with_trait(&mut self, op : Box<OperationTrait<Id=S::Id,Scene=S>>, rec : &mut OperationReceiver<Scene=S>) -> Change<S::Id>
     {
         let change = op.apply(rec);
         self.add_undo(op);
@@ -635,34 +642,34 @@ impl<Id> OperationManager<Id>
         change
     }
 
-    pub fn add_with_trait2(&mut self, op : Box<OperationTrait<Id=Id>>)
+    pub fn add_with_trait2(&mut self, op : Box<OperationTrait<Id=S::Id,Scene=S>>)
     {
         self.add_undo(op);
         self.redo.clear();
     }
 
-    fn add_undo(&mut self, op : Box<OperationTrait<Id=Id>+'static>)
+    fn add_undo(&mut self, op : Box<OperationTrait<Id=S::Id,Scene=S>+'static>)
     {
         self.undo.push(op);
     }
 
-    fn add_redo(&mut self, op : Box<OperationTrait<Id=Id>+'static>)
+    fn add_redo(&mut self, op : Box<OperationTrait<Id=S::Id,Scene=S>+'static>)
     {
         self.redo.push(op);
     }
 
 
-    fn pop_undo(&mut self) -> Option<Box<OperationTrait<Id=Id>+'static>>
+    fn pop_undo(&mut self) -> Option<Box<OperationTrait<Id=S::Id,Scene=S>+'static>>
     {
         self.undo.pop()
     }
 
-    fn pop_redo(&mut self) -> Option<Box<OperationTrait<Id=Id>+'static>>
+    fn pop_redo(&mut self) -> Option<Box<OperationTrait<Id=S::Id,Scene=S>+'static>>
     {
         self.redo.pop()
     }
 
-    pub fn undo(&mut self, rec : &mut OperationReceiver<Id=Id>) -> Change<Id>
+    pub fn undo(&mut self, rec : &mut OperationReceiver<Scene=S>) -> Change<S::Id>
     {
         let op = match self.pop_undo() {
             Some(o) => o,
@@ -679,7 +686,7 @@ impl<Id> OperationManager<Id>
         return change;
     }
 
-    pub fn redo(&mut self, rec : &mut OperationReceiver<Id=Id>) -> Change<Id>
+    pub fn redo(&mut self, rec : &mut OperationReceiver<Scene=S>) -> Change<S::Id>
     {
         let op = match self.pop_redo() {
             Some(o) => o,

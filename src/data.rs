@@ -48,8 +48,8 @@ impl<S:SceneT> operation::OperationReceiver for Data<S> {
 
 use ui;
 impl operation::OperationReceiver for Data<ui::def::Scene> {
-    type Id = ui::def::Id;
-    fn getP_copy(&mut self, id : Self::Id) -> Option<Box<PropertyWrite>>
+    type Scene = ui::def::Scene;
+    fn getP_copy(&mut self, id : <Self::Scene as SceneT>::Id) -> Option<Box<PropertyWrite>>
     {
         for s in self.scenes.values() {
             for o in &s.borrow().objects {
