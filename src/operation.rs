@@ -28,15 +28,15 @@ pub trait OperationReceiver {
         None
     }
 
-    fn add_objects(&mut self, scene_id : <Self::Scene as SceneT>::Id, parents : &[<Self::Scene as SceneT>::Id], objects : &[<Self::Scene as SceneT>::Id])
+    fn add_objects(&mut self, scene_id : <Self::Scene as SceneT>::Id, parents : &[<Self::Scene as SceneT>::Id], objects : &[<Self::Scene as SceneT>::Object])
     {
+        println!("TODO or erase {}, {}", file!(), line!());
     }
 
-    /*
-    fn remove_objects(&mut self, scene_id : Self::Id, parents : Vec<Self::Id>, objects : Vec<Self::Id>)
+    fn remove_objects(&mut self, scene_id : <Self::Scene as SceneT>::Id, parents : &[<Self::Scene as SceneT>::Id], objects : &[<Self::Scene as SceneT>::Object])
     {
+        println!("TODO or erase {}, {}", file!(), line!());
     }
-    */
 }
 
 trait OperationTrait
@@ -420,19 +420,11 @@ impl<S:SceneT> OperationTrait for Operation<S>
                 return Change::Objects(s, ids);
             },
             OperationData::SceneAddObjects(ref s, ref parents, ref obs)  => {
-                //let mut sc = s.borrow_mut();
-                //sc.add_objects(parents, obs);
-                //return Change::SceneAdd(sc.id.clone(), parents.clone(), get_ids(obs));
-                s.add_objects(parents, obs);
-                let ids : Vec<S::Id> = obs.iter().map(|x| x.to_id()).collect();
-                rec.add_objects(s.to_id(), parents, &ids);
+                rec.add_objects(s.to_id(), parents, obs);
                 return Change::SceneAdd(s.to_id(), parents.clone(), get_ids::<S>(obs));
             },
             OperationData::SceneRemoveObjects(ref s, ref parents, ref obs)  => {
-                //let mut sc = s.borrow_mut();
-                //sc.remove_objects(parents, obs);
-                //return Change::SceneRemove(sc.id.clone(), parents.clone(), get_ids(obs));
-                s.remove_objects(parents, obs);
+                rec.remove_objects(s.to_id(), parents, obs);
                 return Change::SceneRemove(s.to_id(), parents.clone(), get_ids::<S>(obs));
             },
             OperationData::SetSceneCamera(ref s, _, ref new)   => {
@@ -553,19 +545,13 @@ impl<S:SceneT> OperationTrait for Operation<S>
             },
             OperationData::SceneAddObjects(ref s, ref parents, ref obs)  => {
                 println!("undo scene add objects !!!");
-                //let mut sc = s.borrow_mut();
-                //sc.remove_objects(parents, obs);
-                //return Change::SceneRemove(sc.id.clone(), parents.clone(), get_ids(obs));
-                s.remove_objects(parents, obs);
+                rec.remove_objects(s.to_id(),parents, obs);
                 return Change::SceneRemove(s.to_id(), parents.clone(), get_ids::<S>(obs));
             },
             OperationData::SceneRemoveObjects(ref s, ref parents, ref obs)  => {
                 println!("undo scene remove objects !!!");
-                //let mut sc = s.borrow_mut();
-                //sc.add_objects(parents, obs);
-                //return Change::SceneAdd(sc.id.clone(), parents.clone(), get_ids(obs));
-                s.remove_objects(parents, obs);
-                return Change::SceneRemove(s.to_id(), parents.clone(), get_ids::<S>(obs));
+                rec.add_objects(s.to_id(), parents, obs);
+                return Change::SceneAdd(s.to_id(), parents.clone(), get_ids::<S>(obs));
             },
             OperationData::SetSceneCamera(ref s, ref old, _)   => {
                 /*

@@ -63,6 +63,22 @@ impl operation::OperationReceiver for Data<ui::def::Scene> {
         None
     }
 
+
+    fn add_objects(&mut self, scene_id : <Self::Scene as SceneT>::Id, parents : &[<Self::Scene as SceneT>::Id], objects : &[<Self::Scene as SceneT>::Object])
+    {
+        if let Some(s) = self.get_scene(scene_id) {
+            s.borrow_mut().add_objects(parents, objects);
+        }
+    }
+
+
+    fn remove_objects(&mut self, scene_id : <Self::Scene as SceneT>::Id, parents : &[<Self::Scene as SceneT>::Id], objects : &[<Self::Scene as SceneT>::Object])
+    {
+        if let Some(s) = self.get_scene(scene_id) {
+            s.borrow_mut().remove_objects(parents, objects);
+        }
+    }
+
     //fn copy_object(
 }
 
