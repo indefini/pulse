@@ -37,6 +37,11 @@ pub trait OperationReceiver {
     {
         println!("TODO or erase {}, {}", file!(), line!());
     }
+
+    fn set_camera(&mut self, scene_id : <Self::Scene as SceneT>::Id,
+                  camera : Option<<Self::Scene as SceneT>::Object>)
+    {
+    }
 }
 
 trait OperationTrait
@@ -429,25 +434,7 @@ impl<S:SceneT> OperationTrait for Operation<S>
             },
             OperationData::SetSceneCamera(ref s, _, ref new)   => {
                 println!("operation set camera");
-                /*
-                let sc = s.borrow();
-                if let Some(ref c) = sc.camera {
-                    if let Some(ref o) = *new {
-                        println!("I set thhe camera !!!!!!!");
-                        c.borrow_mut().object = o.clone();
-                        c.borrow_mut().object_id = Some(o.read().unwrap().id.clone());
-                        return Change::Scene(sc.id.clone());
-                    }
-                    else {
-                        println!("dame 10");
-                        c.borrow_mut().object_id = None;
-                    }
-                }
-                else {
-                    println!("dame 00");
-                }
-                */
-                s.set_camera(new.clone());
+                rec.set_camera(s.to_id(), new.clone());
                 return Change::Scene(s.to_id());
             },
             OperationData::AddComponent(ref o, ref compo)  => {
@@ -554,20 +541,7 @@ impl<S:SceneT> OperationTrait for Operation<S>
                 return Change::SceneAdd(s.to_id(), parents.clone(), get_ids::<S>(obs));
             },
             OperationData::SetSceneCamera(ref s, ref old, _)   => {
-                /*
-                let sc = s.borrow();
-                if let Some(ref c) = sc.camera {
-                    if let Some(ref o) = *old {
-                        c.borrow_mut().object = o.clone();
-                        c.borrow_mut().object_id = Some(o.read().unwrap().id.clone());
-                        return Change::Scene(sc.id.clone());
-                    }
-                    else {
-                        c.borrow_mut().object_id = None
-                    }
-                }
-                */
-                s.set_camera(old.clone());
+                rec.set_camera(s.to_id(), old.clone());
                 return Change::Scene(s.to_id());
             },
             OperationData::AddComponent(ref o, ref compo)  => {
