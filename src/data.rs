@@ -47,8 +47,8 @@ impl<S:SceneT> operation::OperationReceiver for Data<S> {
 */
 
 use ui;
-impl operation::OperationReceiver for Data<ui::def::Scene> {
-    type Scene = ui::def::Scene;
+impl operation::OperationReceiver for Data<Rc<RefCell<scene::Scene>>> {
+    type Scene = Rc<RefCell<scene::Scene>>;
     fn getP_copy(&mut self, id : <Self::Scene as SceneT>::Id) -> Option<Box<PropertyWrite>>
     {
         for s in self.scenes.values() {

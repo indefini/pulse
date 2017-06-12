@@ -833,22 +833,22 @@ pub struct ControlContainer
 }
 */
 
+//*
 pub type Scene = Rc<RefCell<scene::Scene>>;
 pub type Object = Arc<RwLock<object::Object>>;
 pub type Id = uuid::Uuid;
-
-use dormin;
-//*
-pub type Scene2 = Scene;// dormin::world::World;
-pub type Object2 = Object;//usize;
-pub type Id2 = Id;//usize;
 //*/
-
 /*
+use dormin;
 pub type Scene = dormin::world::World;
 pub type Object = usize;
 pub type Id = usize;
 */
+
+pub type Scene2 = Scene;
+pub type Object2 = Object;
+pub type Id2 = Id;
+
 
 pub struct WidgetContainer
 {
@@ -917,7 +917,7 @@ impl WidgetContainer
                 if name == "name" {
                     if let Some(ref t) = self.tree {
                         if widget_origin != t.id {
-                            t.update_object(&o.read().unwrap().id);
+                            t.update_object(&o.to_id());
                         }
                     };
                 }

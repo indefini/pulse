@@ -318,7 +318,7 @@ pub extern fn selected(
     let container = &mut *wcb.container.write().unwrap();
     let tree_id = container.tree.as_ref().unwrap().id;
 
-    let o : &Arc<RwLock<object::Object>> = unsafe {
+    let o : &ui::def::Object = unsafe {
         mem::transmute(data)
     };
 
@@ -337,7 +337,7 @@ pub extern fn unselected(
     let container = &mut *wcb.container.write().unwrap();
     let tree_id = container.tree.as_ref().unwrap().id;
 
-    let o : &Arc<RwLock<object::Object>> = unsafe {
+    let o : &ui::def::Object = unsafe {
         mem::transmute(data)
     };
 
