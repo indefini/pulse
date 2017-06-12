@@ -1082,7 +1082,9 @@ impl WidgetContainer
                 match self.tree {
                     Some(ref mut t) => {
                         if widget_origin != t.id {
-                            t.add_objects(&objects);
+                            //TODO remove to_option
+                            let p : Vec<Option<Id>> = parents.iter().map(|x| Some(*x)).collect();
+                            t.add_objects(&p, &objects);
                         }
                     },
                     None => {

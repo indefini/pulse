@@ -155,6 +155,12 @@ pub trait SceneT : ToId<<Self as SceneT>::Id> {
         None
     }
 
+    fn get_children(&self, o : Self::Object) -> Vec<Self::Object>
+    {
+        println!("TODO, {}, {}", file!(), line!());
+        Vec::new()
+    }
+
     fn set_position(&self, o : Self::Object, v : vec::Vec3)
     {
         println!("TODO, {}, {}", file!(), line!());
@@ -307,6 +313,11 @@ impl SceneT for Rc<RefCell<scene::Scene>> {
     fn get_parent(&self, o : Self::Object) -> Option<Self::Object>
     {
         o.read().unwrap().parent.clone()
+    }
+
+    fn get_children(&self, o : Self::Object) -> Vec<Self::Object>
+    {
+        o.read().unwrap().children.clone()
     }
 
     fn set_position(&self, o : Self::Object, v : vec::Vec3)
