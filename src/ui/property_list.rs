@@ -3,15 +3,12 @@ use std::collections::{HashMap,HashSet};
 use libc::{c_char, c_void, c_int, c_float};
 use std::str;
 use std::mem;
-//use std::collections::{LinkedList,Deque};
-use std::collections::{LinkedList};
 use std::ptr;
 use std::rc::Rc;
 use std::cell::{Cell, RefCell, BorrowState};
 use std::rc::Weak;
 use std::any::{Any};//, AnyRefExt};
 use std::ffi::CString;
-use std::ffi;
 use std::ffi::CStr;
 use uuid;
 use uuid::Uuid;
@@ -20,7 +17,6 @@ use ui::{Window, ButtonCallback};
 use ui::{ChangedFunc, RegisterChangeFunc, PropertyTreeFunc, PropertyValue, PropertyConfig, PropertyUser,
 PropertyShow, PropertyId, RefMut, Elm_Object_Item, ShouldUpdate, PropertyWidget};
 use ui;
-use dormin::property;
 use operation;
 
 
