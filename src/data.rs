@@ -64,7 +64,11 @@ impl operation::OperationReceiver for Data<Rc<RefCell<scene::Scene>>> {
     }
 
 
-    fn add_objects(&mut self, scene_id : <Self::Scene as SceneT>::Id, parents : &[<Self::Scene as SceneT>::Id], objects : &[<Self::Scene as SceneT>::Object])
+    fn add_objects(
+        &mut self,
+        scene_id : <Self::Scene as SceneT>::Id,
+        parents : &[Option<<Self::Scene as SceneT>::Id>],
+        objects : &[<Self::Scene as SceneT>::Object])
     {
         if let Some(s) = self.get_scene(scene_id) {
             s.borrow_mut().add_objects(parents, objects);
@@ -72,7 +76,11 @@ impl operation::OperationReceiver for Data<Rc<RefCell<scene::Scene>>> {
     }
 
 
-    fn remove_objects(&mut self, scene_id : <Self::Scene as SceneT>::Id, parents : &[<Self::Scene as SceneT>::Id], objects : &[<Self::Scene as SceneT>::Object])
+    fn remove_objects(
+        &mut self,
+        scene_id : <Self::Scene as SceneT>::Id,
+        parents : &[Option<<Self::Scene as SceneT>::Id>],
+        objects : &[<Self::Scene as SceneT>::Object])
     {
         if let Some(s) = self.get_scene(scene_id) {
             s.remove_objects(parents, objects);
@@ -134,12 +142,12 @@ pub trait SceneT : ToId<<Self as SceneT>::Id> {
 
     fn save(&self);
 
-    fn add_objects(&self, parents : &[Self::Id], obs : &[Self::Object])
+    fn add_objects(&self, parents : &[Option<Self::Id>], obs : &[Self::Object])
     {
         println!("TODO, {}, {}", file!(), line!());
     }
 
-    fn remove_objects(&self, parents : &[Self::Id], obs : &[Self::Object])
+    fn remove_objects(&self, parents : &[Option<Self::Id>], obs : &[Self::Object])
     {
         println!("TODO, {}, {}", file!(), line!());
     }
@@ -201,6 +209,11 @@ pub trait SceneT : ToId<<Self as SceneT>::Id> {
         format!("TODO {}, {}", file!(), line!())
     }
 
+    fn get_comp_data_value<T:Any+Clone>(&self, o : Self::Object) -> Option<T>
+    {
+        println!("TODO, {}, {}", file!(), line!());
+        None
+    }
 }
 
 impl SceneT for Rc<RefCell<scene::Scene>> {
@@ -291,12 +304,12 @@ impl SceneT for Rc<RefCell<scene::Scene>> {
         v
     }
 
-    fn add_objects(&self, parents : &[Self::Id], obs : &[Self::Object])
+    fn add_objects(&self, parents : &[Option<Self::Id>], obs : &[Self::Object])
     {
         self.borrow_mut().add_objects(parents, obs);
     }
 
-    fn remove_objects(&self, parents : &[Self::Id], obs : &[Self::Object])
+    fn remove_objects(&self, parents : &[Option<Self::Id>], obs : &[Self::Object])
     {
         self.borrow_mut().remove_objects(parents, obs);
     }
@@ -360,6 +373,11 @@ impl SceneT for Rc<RefCell<scene::Scene>> {
     fn get_object_name(&self, o : Self::Object) -> String
     {
         o.read().unwrap().name.clone()
+    }
+
+    fn get_comp_data_value<T:Any+Clone>(&self, o : Self::Object) -> Option<T>
+    {
+        o.read().unwrap().get_comp_data_value()
     }
 }
 

@@ -921,10 +921,10 @@ impl WidgetContainer
                         }
                     };
                 }
-                //else if name.starts_with("object/comp_data/MeshRender")
-                //else if name.contains("MeshRender")
-                //else if must_update(&*o.read().unwrap(), name)
-                let ups = must_update(&*o.read().unwrap(), name);
+
+                //TODO remove
+                /*
+                let ups = must_update(&o, name);
                 for up in &ups {
                     if let ui::ShouldUpdate::Mesh = *up {
                         let mut ob = o.write().unwrap();
@@ -934,11 +934,11 @@ impl WidgetContainer
                         }
                     }
                 }
+                */
 
                 if let Some(ref p) = self.property.widget {
-                    //p.update_object(&*o.read().unwrap(), s);
                     if widget_origin != p.id {
-                        p.update_object_property(&*o.read().unwrap(), name);
+                        p.update_object_property(&o, name);
                     }
                 }
             },
@@ -963,14 +963,12 @@ impl WidgetContainer
                     }
 
                     if let Some(ref o) = sel {
-                        let ob = o.read().unwrap();
-
                         if *id == o.to_id()  {
                             if let Some(ref mut p) = self.property.widget {
                                 if widget_origin != p.id {
                                     println!("hangle change, calling update objects");
                                     //p.update_object(&*ob, "");
-                                    p.update_object_property(&*ob, name);
+                                    p.update_object_property(o, name);
                                 }
                             }
                         }
@@ -985,8 +983,6 @@ impl WidgetContainer
 
                     check_mesh(name, self, *id);
                     if let Some(ref o) = sel {
-                        let ob = o.read().unwrap();
-
                         if *id == o.to_id()  {
                             if let Some(ref mut p) = self.property.widget {
                                 //if widget_origin != p.id 
@@ -994,7 +990,7 @@ impl WidgetContainer
                                     println!("update object property, this needs more info than just update the value, must indicate it is a vec change.
                                              so we dont remove and add all children again, and so the scroller doesnt make big jump");
                                     //p.update_object(&*ob, "");
-                                    p.vec_add(&*ob, name, index);
+                                    p.vec_add(o, name, index);
                                 }
                             }
                         }
@@ -1009,51 +1005,44 @@ impl WidgetContainer
 
                     check_mesh(name, self, *id);
                     if let Some(ref o) = sel {
-                        let ob = o.read().unwrap();
-
-                        if *id == ob.id  {
+                        if *id == o.to_id()  {
                             if let Some(ref mut p) = self.property.widget {
                                 if widget_origin != p.id {
                                     println!("update object property, this needs more info than just update the value, must indicate it is a vec change.
                                              so we dont remove and add all children again, and so the scroller doesnt make big jump");
-                                    p.vec_del(&*ob, name, index);
+                                    p.vec_del(o, name, index);
                                 }
                             }
                         }
                     }
                 }
             },
-            operation::Change::ComponentChanged(uuid, ref comp_name) => {
+            operation::Change::ComponentChanged(id, ref comp_name) => {
                 println!("comp changed : {} ", comp_name);
                 let sel = self.get_selected_object();
                 if let Some(ref o) = sel {
-                    let ob = o.read().unwrap();
-                    if uuid == ob.id  {
+                    if id == o.to_id()  {
                         if let Some(ref mut p) = self.property.widget {
                             if widget_origin != p.id {
-                                p.update_object(&*ob, "");
+                                p.update_object(o, "");
                             }
                         }
                     }
                 }
 
                 if comp_name.starts_with("MeshRender") {
-                    let scene = self.get_scene();
-                    let oob = if let Some(ref sc) = scene {
-                        let s = sc.borrow();
-                        s.find_object_by_id(&uuid)
-                    } else {
-                        None
-                    };
+                    if let Some(ref scene) = self.get_scene() {
+                        let oob = scene.find_object_by_id(id);
 
-                    if let Some(o) = oob {
-                            let mut ob = o.write().unwrap();
+                        if let Some(o) = oob {
                             println!("please update mesh");
-                            let omr = ob.get_comp_data_value::<component::mesh_render::MeshRender>();
+                            let omr = scene.get_comp_data_value::<component::mesh_render::MeshRender>(o.clone());
                             if let Some(ref mr) = omr {
+                                let mut ob = o.write().unwrap();
                                 ob.mesh_render = Some(mr.clone());
                             }
-                    }
+                        }
+                    };
                 }
             },
             operation::Change::SceneRemove(ref id, ref parents, ref obs) => {
@@ -1082,10 +1071,11 @@ impl WidgetContainer
                 match self.tree {
                     Some(ref mut t) => {
                         if widget_origin != t.id {
-                            //TODO remove to_option
-                            let p : Vec<Option<Id>> = parents.iter().map(|x| Some(*x)).collect();
+                            //TODO remove Some
+                            //let p : Vec<Option<Id>> = parents.iter().map(|x| Some(*x)).collect();
                             let n : Vec<String> = objects.iter().map(|o| scene.get_object_name(o.clone())).collect();
-                            t.add_objects(&p, &objects, n);
+                            let has_children : Vec<bool> = objects.iter().map(|o| !scene.get_children(o.clone()).is_empty()).collect();
+                            t.add_objects(parents, &objects, n, &has_children);
                         }
                     },
                     None => {
@@ -1613,9 +1603,7 @@ pub fn add_empty(container : &mut WidgetContainer, view_id : Uuid)
     let mut vec = Vec::new();
     vec.push(ao.clone());
 
-    let mut parent = Vec::new();
-    parent.push(uuid::Uuid::nil());
-
+    let parent = vec![None];
 
     let mut ops = Vec::new();
     let vs = Vec::new();
@@ -1672,6 +1660,7 @@ pub extern fn select_list(data : *const c_void, name : *const c_char)
     container.set_scene(scene);
 }
 
+//TODO remove?
 fn must_update(p : &ui::PropertyShow, path : &str) -> Vec<ui::ShouldUpdate>
 {
     let vs: Vec<&str> = path.split('/').collect();

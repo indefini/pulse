@@ -28,12 +28,20 @@ pub trait OperationReceiver {
         None
     }
 
-    fn add_objects(&mut self, scene_id : <Self::Scene as SceneT>::Id, parents : &[<Self::Scene as SceneT>::Id], objects : &[<Self::Scene as SceneT>::Object])
+    fn add_objects(
+        &mut self,
+        scene_id : <Self::Scene as SceneT>::Id,
+        parents : &[Option<<Self::Scene as SceneT>::Id>],
+        objects : &[<Self::Scene as SceneT>::Object])
     {
         println!("TODO {}, {}", file!(), line!());
     }
 
-    fn remove_objects(&mut self, scene_id : <Self::Scene as SceneT>::Id, parents : &[<Self::Scene as SceneT>::Id], objects : &[<Self::Scene as SceneT>::Object])
+    fn remove_objects(
+        &mut self,
+        scene_id : <Self::Scene as SceneT>::Id,
+        parents : &[Option<<Self::Scene as SceneT>::Id>],
+        objects : &[<Self::Scene as SceneT>::Object])
     {
         println!("TODO {}, {}", file!(), line!());
     }
@@ -58,8 +66,8 @@ pub enum OperationData<Scene : SceneT>
     VecAdd(usize),
     VecDel(usize, Box<Any>),
     Vector(Vec<Box<Any>>, Vec<Box<Any>>),
-    SceneAddObjects(Scene::Id, Vec<Scene::Id>, Vec<Scene::Object>), //scene, parent, objects
-    SceneRemoveObjects(Scene::Id, Vec<Scene::Id>, Vec<Scene::Object>),
+    SceneAddObjects(Scene::Id, Vec<Option<Scene::Id>>, Vec<Scene::Object>), //scene, parent, objects
+    SceneRemoveObjects(Scene::Id, Vec<Option<Scene::Id>>, Vec<Scene::Object>),
     SetSceneCamera(Scene::Id, Option<Scene::Object>, Option<Scene::Object>),
     //AddComponent(uuid::Uuid, uuid::Uuid) //object id, component id?
     AddComponent(Scene::Object, Box<CompData>),
@@ -286,8 +294,8 @@ pub enum Change<Id>
     Property(RefMut<PropertyUser>, String),
     Objects(String, Vec<Id>),
     DirectChange(String),
-    SceneAdd(Id, Vec<Id>, Vec<Id>),
-    SceneRemove(Id, Vec<Id>, Vec<Id>),
+    SceneAdd(Id, Vec<Option<Id>>, Vec<Id>),
+    SceneRemove(Id, Vec<Option<Id>>, Vec<Id>),
 
     //check
     Scene(Id),

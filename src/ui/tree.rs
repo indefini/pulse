@@ -8,7 +8,7 @@ use uuid::Uuid;
 use ui::Window;
 use ui::{RefMut,PropertyUser};
 use ui;
-use data::{ToId, SceneT};
+use data::{ToId, SceneT, DataT};
 
 #[repr(C)]
 pub struct Elm_Object_Item;
@@ -119,8 +119,8 @@ impl Tree
         for o in scene.get_objects() {
             let parent_id = scene.get_parent(o.clone()).map(|x| x.to_id());
             let name = scene.get_object_name(o.clone());
-            //TODO chris
-            self._add_object(scene.get_parent(o.clone()).map(|x| x.to_id()), o, name, false);
+            let has_children = !scene.get_children(o.clone()).is_empty();
+            self._add_object(scene.get_parent(o.clone()).map(|x| x.to_id()), o, name, has_children);
         }
 
         self.scene = Some(scene.to_id());
@@ -170,15 +170,15 @@ impl Tree
         &mut self,
         parent : Option<ui::def::Id>,
         object : ui::def::Object,
-        name : String, 
+        name : String,
+        has_children : bool
         )
     {
         if self.objects.contains_key(&object.to_id()) {
             return;
         }
 
-        //TODO chris
-        self._add_object(parent, &object, name, false);
+        self._add_object(parent, &object, name, has_children);
     }
 
     pub fn add_objects(
@@ -186,10 +186,11 @@ impl Tree
         parents : &[Option<ui::def::Id>],
         objects : &[ui::def::Object],
         names : Vec<String>,
+        has_children : &[bool],
         )
     {
-        for ((o,p),n) in objects.iter().zip(parents.iter()).zip(names.into_iter()) {
-            self.add_object(*p, o.clone(), n);
+        for (((o,p),n),child) in objects.iter().zip(parents.iter()).zip(names.into_iter()).zip(has_children.iter()) {
+            self.add_object(*p, o.clone(), n, *child);
         }
     }
 
@@ -286,11 +287,8 @@ pub extern fn can_expand(data : *const c_void) -> bool
 {
     let item_data : &ItemData = unsafe {&* (data as *const ItemData)};
 
-    //println!("can expand :{}", o.read().unwrap().children.is_empty());
-    //return !o.read().unwrap().children.is_empty();
-    
     println!("TODO can_expand, {}, {}", file!(), line!());
-    false
+    item_data.has_children
 }
 
 pub extern fn expand(
@@ -303,8 +301,6 @@ pub extern fn expand(
     let wcb : & ui::WidgetCbData = unsafe {&*(widget_cb_data as *const ui::WidgetCbData)};
     let container = &mut *wcb.container.write().unwrap();
     let t : &mut Tree = &mut *container.tree.as_mut().unwrap();
-    use uuid;
-    use data::DataT;
 
     let scene : &ui::def::Scene = if let Some(s_id) = t.scene {
         if let Some(s) = container.data.get_scene(s_id) {
