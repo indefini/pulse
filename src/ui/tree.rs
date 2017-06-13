@@ -60,10 +60,19 @@ extern {
 
 struct ItemData
 {
-    //id : ui::def::Id,
+    object : ui::def::Object,
     name : String,
-    has_children : bool
+}
 
+impl ItemData
+{
+    fn new(o : ui::def::Object, name : String) -> ItemData
+    {
+        ItemData {
+            object : o,
+            name : name
+        }
+    }
 }
 
 pub struct Tree
@@ -108,13 +117,15 @@ impl Tree
         self.objects.clear();
 
         for o in scene.get_objects() {
-            self._add_object(scene.get_parent(o.clone()).map(|x| x.to_id()), o);
+            let parent_id = scene.get_parent(o.clone()).map(|x| x.to_id());
+            let name = scene.get_object_name(o.clone());
+            self._add_object(scene.get_parent(o.clone()).map(|x| x.to_id()), o, name);
         }
 
         self.scene = Some(scene.to_id());
     }
 
-    fn _add_object(&mut self, parent : Option<ui::def::Id>, o : &ui::def::Object)
+    fn _add_object(&mut self, parent : Option<ui::def::Id>, o : &ui::def::Object, name : String)
     {
         let eoi = match parent {
             Some(ref p) =>  {
@@ -123,7 +134,7 @@ impl Tree
                         unsafe { 
                             tree_object_add(
                                 self.jk_tree,
-                                mem::transmute(box o.clone()),
+                                Box::into_raw(box ItemData::new(o.clone(), name)) as *const c_void,
                                 *item)
                         }
                     },
@@ -138,7 +149,7 @@ impl Tree
                 unsafe {
                     tree_object_add(
                         self.jk_tree,
-                        mem::transmute(box o.clone()),
+                        Box::into_raw(box ItemData::new(o.clone(), name)) as *const c_void,
                         ptr::null())
                 }
             }
@@ -150,19 +161,29 @@ impl Tree
 
     }
 
-    pub fn add_object(&mut self, parent : Option<ui::def::Id>, object : ui::def::Object)
+    pub fn add_object(
+        &mut self,
+        parent : Option<ui::def::Id>,
+        object : ui::def::Object,
+        name : String
+        )
     {
         if self.objects.contains_key(&object.to_id()) {
             return;
         }
 
-        self._add_object(parent, &object);
+        self._add_object(parent, &object, name);
     }
 
-    pub fn add_objects(&mut self, parents : &[Option<ui::def::Id>], objects : &[ui::def::Object])
+    pub fn add_objects(
+        &mut self,
+        parents : &[Option<ui::def::Id>],
+        objects : &[ui::def::Object],
+        names : Vec<String>,
+        )
     {
-        for (o,p) in objects.iter().zip(parents.iter()) {
-            self.add_object(*p, o.clone());
+        for ((o,p),n) in objects.iter().zip(parents.iter()).zip(names.into_iter()) {
+            self.add_object(*p, o.clone(), n);
         }
     }
 
@@ -242,31 +263,28 @@ impl Tree
 
 pub extern fn name_get(data : *const c_void) -> *const c_char
 {
-    let o : &ui::def::Object = unsafe {
-        mem::transmute(data)
-    };
+    let item_data : &ItemData = unsafe {&* (data as *const ItemData)};
 
     //println!("name get {:?}", o);
-    let cs = CString::new(o.read().unwrap().name.as_bytes()).unwrap();
+    let cs = CString::new(item_data.name.as_bytes()).unwrap();
     cs.as_ptr()
 }
 
 pub extern fn item_selected(data : *const c_void) -> ()
 {
-    let o : &ui::def::Object = unsafe {
-        mem::transmute(data)
-    };
-    println!("item_selected callback ! {}, but this function does nothing for now ", o.read().unwrap().name);
+    let item_data : &ItemData = unsafe {&* (data as *const ItemData)};
+    println!("item_selected callback ! {}, but this function does nothing for now ", item_data.name);
 }
 
 pub extern fn can_expand(data : *const c_void) -> bool
 {
-    let o : &ui::def::Object = unsafe {
-        mem::transmute(data)
-    };
+    let item_data : &ItemData = unsafe {&* (data as *const ItemData)};
 
-    println!("can expand :{}", o.read().unwrap().children.is_empty());
-    return !o.read().unwrap().children.is_empty();
+    //println!("can expand :{}", o.read().unwrap().children.is_empty());
+    //return !o.read().unwrap().children.is_empty();
+    
+    println!("TODO can_expand, {}, {}", file!(), line!());
+    false
 }
 
 pub extern fn expand(
@@ -274,9 +292,7 @@ pub extern fn expand(
     data : *const c_void,
     parent : *const Elm_Object_Item) -> ()
 {
-    let o : &ui::def::Object = unsafe {
-        mem::transmute(data)
-    };
+    let item_data : &ItemData = unsafe {&* (data as *const ItemData)};
 
     let wcb : & ui::WidgetCbData = unsafe {&*(widget_cb_data as *const ui::WidgetCbData)};
     let container = &mut *wcb.container.write().unwrap();
@@ -296,15 +312,19 @@ pub extern fn expand(
         return;
     };
 
-    println!("expanding ! {} ", o.read().unwrap().name);
+    println!("expanding ! {} ", item_data.name);
     println!("expanding ! tree name {} ", t.name);
 
     //TODO
-    for c in scene.get_children(o.clone()) {
-        println!("expanding ! with child {} ", (*c).read().unwrap().name);
+    for c in scene.get_children(item_data.object.clone()) {
+        //println!("expanding ! with child {} ", (*c).read().unwrap().name);
         unsafe {
             let cid = c.to_id();
-            let eoi = tree_object_add(t.jk_tree, mem::transmute(c), parent);
+            let name = scene.get_object_name(c.clone());
+            let eoi = tree_object_add(
+                t.jk_tree,
+                Box::into_raw(box ItemData::new(c.clone(), name)) as *const c_void,
+                parent);
             t.objects.insert(cid, eoi);
         }
     }
@@ -319,14 +339,11 @@ pub extern fn selected(
     let container = &mut *wcb.container.write().unwrap();
     let tree_id = container.tree.as_ref().unwrap().id;
 
-    let o : &ui::def::Object = unsafe {
-        mem::transmute(data)
-    };
-
+    let item_data : &ItemData = unsafe {&* (data as *const ItemData)};
 
     println!("selected callback, TODO do the following in widget container 'handle' ");
 
-    container.handle_event(ui::Event::SelectObject(o.clone()), tree_id);
+    container.handle_event(ui::Event::SelectObject(item_data.object.clone()), tree_id);
 }
 
 pub extern fn unselected(
@@ -338,12 +355,10 @@ pub extern fn unselected(
     let container = &mut *wcb.container.write().unwrap();
     let tree_id = container.tree.as_ref().unwrap().id;
 
-    let o : &ui::def::Object = unsafe {
-        mem::transmute(data)
-    };
+    let item_data : &ItemData = unsafe {&* (data as *const ItemData)};
 
     println!("TODO,unselect do the following in widget container 'handle'");
-    container.handle_event(ui::Event::UnselectObject(o.clone()), tree_id);
+    container.handle_event(ui::Event::UnselectObject(item_data.object.clone()), tree_id);
 }
 
 impl ui::Widget for Tree

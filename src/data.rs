@@ -194,6 +194,13 @@ pub trait SceneT : ToId<<Self as SceneT>::Id> {
         transform::Orientation::default()
     }
 
+    //TODO use &str instead of string?
+    fn get_object_name(&self, o : Self::Object) -> String
+    {
+        //"TODO name, yo".to_owned()
+        format!("TODO {}, {}", file!(), line!())
+    }
+
 }
 
 impl SceneT for Rc<RefCell<scene::Scene>> {
@@ -348,6 +355,11 @@ impl SceneT for Rc<RefCell<scene::Scene>> {
     fn get_orientation(&self, o : Self::Object) -> transform::Orientation
     {
         o.write().unwrap().orientation
+    }
+
+    fn get_object_name(&self, o : Self::Object) -> String
+    {
+        o.read().unwrap().name.clone()
     }
 }
 

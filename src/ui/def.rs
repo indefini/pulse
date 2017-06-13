@@ -1084,7 +1084,8 @@ impl WidgetContainer
                         if widget_origin != t.id {
                             //TODO remove to_option
                             let p : Vec<Option<Id>> = parents.iter().map(|x| Some(*x)).collect();
-                            t.add_objects(&p, &objects);
+                            let n : Vec<String> = objects.iter().map(|o| scene.get_object_name(o.clone())).collect();
+                            t.add_objects(&p, &objects, n);
                         }
                     },
                     None => {
