@@ -1,12 +1,10 @@
 use std::collections::HashMap;
 use libc::{c_char, c_void, c_int};
-use std::mem;
 use std::collections::{LinkedList};//,Deque};
 use std::ptr;
 use std::ffi::CString;
 use uuid::Uuid;
 
-use dormin::scene;
 use ui::Window;
 use ui::{RefMut,PropertyUser};
 use ui;
