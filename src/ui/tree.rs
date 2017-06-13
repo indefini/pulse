@@ -60,15 +60,17 @@ struct ItemData
 {
     object : ui::def::Object,
     name : String,
+    has_children : bool
 }
 
 impl ItemData
 {
-    fn new(o : ui::def::Object, name : String) -> ItemData
+    fn new(o : ui::def::Object, name : String, has_children : bool) -> ItemData
     {
         ItemData {
             object : o,
-            name : name
+            name : name,
+            has_children : has_children
         }
     }
 }
@@ -117,22 +119,25 @@ impl Tree
         for o in scene.get_objects() {
             let parent_id = scene.get_parent(o.clone()).map(|x| x.to_id());
             let name = scene.get_object_name(o.clone());
-            self._add_object(scene.get_parent(o.clone()).map(|x| x.to_id()), o, name);
+            //TODO chris
+            self._add_object(scene.get_parent(o.clone()).map(|x| x.to_id()), o, name, false);
         }
 
         self.scene = Some(scene.to_id());
     }
 
-    fn _add_object(&mut self, parent : Option<ui::def::Id>, o : &ui::def::Object, name : String)
+    fn _add_object(&mut self, parent : Option<ui::def::Id>, o : &ui::def::Object, name : String, has_children : bool)
     {
         let eoi = match parent {
             Some(ref p) =>  {
                 match self.objects.get(p) {
                     Some(item) => {
+                        let item_data = 
+                            ItemData::new(o.clone(), name, has_children);
                         unsafe { 
                             tree_object_add(
                                 self.jk_tree,
-                                Box::into_raw(box ItemData::new(o.clone(), name)) as *const c_void,
+                                Box::into_raw(box item_data) as *const c_void,
                                 *item)
                         }
                     },
@@ -144,10 +149,12 @@ impl Tree
 
             },
             None => {
+                let item_data = 
+                    ItemData::new(o.clone(), name, has_children);
                 unsafe {
                     tree_object_add(
                         self.jk_tree,
-                        Box::into_raw(box ItemData::new(o.clone(), name)) as *const c_void,
+                        Box::into_raw(box item_data) as *const c_void,
                         ptr::null())
                 }
             }
@@ -163,14 +170,15 @@ impl Tree
         &mut self,
         parent : Option<ui::def::Id>,
         object : ui::def::Object,
-        name : String
+        name : String, 
         )
     {
         if self.objects.contains_key(&object.to_id()) {
             return;
         }
 
-        self._add_object(parent, &object, name);
+        //TODO chris
+        self._add_object(parent, &object, name, false);
     }
 
     pub fn add_objects(
@@ -319,9 +327,10 @@ pub extern fn expand(
         unsafe {
             let cid = c.to_id();
             let name = scene.get_object_name(c.clone());
+            let has_children = !scene.get_children(c.clone()).is_empty();
             let eoi = tree_object_add(
                 t.jk_tree,
-                Box::into_raw(box ItemData::new(c.clone(), name)) as *const c_void,
+                Box::into_raw(box ItemData::new(c.clone(), name, has_children)) as *const c_void,
                 parent);
             t.objects.insert(cid, eoi);
         }
