@@ -16,26 +16,12 @@ use std::ffi::CStr;
 use uuid;
 use uuid::Uuid;
 
-use dormin::scene;
-use dormin::camera;
-use dormin::object;
 use ui::{Window, ButtonCallback};
 use ui::{ChangedFunc, RegisterChangeFunc, PropertyTreeFunc, PropertyValue, PropertyConfig, PropertyUser,
 PropertyShow, PropertyId, RefMut, Elm_Object_Item, ShouldUpdate, PropertyWidget};
 use ui;
 use dormin::property;
 use operation;
-use control::WidgetUpdate;
-use dormin::vec;
-use dormin::transform;
-use dormin::resource;
-use dormin::mesh;
-use dormin::material;
-use dormin::property::PropertyGet;
-use dormin::component;
-use dormin::component::CompData;
-use dormin::armature;
-use dormin::transform::Orientation;
 
 
 use util::Arw;
