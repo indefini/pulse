@@ -255,6 +255,7 @@ impl<S:SceneT+Clone+'static> State<S> {
     pub fn request_operation_property_old_new_dontcheckequal(
         &mut self,
         property : ui::RefMut<ui::PropertyUser>,
+        id : S::Id,
         name : &str,
         old : Box<Any>,
         new : Box<Any>,
@@ -263,6 +264,7 @@ impl<S:SceneT+Clone+'static> State<S> {
     {
         let op : operation::OldNew<S> = operation::OldNew::new(
             property,
+            id,
             String::from(name),
             old,
             new
@@ -275,6 +277,7 @@ impl<S:SceneT+Clone+'static> State<S> {
     pub fn request_operation_property_old_new<T : Any+PartialEq>(
         &mut self,
         property : ui::RefMut<ui::PropertyUser>,
+        id : S::Id,
         name : &str,
         old : Box<T>,
         new : Box<T>,
@@ -285,6 +288,8 @@ impl<S:SceneT+Clone+'static> State<S> {
             return operation::Change::None;
         }
 
+        {
+        // DEBUG, can erase
         match (&*old as &Any).downcast_ref::<f64>() {
             Some(v) => println!("****************     {}",*v),
             None => {println!("cannot downcast");}
@@ -294,9 +299,11 @@ impl<S:SceneT+Clone+'static> State<S> {
             Some(v) => println!("****************  nnnnnew    {}",*v),
             None => {println!("cannot downcast");}
         }
+        }
 
         let op : operation::OldNew<S> = operation::OldNew::new(
             property,
+            id,
             String::from(name),
             old,
             new

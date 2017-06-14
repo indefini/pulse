@@ -112,6 +112,7 @@ pub struct OperationNew
 pub struct OldNew<S:SceneT>
 {
     pub object : RefMut<PropertyUser>,
+    pub object_id : S::Id,
     pub name : String,
     pub old : Box<Any>,
     pub new : Box<Any>,
@@ -122,6 +123,7 @@ impl<S:SceneT> OldNew<S>
 {
     pub fn new(
         object : RefMut<PropertyUser>,
+        object_id : S::Id,
         name : String,
         old : Box<Any>,
         new : Box<Any>
@@ -129,6 +131,7 @@ impl<S:SceneT> OldNew<S>
     {
         OldNew{
             object : object,
+            object_id : object_id,
             name : name,
             old : old,
             new : new,
@@ -148,6 +151,9 @@ impl<S:SceneT> OperationTrait for OldNew<S>
         println!("NEW TEST operation set property hier {:?}", self.name);
         match self.object {
             RefMut::Arc(ref a) => {
+                //let id = a.write().unwrap().get_id();
+                //let p = rec.getP_copy(self.object_id).unwrap();
+                //p.test_set_property_hier(self.name.as_ref(), &*self.new);
                 a.write().unwrap().test_set_property_hier(self.name.as_ref(), &*self.new);
             },
             RefMut::Cell(ref c) => { 

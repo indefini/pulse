@@ -433,6 +433,7 @@ fn changed_set<T : Any+Clone+PartialEq>(
             if let Some(ref cur) = p.get_current() {
                 container.state.request_operation_property_old_new(
                     (*cur).clone(),
+                    Default::default(),
                     path,
                     box oldd.clone(),
                     box new.clone(),
@@ -509,6 +510,7 @@ fn changed_enum<T : Any+Clone+PartialEq>(
             if let Some(old) = option {
                 container.state.request_operation_property_old_new_dontcheckequal(
                     (*cur).clone(),
+                    Default::default(),
                     path,
                     old,
                     box new.clone(),

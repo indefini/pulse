@@ -291,6 +291,8 @@ pub trait PropertyWidget : Widget {
     fn get_current(&self) -> Option<RefMut<PropertyUser>>;
     fn set_current(&self, p : RefMut<PropertyUser>, title : &str);
 
+    //fn get_current_id(&self) -> Option<ui::def::Id>;
+
     fn get_property(&self, path : &str) -> Option<*const PropertyValue> 
     {
         println!("PropertyWidget, 'get_property' not implemented no return None");
