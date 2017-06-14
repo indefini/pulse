@@ -71,6 +71,7 @@ pub struct PropertyBox
     pub jk_property : *const JkPropertyBox,
     pub id : uuid::Uuid,
     current : RefCell<Option<RefMut<PropertyUser>>>,
+    current_id : Cell<Option<ui::def::Id>>,
     nodes : RefCell<NodeChildren>,
 }
 
@@ -88,18 +89,30 @@ impl PropertyBox
                     )},
             id : uuid::Uuid::new_v4(),
             current : RefCell::new(None),
+            current_id : Cell::new(None),
             nodes : RefCell::new(NodeChildren::None)
         }
     }
 
-    pub fn set_prop_cell(&self, p : Rc<RefCell<PropertyUser>>, title : &str)
+    pub fn set_prop_cell(
+        &self,
+        p : Rc<RefCell<PropertyUser>>,
+        pid : ui::def::Id,
+        title : &str,
+        )
     {
+        self.current_id.set(Some(pid));
         *self.current.borrow_mut() = Some(RefMut::Cell(p.clone()));
         self._set_prop(&*p.borrow().as_show(), title);
     }
 
-    pub fn set_prop_arc(&self, p : Arc<RwLock<PropertyUser>>, title : &str)
+    pub fn set_prop_arc(
+        &self,
+        p : Arc<RwLock<PropertyUser>>,
+        pid : ui::def::Id,
+        title : &str)
     {
+        self.current_id.set(Some(pid));
         *self.current.borrow_mut() = Some(RefMut::Arc(p.clone()));
         self._set_prop(&*p.read().unwrap().as_show(), title);
     }

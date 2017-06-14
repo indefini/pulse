@@ -583,8 +583,6 @@ pub trait ToId<I : Clone> {
     fn to_id(&self) -> I;
 }
 
-pub type ToIdUuid = ToId<uuid::Uuid>;
-
 pub trait ToId2 {
     type Id;
     fn to_id(&self) -> Self::Id;

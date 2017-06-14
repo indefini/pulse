@@ -1246,7 +1246,7 @@ impl WidgetContainer
                             if widget_origin != p.id {
                                 //p.set_object(&*o.read().unwrap());
                                 let pu = &*o.read().unwrap() as &PropertyUser;
-                                p.set_prop_arc(o.clone(), "object");
+                                p.set_prop_arc(o.clone(), o.to_id(), "object");
                                 self.visible_prop.insert(
                                         pu.get_id(), Rc::downgrade(p) as Weak<Widget>);
                             }
