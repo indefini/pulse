@@ -249,6 +249,14 @@ pub trait PropertyId
     fn get_id(&self) -> uuid::Uuid;
 }
 
+impl<T: PropertyId> PropertyId for Arc<RwLock<T>>
+{
+    fn get_id(&self) -> uuid::Uuid
+    {
+        self.read().unwrap().get_id()
+    }
+}
+
 pub enum RefMut<T:?Sized> {
     Arc(Arc<RwLock<T>>),
     Cell(Rc<RefCell<T>>),

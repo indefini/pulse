@@ -145,7 +145,6 @@ impl<S:SceneT> OperationTrait for OldNew<S>
 {
     type Id = S::Id;
     type Scene = S;
-    //fn apply(&self ) -> Change
     fn apply(&self, rec : &mut OperationReceiver<Scene=S>) -> Change<Self::Id>
     {
         println!("NEW TEST operation set property hier {:?}", self.name);
@@ -154,39 +153,16 @@ impl<S:SceneT> OperationTrait for OldNew<S>
             p.test_set_property_hier(self.name.as_ref(), &*self.new);
         }
 
-        /*
-        match self.object {
-            RefMut::Arc(ref a) => {
-                a.write().unwrap().test_set_property_hier(self.name.as_ref(), &*self.new);
-            },
-            RefMut::Cell(ref c) => { 
-                c.borrow_mut().test_set_property_hier(self.name.as_ref(), &*self.new);
-            }
-        }
-        */
-
-        Change::Property(self.object.clone(), self.name.clone())
+        Change::PropertyId(self.object_id.clone(), self.name.clone())
     }
 
-    //fn undo(&self) -> Change
     fn undo(&self, rec : &mut OperationReceiver<Scene=S>) -> Change<Self::Id>
     {
         if let Some(ref mut p) = rec.getP_copy(self.object_id.clone()) {
             p.test_set_property_hier(self.name.as_ref(), &*self.old);
         }
 
-        /*
-        match self.object {
-            RefMut::Arc(ref a) => {
-                a.write().unwrap().test_set_property_hier(self.name.as_ref(), &*self.old);
-            },
-            RefMut::Cell(ref c) => { 
-                c.borrow_mut().test_set_property_hier(self.name.as_ref(), &*self.old);
-            }
-        }
-        */
-
-        Change::Property(self.object.clone(), self.name.clone())
+        Change::PropertyId(self.object_id.clone(), self.name.clone())
     }
 }
 
@@ -308,6 +284,7 @@ pub enum Change<Id>
 {
     None,
     Property(RefMut<PropertyUser>, String),
+    PropertyId(Id, String),
     Objects(String, Vec<Id>),
     DirectChange(String),
     SceneAdd(Id, Vec<Option<Id>>, Vec<Id>),

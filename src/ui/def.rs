@@ -1364,12 +1364,23 @@ impl WidgetContainer
     {
         let pid = p.get_id();
 
+        println!("handle change new 00 ");
+
         if let Some(w) = self.visible_prop.get(&pid) {
+        println!("handle change new 11 ");
 
             if let Some(w) = w.upgrade() {
                 if w.get_id() == widget_id {
                     println!("same id as the widget so get out (but right now the continue is commented)");
                     //continue;
+                }
+
+        println!("handle change new 22 ");
+
+                if let Some(ppp) = self.data.get_property_user_copy(pid)
+                {
+        println!("handle change new 33 ");
+                    //w.handle_change_prop(&*ppp, name);
                 }
 
                 w.handle_change_prop(p, name);

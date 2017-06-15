@@ -46,7 +46,6 @@ impl<S:SceneT> operation::OperationReceiver for Data<S> {
 }
 */
 
-use ui;
 impl operation::OperationReceiver for Data<Rc<RefCell<scene::Scene>>> {
     type Scene = Rc<RefCell<scene::Scene>>;
     fn getP_copy(&mut self, id : <Self::Scene as SceneT>::Id) -> Option<Box<PropertyWrite>>
@@ -62,7 +61,6 @@ impl operation::OperationReceiver for Data<Rc<RefCell<scene::Scene>>> {
 
         None
     }
-
 
     fn add_objects(
         &mut self,
@@ -456,6 +454,7 @@ impl<S:SceneT> DataT<S> for Data<S>
 
         None
     }
+
 }
 
 impl<S:SceneT> Data<S> {
@@ -467,6 +466,24 @@ impl<S:SceneT> Data<S> {
 
             worlds : HashMap::new(),
         }
+    }
+}
+
+use ui::PropertyUser;
+impl Data<Rc<RefCell<scene::Scene>>>
+{
+    pub fn get_property_user_copy(&self, id : uuid::Uuid) -> Option<Box<PropertyUser>>
+    {
+        for s in self.scenes.values() {
+            for o in &s.borrow().objects {
+                if o.to_id() == id {
+                    return Some(box o.clone());
+                }
+            }
+
+        }
+
+        None
     }
 }
 
