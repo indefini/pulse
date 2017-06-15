@@ -351,6 +351,11 @@ impl PropertyWidget for PropertyBox
         }
     }
 
+    fn get_current_id(&self) -> Option<ui::def::Id>
+    {
+        self.current_id.get()
+    }
+
     fn set_current(&self, p : RefMut<PropertyUser>, title : &str)
     {
         *self.current.borrow_mut() = Some(p.clone());

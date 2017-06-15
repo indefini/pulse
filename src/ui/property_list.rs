@@ -934,6 +934,12 @@ impl PropertyWidget for PropertyList
         }
     }
 
+    fn get_current_id(&self) -> Option<ui::def::Id>
+    {
+        println!("TODO {}, {}", file!(), line!());
+        None
+    }
+
     fn set_current(&self, p : RefMut<PropertyUser>, title : &str)
     {
         let mut cur = self.current.borrow_mut();// = Some(RefMut::Cell(p));

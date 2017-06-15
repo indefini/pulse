@@ -149,17 +149,21 @@ impl<S:SceneT> OperationTrait for OldNew<S>
     fn apply(&self, rec : &mut OperationReceiver<Scene=S>) -> Change<Self::Id>
     {
         println!("NEW TEST operation set property hier {:?}", self.name);
+
+        if let Some(ref mut p) = rec.getP_copy(self.object_id.clone()) {
+            p.test_set_property_hier(self.name.as_ref(), &*self.new);
+        }
+
+        /*
         match self.object {
             RefMut::Arc(ref a) => {
-                //let id = a.write().unwrap().get_id();
-                //let p = rec.getP_copy(self.object_id).unwrap();
-                //p.test_set_property_hier(self.name.as_ref(), &*self.new);
                 a.write().unwrap().test_set_property_hier(self.name.as_ref(), &*self.new);
             },
             RefMut::Cell(ref c) => { 
                 c.borrow_mut().test_set_property_hier(self.name.as_ref(), &*self.new);
             }
         }
+        */
 
         Change::Property(self.object.clone(), self.name.clone())
     }
@@ -167,6 +171,11 @@ impl<S:SceneT> OperationTrait for OldNew<S>
     //fn undo(&self) -> Change
     fn undo(&self, rec : &mut OperationReceiver<Scene=S>) -> Change<Self::Id>
     {
+        if let Some(ref mut p) = rec.getP_copy(self.object_id.clone()) {
+            p.test_set_property_hier(self.name.as_ref(), &*self.old);
+        }
+
+        /*
         match self.object {
             RefMut::Arc(ref a) => {
                 a.write().unwrap().test_set_property_hier(self.name.as_ref(), &*self.old);
@@ -175,6 +184,7 @@ impl<S:SceneT> OperationTrait for OldNew<S>
                 c.borrow_mut().test_set_property_hier(self.name.as_ref(), &*self.old);
             }
         }
+        */
 
         Change::Property(self.object.clone(), self.name.clone())
     }

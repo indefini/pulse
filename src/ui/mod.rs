@@ -290,6 +290,7 @@ pub trait PropertyWidget : Widget {
 
     fn get_current(&self) -> Option<RefMut<PropertyUser>>;
     fn set_current(&self, p : RefMut<PropertyUser>, title : &str);
+    fn get_current_id(&self) -> Option<def::Id>;
 
     //fn get_current_id(&self) -> Option<ui::def::Id>;
 
