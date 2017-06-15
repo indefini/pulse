@@ -429,11 +429,9 @@ fn changed_set<T : Any+Clone+PartialEq>(
 
     let change = match (old, action) {
         (Some(oldd), 1) => {
-            //if let Some(ref cur) = *p.current.borrow() {
-            if let Some(ref cur) = p.get_current() {
+            if let Some(id) = p.get_current_id() {
                 container.state.request_operation_property_old_new(
-                    (*cur).clone(),
-                    p.get_current_id().unwrap(),
+                    id,
                     path,
                     box oldd.clone(),
                     box new.clone(),
@@ -476,6 +474,7 @@ fn changed_set<T : Any+Clone+PartialEq>(
 fn changed_enum<T : Any+Clone+PartialEq>(
     widget_data : *const ui::WidgetCbData,
     property : *const c_void,
+    old : Option<&T>,
     new : &T,
     )
 {
@@ -499,20 +498,12 @@ fn changed_enum<T : Any+Clone+PartialEq>(
             box new.clone())
             */
 
-        //if let Some(ref cur) = *p.current.borrow() {
-        if let Some(ref cur) = p.get_current() {
-
-            let option = match *cur {
-                RefMut::Arc(ref a) => a.read().unwrap().get_property_hier(path),
-                RefMut::Cell(ref c) => c.borrow().get_property_hier(path)
-            };
-
-            if let Some(old) = option {
+        if let Some(id) = p.get_current_id() {
+            if let Some(oldie) = old {
                 container.state.request_operation_property_old_new_dontcheckequal(
-                    (*cur).clone(),
-                    p.get_current_id().unwrap(),
+                    id,
                     path,
-                    old,
+                    box oldie.clone(),
                     box new.clone(),
                     &mut *container.data
                     )
@@ -748,10 +739,10 @@ pub extern fn register_change_enum(
                 return
             }
         };
-        changed_enum(widget_cb_data, property, &ss);
+        changed_enum(widget_cb_data, property, Some(&sso), &ss);
     }
     else {
-        changed_enum(widget_cb_data, property, &ss);
+        changed_enum(widget_cb_data, property, None, &ss);
     }
 }
 

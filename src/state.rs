@@ -254,7 +254,6 @@ impl<S:SceneT+Clone+'static> State<S> {
 
     pub fn request_operation_property_old_new_dontcheckequal(
         &mut self,
-        property : ui::RefMut<ui::PropertyUser>,
         id : S::Id,
         name : &str,
         old : Box<Any>,
@@ -263,7 +262,6 @@ impl<S:SceneT+Clone+'static> State<S> {
         ) -> operation::Change<S::Id>
     {
         let op : operation::OldNew<S> = operation::OldNew::new(
-            property,
             id,
             String::from(name),
             old,
@@ -276,7 +274,6 @@ impl<S:SceneT+Clone+'static> State<S> {
 
     pub fn request_operation_property_old_new<T : Any+PartialEq>(
         &mut self,
-        property : ui::RefMut<ui::PropertyUser>,
         id : S::Id,
         name : &str,
         old : Box<T>,
@@ -302,7 +299,6 @@ impl<S:SceneT+Clone+'static> State<S> {
         }
 
         let op : operation::OldNew<S> = operation::OldNew::new(
-            property,
             id,
             String::from(name),
             old,

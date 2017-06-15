@@ -111,7 +111,6 @@ pub struct OperationNew
 
 pub struct OldNew<S:SceneT>
 {
-    pub object : RefMut<PropertyUser>,
     pub object_id : S::Id,
     pub name : String,
     pub old : Box<Any>,
@@ -122,7 +121,6 @@ pub struct OldNew<S:SceneT>
 impl<S:SceneT> OldNew<S>
 {
     pub fn new(
-        object : RefMut<PropertyUser>,
         object_id : S::Id,
         name : String,
         old : Box<Any>,
@@ -130,7 +128,6 @@ impl<S:SceneT> OldNew<S>
         ) -> OldNew<S>
     {
         OldNew{
-            object : object,
             object_id : object_id,
             name : name,
             old : old,
