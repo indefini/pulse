@@ -1098,6 +1098,9 @@ impl WidgetContainer
                     }
                 }
             },
+            operation::Change::PropertyId(id, ref name) => {
+                self.handle_change_new_id(widget_origin, id, name);
+            },
             _ => {}
         }
 
@@ -1377,20 +1380,35 @@ impl WidgetContainer
 
         println!("handle change new 22 ");
 
-                if let Some(ppp) = self.data.get_property_user_copy(pid)
-                {
-        println!("handle change new 33 ");
-                    //w.handle_change_prop(&*ppp, name);
-                }
-
                 w.handle_change_prop(p, name);
             }
-            //}
         }
 
         if name == "name" {
             if let Some(ref tree) = self.tree {
                 tree.handle_change_prop(p, name);
+            }
+        }
+    }
+
+    pub fn handle_change_new_id(&self, widget_id : Uuid, pid : Id, name : &str)
+    {
+        if let Some(ppp) = self.data.get_property_user_copy(pid) {
+            if let Some(w) = self.visible_prop.get(&pid) {
+
+                if let Some(w) = w.upgrade() {
+                    if w.get_id() == widget_id {
+                        println!("same id as the widget so get out (but right now the continue is commented)");
+                        //continue;
+                    }
+
+                    w.handle_change_prop(&*ppp, name);
+                }
+            }
+            if name == "name" {
+                if let Some(ref tree) = self.tree {
+                    tree.handle_change_prop(&*ppp, name);
+                }
             }
         }
     }
