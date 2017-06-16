@@ -1233,6 +1233,7 @@ impl WidgetContainer
                     if let Some(o) = sel.get(0) {
                         if let Some(ref mut p) = self.property.widget {
                             if widget_origin != p.id {
+                                println!("STUFF");
                                 p.set_prop(o, o.to_id(), "object");
                                 self.visible_prop.insert(
                                         o.get_id(), Rc::downgrade(p) as Weak<Widget>);

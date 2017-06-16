@@ -286,6 +286,21 @@ impl<T : PropertyShow> PropertyShow for Arc<RwLock<T>> {
     {
         self.read().unwrap().to_update()
     }
+
+    fn create_widget_itself(&self, field : &str) -> Option<*const PropertyValue>
+    {
+        self.read().unwrap().create_widget_itself(field)
+    }
+
+    fn create_widget_inside(&self, path : &str, widget : &PropertyWidget)//, parent : *const PropertyValue)
+    {
+        self.read().unwrap().create_widget_inside(path, widget)
+    }
+
+    fn update_widget(&self, pv : *const PropertyValue) {
+        self.read().unwrap().update_widget(pv)
+        //println!("update_widget not implemented for this type");
+    }
 }
 
 

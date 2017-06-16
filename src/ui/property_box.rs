@@ -99,6 +99,7 @@ impl PropertyBox
 
     fn _set_prop(&self, p : &PropertyShow, title : &str)
     {
+        println!("SET PROP");
         unsafe { property_box_clear(self.jk_property); }
         *self.nodes.borrow_mut() = NodeChildren::None;
         p.create_widget_inside("", self);
