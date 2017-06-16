@@ -1,16 +1,11 @@
 use std::any::{Any};//, AnyRefExt};
-use std::sync::{RwLock, Arc};
 use std::marker::PhantomData;
-use uuid;
 
-use dormin::object;
 use dormin::property;
 use dormin::property::PropertyWrite;
 use ui::PropertyUser;
 use dormin::component::CompData;
-use ui::RefMut;
 use data::{ToId, SceneT};
-use ui;
 
 use dragger;
 
@@ -163,116 +158,92 @@ impl<S:SceneT> OperationTrait for OldNew<S>
     }
 }
 
-pub struct ToNone{
-    pub object : RefMut<PropertyUser>,
+pub struct ToNone<S:SceneT>{
+    pub object_id : S::Id,
     pub name : String,
     pub old : Box<Any>,
 }
 
-impl ToNone
+impl<S:SceneT> ToNone<S>
 {
     pub fn new(
-        object : RefMut<PropertyUser>,
+        object_id : S::Id,
         name : String,
         old : Box<Any>
-        ) -> ToNone
+        ) -> ToNone<S>
     {
         ToNone{
-            object : object,
+            object_id : object_id,
             name : name,
             old : old,
         }
     }
 }
 
-impl OperationTrait for ToNone
+impl<S:SceneT> OperationTrait for ToNone<S>
 {
-    type Id = ui::def::Id;
-    type Scene = ui::def::Scene;
-    //fn apply(&self) -> Change
-    fn apply(&self, rec : &mut OperationReceiver<Scene=ui::def::Scene>) -> Change<Self::Id>
+    type Id = S::Id;
+    type Scene = S;
+    fn apply(&self, rec : &mut OperationReceiver<Scene=Self::Scene>) -> Change<Self::Id>
     {
         println!("TO NONE operation set property hier {:?}", self.name);
-        match self.object {
-            RefMut::Arc(ref a) => {
-                a.write().unwrap().set_property_hier(self.name.as_ref(), property::WriteValue::None);
-            },
-            RefMut::Cell(ref c) => { 
-                c.borrow_mut().set_property_hier(self.name.as_ref(), property::WriteValue::None);
-            }
+        if let Some(ref mut p) = rec.getP_copy(self.object_id.clone()) {
+            p.set_property_hier(self.name.as_ref(), property::WriteValue::None);
         }
 
-        Change::Property(self.object.clone(), self.name.clone())
+        Change::PropertyId(self.object_id.clone(), self.name.clone())
     }
 
-    //fn undo(&self) -> Change
-    fn undo(&self, rec : &mut OperationReceiver<Scene=ui::def::Scene>) -> Change<Self::Id>
+    fn undo(&self, rec : &mut OperationReceiver<Scene=Self::Scene>) -> Change<Self::Id>
     {
-        match self.object {
-            RefMut::Arc(ref a) => {
-                a.write().unwrap().test_set_property_hier(self.name.as_ref(), &*self.old);
-            },
-            RefMut::Cell(ref c) => { 
-                c.borrow_mut().test_set_property_hier(self.name.as_ref(), &*self.old);
-            }
+        if let Some(ref mut p) = rec.getP_copy(self.object_id.clone()) {
+            p.test_set_property_hier(self.name.as_ref(), &*self.old);
         }
 
-        Change::Property(self.object.clone(), self.name.clone())
+        Change::PropertyId(self.object_id.clone(), self.name.clone())
     }
 }
 
-pub struct ToSome{
-    pub object : RefMut<PropertyUser>,
+pub struct ToSome<S:SceneT>{
+    pub object_id : S::Id,
     pub name : String,
 }
 
-impl ToSome
+impl<S:SceneT> ToSome<S>
 {
     pub fn new(
-        object : RefMut<PropertyUser>,
+        object_id : S::Id,
         name : String
-        ) -> ToSome
+        ) -> ToSome<S>
     {
         ToSome{
-            object : object,
+            object_id : object_id,
             name : name,
         }
     }
 }
 
-impl OperationTrait for ToSome
+impl<S:SceneT> OperationTrait for ToSome<S>
 {
-    type Id = ui::def::Id;
-    type Scene = ui::def::Scene;
-    //fn apply(&self) -> Change
-    fn apply(&self, rec : &mut OperationReceiver<Scene=ui::def::Scene>) -> Change<Self::Id>
+    type Id = S::Id;
+    type Scene = S;
+    fn apply(&self, rec : &mut OperationReceiver<Scene=Self::Scene>) -> Change<Self::Id>
     {
         println!("TO Some operation set property hier {:?}", self.name);
-        match self.object {
-            RefMut::Arc(ref a) => {
-                a.write().unwrap().set_property_hier(self.name.as_ref(), property::WriteValue::Some);
-            },
-            RefMut::Cell(ref c) => { 
-                c.borrow_mut().set_property_hier(self.name.as_ref(), property::WriteValue::Some);
-            }
+        if let Some(ref mut p) = rec.getP_copy(self.object_id.clone()) {
+            p.set_property_hier(self.name.as_ref(), property::WriteValue::Some);
         }
 
-        Change::Property(self.object.clone(), self.name.clone())
+        Change::PropertyId(self.object_id.clone(), self.name.clone())
     }
 
-    //fn undo(&self) -> Change
-    fn undo(&self, rec : &mut OperationReceiver<Scene=ui::def::Scene>) -> Change<Self::Id>
+    fn undo(&self, rec : &mut OperationReceiver<Scene=Self::Scene>) -> Change<Self::Id>
     {
-        match self.object {
-            RefMut::Arc(ref a) => {
-                a.write().unwrap().set_property_hier(self.name.as_ref(), property::WriteValue::None);
-            },
-            RefMut::Cell(ref c) => { 
-                c.borrow_mut().set_property_hier(self.name.as_ref(), property::WriteValue::None);
-            }
+        if let Some(ref mut p) = rec.getP_copy(self.object_id.clone()) {
+            p.set_property_hier(self.name.as_ref(), property::WriteValue::None);
         }
 
-        Change::Property(self.object.clone(), self.name.clone())
+        Change::PropertyId(self.object_id.clone(), self.name.clone())
     }
 }
 
@@ -280,7 +251,6 @@ impl OperationTrait for ToSome
 pub enum Change<Id>
 {
     None,
-    Property(RefMut<PropertyUser>, String),
     PropertyId(Id, String),
     Objects(String, Vec<Id>),
     DirectChange(String),
@@ -676,16 +646,6 @@ fn join_string(path : &[String]) -> String
     }
 
     s
-}
-
-fn get_ids_old(obs : &[Arc<RwLock<object::Object>>]) -> Vec<uuid::Uuid>
-{
-    let mut list = Vec::new();
-    for o in obs {
-        list.push(o.read().unwrap().id.clone());
-    }
-
-    list
 }
 
 fn get_ids<S:SceneT>(obs : &[S::Object]) -> Vec<S::Id>

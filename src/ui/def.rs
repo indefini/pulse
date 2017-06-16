@@ -15,9 +15,9 @@ use std::io::{Read,Write};
 use std::ffi::{CString,CStr};
 use uuid::Uuid;
 
-use dormin::{vec, scene, object, camera, component, render, resource};
-use ui::{Tree,RefMut,PropertyUser,View,EditView,Command,Action,
-PropertyWidget,PropertyBox};
+use dormin::{vec, scene, object, component, render, resource};
+use ui::{Tree,PropertyUser,View,EditView,Command,Action,
+PropertyWidget,PropertyBox, PropertyId};
 use ui;
 use operation;
 
@@ -1086,18 +1086,6 @@ impl WidgetContainer
             operation::Change::DraggerOperation(ref op) => {
                 self.handle_dragger_operation(op);
             },
-            operation::Change::Property(ref p, ref name) => {
-                match *p {
-                    RefMut::Arc(ref a) => {
-                        let prop = &*a.read().unwrap();
-                        self.handle_change_new(widget_origin, prop, name);
-                    },
-                    RefMut::Cell(ref c) => {
-                        let prop = &*c.borrow();
-                        self.handle_change_new(widget_origin, prop, name);
-                    }
-                }
-            },
             operation::Change::PropertyId(id, ref name) => {
                 self.handle_change_new_id(widget_origin, id, name);
             },
@@ -1177,13 +1165,11 @@ impl WidgetContainer
     {
         match event {
             Event::SelectObject(ob) => {
-                //println!("event, selected : {}", ob.read().unwrap().name);
                 let mut l = vec![ob.to_id()];
                 self.state.context.select_by_id(&mut l);
                 self.handle_event(Event::SelectedChange, widget_origin);
             },
             Event::UnselectObject(ob) => {
-                //println!("event, unselected : {}", ob.read().unwrap().name);
                 let v = vec![ob.to_id()];
                 self.state.context.remove_objects_by_id(&v);
                 self.handle_event(Event::SelectedChange, widget_origin);
@@ -1229,7 +1215,7 @@ impl WidgetContainer
                         if let Some(ref s) = self.state.context.scene {
                             //p.set_scene(&*s.borrow());
                             //p.set_prop_cell(s.clone(), "scene");
-                            p.set_current(RefMut::Cell(s.clone()), "scene");
+                            p.set_current_id(&*s.borrow(), s.to_id(), "scene");
                         }
                     }
                 }
@@ -1247,11 +1233,9 @@ impl WidgetContainer
                     if let Some(o) = sel.get(0) {
                         if let Some(ref mut p) = self.property.widget {
                             if widget_origin != p.id {
-                                //p.set_object(&*o.read().unwrap());
-                                let pu = &*o.read().unwrap() as &PropertyUser;
-                                p.set_prop_arc(o.clone(), o.to_id(), "object");
+                                p.set_prop(o, o.to_id(), "object");
                                 self.visible_prop.insert(
-                                        pu.get_id(), Rc::downgrade(p) as Weak<Widget>);
+                                        o.get_id(), Rc::downgrade(p) as Weak<Widget>);
                             }
                         }
                         else {

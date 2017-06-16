@@ -6,7 +6,7 @@ use std::ffi::CString;
 use uuid::Uuid;
 
 use ui::Window;
-use ui::{RefMut,PropertyUser};
+use ui::{PropertyUser};
 use ui;
 use data::{ToId, SceneT, DataT};
 
