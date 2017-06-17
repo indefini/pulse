@@ -938,7 +938,9 @@ impl WidgetContainer
 
                 if let Some(ref p) = self.property.widget {
                     if widget_origin != p.id {
-                        p.update_object_property(&o, name);
+                        if let Some(pu) = self.data.get_property_user_copy(o.to_id()) {
+                             p.update_object_property(&*pu.as_show(), name);
+                         }
                     }
                 }
             },
@@ -967,8 +969,9 @@ impl WidgetContainer
                             if let Some(ref mut p) = self.property.widget {
                                 if widget_origin != p.id {
                                     println!("hangle change, calling update objects");
-                                    //p.update_object(&*ob, "");
-                                    p.update_object_property(o, name);
+                                    if let Some(pu) = self.data.get_property_user_copy(*id) {
+                                        p.update_object_property(&*pu.as_show(), name);
+                                    }
                                 }
                             }
                         }
@@ -990,7 +993,9 @@ impl WidgetContainer
                                     println!("update object property, this needs more info than just update the value, must indicate it is a vec change.
                                              so we dont remove and add all children again, and so the scroller doesnt make big jump");
                                     //p.update_object(&*ob, "");
-                                    p.vec_add(o, name, index);
+                                    if let Some(pu) = self.data.get_property_user_copy(*id) {
+                                    p.vec_add(pu.as_show(), name, index);
+                                    }
                                 }
                             }
                         }
@@ -1010,7 +1015,9 @@ impl WidgetContainer
                                 if widget_origin != p.id {
                                     println!("update object property, this needs more info than just update the value, must indicate it is a vec change.
                                              so we dont remove and add all children again, and so the scroller doesnt make big jump");
-                                    p.vec_del(o, name, index);
+                                    if let Some(pu) = self.data.get_property_user_copy(*id) {
+                                    p.vec_del(pu.as_show(), name, index);
+                                    }
                                 }
                             }
                         }
@@ -1024,12 +1031,16 @@ impl WidgetContainer
                     if id == o.to_id()  {
                         if let Some(ref mut p) = self.property.widget {
                             if widget_origin != p.id {
-                                p.update_object(o, "");
+                                if let Some(pu) = self.data.get_property_user_copy(id) {
+                                    p.update_object(pu.as_show(), "");
+                                }
                             }
                         }
                     }
                 }
 
+                println!("TODO MeshRender update code commented, remove? {}, {}", file!(), line!());
+                /*
                 if comp_name.starts_with("MeshRender") {
                     if let Some(ref scene) = self.get_scene() {
                         let oob = scene.find_object_by_id(id);
@@ -1044,6 +1055,7 @@ impl WidgetContainer
                         }
                     };
                 }
+                */
             },
             operation::Change::SceneRemove(ref id, ref parents, ref obs) => {
                 {
@@ -1832,6 +1844,8 @@ fn create_gameview_window(
 
 fn check_mesh(name : &str, wc : &WidgetContainer, id : Id2)
 {
+    println!("TODO remove this check_mesh {}, {}", file!(), line!());
+    /*
     if name.starts_with("comp_data") {
         println!("TODO, only update when it was a mesh.
                                  right now 'MeshRender' is not in the property path...,
@@ -1856,6 +1870,6 @@ fn check_mesh(name : &str, wc : &WidgetContainer, id : Id2)
             }
         }
     }
-
+    */
 }
 

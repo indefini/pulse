@@ -242,7 +242,7 @@ impl Tree
         unsafe { tree_update(self.jk_tree); }
     }
 
-    pub fn update_object(& self, id: &ui::def::Id)
+    pub fn update_object(&self, id: &ui::def::Id)
     {
         if let Some(item) = self.objects.get(id) {
             unsafe {tree_item_update(*item);}

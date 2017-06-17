@@ -246,12 +246,12 @@ pub trait PropertyShow
 
 pub trait PropertyId
 {
-    fn get_id(&self) -> uuid::Uuid;
+    fn get_id(&self) -> def::Id;
 }
 
 impl<T: PropertyId> PropertyId for Arc<RwLock<T>>
 {
-    fn get_id(&self) -> uuid::Uuid
+    fn get_id(&self) -> def::Id
     {
         self.read().unwrap().get_id()
     }
@@ -259,7 +259,7 @@ impl<T: PropertyId> PropertyId for Arc<RwLock<T>>
 
 impl<T: PropertyId> PropertyId for Rc<RefCell<T>>
 {
-    fn get_id(&self) -> uuid::Uuid
+    fn get_id(&self) -> def::Id
     {
         self.borrow().get_id()
     }

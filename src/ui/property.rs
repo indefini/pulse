@@ -194,6 +194,8 @@ impl PropertyShow for String {
     }
 }
 
+//impl PropertyShow for usize {//TODO}
+
 impl<T : PropertyShow> PropertyShow for Box<T> {
 
     fn create_widget_itself(&self, field : &str) -> Option<*const PropertyValue>
@@ -932,7 +934,7 @@ pub extern fn vec_del(
 
 impl PropertyId for object::Object
 {
-    fn get_id(&self) -> uuid::Uuid
+    fn get_id(&self) -> ui::def::Id
     {
         return self.id
     }
@@ -940,7 +942,7 @@ impl PropertyId for object::Object
 
 impl PropertyId for scene::Scene
 {
-    fn get_id(&self) -> uuid::Uuid
+    fn get_id(&self) -> ui::def::Id
     {
         return self.id
     }

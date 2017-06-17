@@ -511,6 +511,24 @@ impl Data<world::World>
         //TODO
         self.scenes.entry("todo".to_owned()).or_insert(world::World::new())
     }
+
+    pub fn get_property_user_copy(&self, id : usize) -> Option<Box<PropertyUser>>
+    {
+        for s in self.scenes.values() {
+            if s.to_id() == id {
+                //return Some(box s.clone());
+            }
+
+            for o in s.get_objects() {
+                if o.to_id() == id {
+                    //return Some(box o.clone());
+                }
+            }
+
+        }
+
+        None
+    }
 }
 
 impl Data<Rc<RefCell<scene::Scene>>>
