@@ -3,39 +3,21 @@ use std::collections::{HashMap,HashSet};
 use libc::{c_char, c_void, c_int, c_float};
 use std::str;
 use std::mem;
-//use std::collections::{LinkedList,Deque};
-use std::collections::{LinkedList};
 use std::ptr;
 use std::rc::Rc;
 use std::cell::{Cell, RefCell, BorrowState};
 use std::rc::Weak;
 use std::any::{Any};//, AnyRefExt};
 use std::ffi::CString;
-use std::ffi;
 use std::ffi::CStr;
 use uuid;
 use uuid::Uuid;
 
-use dormin::scene;
-use dormin::camera;
-use dormin::object;
 use ui::{Window, ButtonCallback};
 use ui::{ChangedFunc, RegisterChangeFunc, PropertyTreeFunc, PropertyValue, PropertyConfig, PropertyUser,
 PropertyShow, PropertyId, RefMut, Elm_Object_Item, ShouldUpdate, PropertyWidget};
 use ui;
-use dormin::property;
 use operation;
-use control::WidgetUpdate;
-use dormin::vec;
-use dormin::transform;
-use dormin::resource;
-use dormin::mesh;
-use dormin::material;
-use dormin::property::PropertyGet;
-use dormin::component;
-use dormin::component::CompData;
-use dormin::armature;
-use dormin::transform::Orientation;
 
 
 use util::Arw;
@@ -127,7 +109,6 @@ pub struct PropertyList
     visible : Cell<bool>,
     pub id : uuid::Uuid,
     pub config : PropertyConfig,
-    current : RefCell<Option<RefMut<PropertyUser>>>
 }
 
 impl PropertyList
@@ -146,7 +127,6 @@ impl PropertyList
             visible: Cell::new(true),
             id : uuid::Uuid::new_v4(),
             config : pc.clone(),
-            current : RefCell::new(None)
         }
     }
 
@@ -168,26 +148,6 @@ impl PropertyList
         self.add_tools();
     }
     */
-
-    pub fn set_prop_cell(&self, p : Rc<RefCell<PropertyUser>>, title : &str)
-    {
-        // the {} are for ending the borrow
-        {
-        let mut cur = self.current.borrow_mut();// = Some(RefMut::Cell(p));
-        *cur = Some(RefMut::Cell(p.clone()));
-        }
-        self._set_prop(&*p.borrow().as_show(), title);
-    }
-
-    pub fn set_prop_arc(&self, p : Arc<RwLock<PropertyUser>>, title : &str)
-    {
-        // the {} are for ending the borrow
-        {
-        let mut cur = self.current.borrow_mut();// = Some(RefMut::Cell(p));
-        *cur = Some(RefMut::Arc(p.clone()));
-        }
-        self._set_prop(&*p.read().unwrap().as_show(), title);
-    }
 
     fn _set_prop(&self, p : &PropertyShow, title : &str)
     {
@@ -237,16 +197,6 @@ impl PropertyList
                 self.jk_property_list,
                 CString::new("tools").unwrap().as_ptr());
         }
-    }
-
-
-    pub fn set_nothing(&self)
-    {
-        unsafe { property_list_clear(self.jk_property_list); }
-        self.pv.borrow_mut().clear();
-
-        //self.current = None;
-        *(self.current.borrow_mut()) = None;
     }
 
     pub fn data_set(&self, data : *const c_void)
@@ -447,10 +397,9 @@ fn changed_set<T : Any+Clone+PartialEq>(
 
     let change = match (old, action) {
         (Some(oldd), 1) => {
-            //if let Some(ref cur) = *p.current.borrow() {
-            if let Some(ref cur) = p.get_current() {
+            if let Some(id) = p.get_current_id() {
                 container.state.request_operation_property_old_new(
-                    (*cur).clone(),
+                    id,
                     path,
                     box oldd.clone(),
                     box new.clone(),
@@ -470,13 +419,12 @@ fn changed_set<T : Any+Clone+PartialEq>(
             }
         },
         _ => {
-            //if let Some(ref cur) = *p.current.borrow() {
-            if let Some(ref cur) = p.get_current() {
-                match *cur {
-                    RefMut::Arc(ref a) =>
-                        container.state.request_direct_change_property(&mut *a.write().unwrap(),path,new),
-                        RefMut::Cell(ref c) =>
-                            container.state.request_direct_change_property(&mut *c.borrow_mut(),path,new)
+            if let Some(pid) = p.get_current_id() {
+                if let Some(mut ppp) = container.data.get_property_user_copy(pid) {
+                    container.state.request_direct_change_property(&mut *ppp,path,new)
+                }
+                else {
+                    operation::Change::None
                 }
             }
             //container.request_direct_change(path, new)
@@ -493,6 +441,7 @@ fn changed_set<T : Any+Clone+PartialEq>(
 fn changed_enum<T : Any+Clone+PartialEq>(
     widget_data : *const ui::WidgetCbData,
     property : *const c_void,
+    old : Option<&T>,
     new : &T,
     )
 {
@@ -516,19 +465,12 @@ fn changed_enum<T : Any+Clone+PartialEq>(
             box new.clone())
             */
 
-        //if let Some(ref cur) = *p.current.borrow() {
-        if let Some(ref cur) = p.get_current() {
-
-            let option = match *cur {
-                RefMut::Arc(ref a) => a.read().unwrap().get_property_hier(path),
-                RefMut::Cell(ref c) => c.borrow().get_property_hier(path)
-            };
-
-            if let Some(old) = option {
+        if let Some(id) = p.get_current_id() {
+            if let Some(oldie) = old {
                 container.state.request_operation_property_old_new_dontcheckequal(
-                    (*cur).clone(),
+                    id,
                     path,
-                    old,
+                    box oldie.clone(),
                     box new.clone(),
                     &mut *container.data
                     )
@@ -764,10 +706,10 @@ pub extern fn register_change_enum(
                 return
             }
         };
-        changed_enum(widget_cb_data, property, &ss);
+        changed_enum(widget_cb_data, property, Some(&sso), &ss);
     }
     else {
-        changed_enum(widget_cb_data, property, &ss);
+        changed_enum(widget_cb_data, property, None, &ss);
     }
 }
 
@@ -940,28 +882,15 @@ impl PropertyWidget for PropertyList
         unsafe { property_expand(widget_entry); }
     }
 
-    fn get_current(&self) -> Option<RefMut<PropertyUser>>
+    fn get_current_id(&self) -> Option<ui::def::Id>
     {
-        if let Some(ref cur) = *self.current.borrow() {
-            Some(cur.clone())
-        }
-        else {
-            None
-        }
+        println!("TODO {}, {}", file!(), line!());
+        None
     }
 
-    fn set_current(&self, p : RefMut<PropertyUser>, title : &str)
+    fn set_current_id(&self, p : &PropertyUser, id : ui::def::Id, title : &str)
     {
-        let mut cur = self.current.borrow_mut();// = Some(RefMut::Cell(p));
-        *cur = Some(p.clone());
-        //self._set_prop(&*p.borrow().as_show(), title);
-
-        match p {
-            RefMut::Arc(ref a) => 
-                self._set_prop(&*a.read().unwrap().as_show(), title),
-            RefMut::Cell(ref c) => 
-                self._set_prop(&*c.borrow().as_show(), title),
-        }
+        println!("TODO {}, {}", file!(), line!());
     }
 }
 

@@ -1,57 +1,69 @@
 use std::any::{Any};//, AnyRefExt};
-use std::sync::{RwLock, Arc};
-use std::cell::RefCell;
-use std::rc::{Rc};
-use uuid;
+use std::marker::PhantomData;
 
-use dormin::object;
 use dormin::property;
 use dormin::property::PropertyWrite;
 use ui::PropertyUser;
-use dormin::scene;
 use dormin::component::CompData;
-use ui::RefMut;
-use data;
-use data::{ToId, ToIdUuid, SceneT};
+use data::{ToId, SceneT};
 
 use dragger;
 
-trait OperationReceiver {
-    type Id;
-    fn getP(&mut self, id : Self::Id) -> Option<&mut PropertyWrite>
+pub trait OperationReceiver {
+    type Scene: SceneT;
+    fn getP(&mut self, id : <Self::Scene as SceneT>::Id) -> Option<&mut PropertyWrite>
     {
-        None
-    }
-}
-
-pub type OperationRec = OperationReceiver<Id=uuid::Uuid>;
-
-impl OperationReceiver for data::DataOld {
-    type Id = uuid::Uuid;
-    fn getP(&mut self, id : Self::Id) -> Option<&mut PropertyWrite>
-    {
+        println!("TODO {}, {}", file!(), line!());
         None
     }
 
-    //fn copy_object(
+    fn getP_copy(&mut self, id : <Self::Scene as SceneT>::Id) -> Option<Box<PropertyWrite>>
+    {
+        println!("TODO or erase {}, {}", file!(), line!());
+        None
+    }
+
+    fn add_objects(
+        &mut self,
+        scene_id : <Self::Scene as SceneT>::Id,
+        parents : &[Option<<Self::Scene as SceneT>::Id>],
+        objects : &[<Self::Scene as SceneT>::Object])
+    {
+        println!("TODO {}, {}", file!(), line!());
+    }
+
+    fn remove_objects(
+        &mut self,
+        scene_id : <Self::Scene as SceneT>::Id,
+        parents : &[Option<<Self::Scene as SceneT>::Id>],
+        objects : &[<Self::Scene as SceneT>::Object])
+    {
+        println!("TODO {}, {}", file!(), line!());
+    }
+
+    fn set_camera(&mut self, scene_id : <Self::Scene as SceneT>::Id,
+                  camera : Option<<Self::Scene as SceneT>::Object>)
+    {
+        println!("TODO {}, {}", file!(), line!());
+    }
 }
 
 trait OperationTrait
 {
-    fn apply(&self, rec : &mut OperationRec) -> Change;
-    fn undo(&self, rec : &mut OperationRec) -> Change;
+    type Scene : SceneT;
+    type Id;
+    fn apply(&self, rec : &mut OperationReceiver<Scene=Self::Scene>) -> Change<Self::Id>;
+    fn undo(&self, rec : &mut OperationReceiver<Scene=Self::Scene>) -> Change<Self::Id>;
 }
-
-pub type OperationDataOld = OperationData<Rc<RefCell<scene::Scene>>>;
 
 pub enum OperationData<Scene : SceneT>
 {
     VecAdd(usize),
     VecDel(usize, Box<Any>),
     Vector(Vec<Box<Any>>, Vec<Box<Any>>),
-    SceneAddObjects(Scene, Vec<Scene::Id>, Vec<Scene::Object>), //scene, parent, objects
-    SceneRemoveObjects(Scene, Vec<Scene::Id>, Vec<Scene::Object>),
-    SetSceneCamera(Scene, Option<Scene::Object>, Option<Scene::Object>),
+    SceneAddObjects(Scene::Id, Vec<Option<Scene::Id>>, Vec<Scene::Object>), //scene, parent, objects
+    SceneRemoveObjects(Scene::Id, Vec<Option<Scene::Id>>, Vec<Scene::Object>),
+    SetSceneCamera(Scene::Id, Option<Scene::Object>, Option<Scene::Object>),
     //AddComponent(uuid::Uuid, uuid::Uuid) //object id, component id?
     AddComponent(Scene::Object, Box<CompData>),
     OldNewVec(Vec<Box<Any>>, Box<Any>),
@@ -62,20 +74,18 @@ pub enum OperationData<Scene : SceneT>
     //Function(fn(Vec<Object>, Box<Any>), Box<Any>),
 }
 
-//pub type OperationOld = Operation<Arc<RwLock<object::Object>>>;
-pub type OperationOld = Operation;
 
-//pub struct Operation<Object>
-pub struct Operation
+pub struct Operation<S: SceneT>
 {
-    //pub objects : Vec<Box<Object>>,
-    pub objects : Vec<Box<ToIdUuid>>,
+    pub objects : Vec<Box<S::Object>>,
     pub name : Vec<String>,
-    pub change : OperationDataOld
+    pub change : OperationData<S>
     //pub old : Box<Any>,
     //pub new : Box<Any>,
 }
 
+//TODO check if use this or erase
+/*
 pub enum OperationActor{
     Scene(uuid::Uuid),
     Object(uuid::Uuid),
@@ -92,210 +102,179 @@ pub struct OperationNew
     //pub old : Box<Any>,
     //pub new : Box<Any>,
 }
+*/
 
-pub struct OldNew{
-    pub object : RefMut<PropertyUser>,
+pub struct OldNew<S:SceneT>
+{
+    pub object_id : S::Id,
     pub name : String,
     pub old : Box<Any>,
-    pub new : Box<Any>
+    pub new : Box<Any>,
+    phantom : PhantomData<S>
 }
 
-impl OldNew
+impl<S:SceneT> OldNew<S>
 {
     pub fn new(
-        object : RefMut<PropertyUser>,
+        object_id : S::Id,
         name : String,
         old : Box<Any>,
         new : Box<Any>
-        ) -> OldNew
+        ) -> OldNew<S>
     {
         OldNew{
-            object : object,
+            object_id : object_id,
             name : name,
             old : old,
-            new : new
+            new : new,
+            phantom : PhantomData
         }
     }
 
 }
 
-impl OperationTrait for OldNew
+impl<S:SceneT> OperationTrait for OldNew<S>
 {
-    //fn apply(&self ) -> Change
-    fn apply(&self, rec : &mut OperationRec) -> Change
+    type Id = S::Id;
+    type Scene = S;
+    fn apply(&self, rec : &mut OperationReceiver<Scene=S>) -> Change<Self::Id>
     {
         println!("NEW TEST operation set property hier {:?}", self.name);
-        match self.object {
-            RefMut::Arc(ref a) => {
-                a.write().unwrap().test_set_property_hier(self.name.as_ref(), &*self.new);
-            },
-            RefMut::Cell(ref c) => { 
-                c.borrow_mut().test_set_property_hier(self.name.as_ref(), &*self.new);
-            }
+
+        if let Some(ref mut p) = rec.getP_copy(self.object_id.clone()) {
+            p.test_set_property_hier(self.name.as_ref(), &*self.new);
         }
 
-        Change::Property(self.object.clone(), self.name.clone())
+        Change::PropertyId(self.object_id.clone(), self.name.clone())
     }
 
-    //fn undo(&self) -> Change
-    fn undo(&self, rec : &mut OperationRec) -> Change
+    fn undo(&self, rec : &mut OperationReceiver<Scene=S>) -> Change<Self::Id>
     {
-        match self.object {
-            RefMut::Arc(ref a) => {
-                a.write().unwrap().test_set_property_hier(self.name.as_ref(), &*self.old);
-            },
-            RefMut::Cell(ref c) => { 
-                c.borrow_mut().test_set_property_hier(self.name.as_ref(), &*self.old);
-            }
+        if let Some(ref mut p) = rec.getP_copy(self.object_id.clone()) {
+            p.test_set_property_hier(self.name.as_ref(), &*self.old);
         }
 
-        Change::Property(self.object.clone(), self.name.clone())
+        Change::PropertyId(self.object_id.clone(), self.name.clone())
     }
 }
 
-pub struct ToNone{
-    pub object : RefMut<PropertyUser>,
+pub struct ToNone<S:SceneT>{
+    pub object_id : S::Id,
     pub name : String,
     pub old : Box<Any>,
 }
 
-impl ToNone
+impl<S:SceneT> ToNone<S>
 {
     pub fn new(
-        object : RefMut<PropertyUser>,
+        object_id : S::Id,
         name : String,
         old : Box<Any>
-        ) -> ToNone
+        ) -> ToNone<S>
     {
         ToNone{
-            object : object,
+            object_id : object_id,
             name : name,
             old : old,
         }
     }
 }
 
-impl OperationTrait for ToNone
+impl<S:SceneT> OperationTrait for ToNone<S>
 {
-    //fn apply(&self) -> Change
-    fn apply(&self, rec : &mut OperationRec) -> Change
+    type Id = S::Id;
+    type Scene = S;
+    fn apply(&self, rec : &mut OperationReceiver<Scene=Self::Scene>) -> Change<Self::Id>
     {
         println!("TO NONE operation set property hier {:?}", self.name);
-        match self.object {
-            RefMut::Arc(ref a) => {
-                a.write().unwrap().set_property_hier(self.name.as_ref(), property::WriteValue::None);
-            },
-            RefMut::Cell(ref c) => { 
-                c.borrow_mut().set_property_hier(self.name.as_ref(), property::WriteValue::None);
-            }
+        if let Some(ref mut p) = rec.getP_copy(self.object_id.clone()) {
+            p.set_property_hier(self.name.as_ref(), property::WriteValue::None);
         }
 
-        Change::Property(self.object.clone(), self.name.clone())
+        Change::PropertyId(self.object_id.clone(), self.name.clone())
     }
 
-    //fn undo(&self) -> Change
-    fn undo(&self, rec : &mut OperationRec) -> Change
+    fn undo(&self, rec : &mut OperationReceiver<Scene=Self::Scene>) -> Change<Self::Id>
     {
-        match self.object {
-            RefMut::Arc(ref a) => {
-                a.write().unwrap().test_set_property_hier(self.name.as_ref(), &*self.old);
-            },
-            RefMut::Cell(ref c) => { 
-                c.borrow_mut().test_set_property_hier(self.name.as_ref(), &*self.old);
-            }
+        if let Some(ref mut p) = rec.getP_copy(self.object_id.clone()) {
+            p.test_set_property_hier(self.name.as_ref(), &*self.old);
         }
 
-        Change::Property(self.object.clone(), self.name.clone())
+        Change::PropertyId(self.object_id.clone(), self.name.clone())
     }
 }
 
-pub struct ToSome{
-    pub object : RefMut<PropertyUser>,
+pub struct ToSome<S:SceneT>{
+    pub object_id : S::Id,
     pub name : String,
 }
 
-impl ToSome
+impl<S:SceneT> ToSome<S>
 {
     pub fn new(
-        object : RefMut<PropertyUser>,
+        object_id : S::Id,
         name : String
-        ) -> ToSome
+        ) -> ToSome<S>
     {
         ToSome{
-            object : object,
+            object_id : object_id,
             name : name,
         }
     }
 }
 
-impl OperationTrait for ToSome
+impl<S:SceneT> OperationTrait for ToSome<S>
 {
-    //fn apply(&self) -> Change
-    fn apply(&self, rec : &mut OperationRec) -> Change
+    type Id = S::Id;
+    type Scene = S;
+    fn apply(&self, rec : &mut OperationReceiver<Scene=Self::Scene>) -> Change<Self::Id>
     {
         println!("TO Some operation set property hier {:?}", self.name);
-        match self.object {
-            RefMut::Arc(ref a) => {
-                a.write().unwrap().set_property_hier(self.name.as_ref(), property::WriteValue::Some);
-            },
-            RefMut::Cell(ref c) => { 
-                c.borrow_mut().set_property_hier(self.name.as_ref(), property::WriteValue::Some);
-            }
+        if let Some(ref mut p) = rec.getP_copy(self.object_id.clone()) {
+            p.set_property_hier(self.name.as_ref(), property::WriteValue::Some);
         }
 
-        Change::Property(self.object.clone(), self.name.clone())
+        Change::PropertyId(self.object_id.clone(), self.name.clone())
     }
 
-    //fn undo(&self) -> Change
-    fn undo(&self, rec : &mut OperationRec) -> Change
+    fn undo(&self, rec : &mut OperationReceiver<Scene=Self::Scene>) -> Change<Self::Id>
     {
-        match self.object {
-            RefMut::Arc(ref a) => {
-                a.write().unwrap().set_property_hier(self.name.as_ref(), property::WriteValue::None);
-            },
-            RefMut::Cell(ref c) => { 
-                c.borrow_mut().set_property_hier(self.name.as_ref(), property::WriteValue::None);
-            }
+        if let Some(ref mut p) = rec.getP_copy(self.object_id.clone()) {
+            p.set_property_hier(self.name.as_ref(), property::WriteValue::None);
         }
 
-        Change::Property(self.object.clone(), self.name.clone())
+        Change::PropertyId(self.object_id.clone(), self.name.clone())
     }
 }
 
-
 //#[derive(PartialEq)]
-pub enum Change
+pub enum Change<Id>
 {
     None,
-    Property(RefMut<PropertyUser>, String),
-    Objects(String, Vec<uuid::Uuid>),
+    PropertyId(Id, String),
+    Objects(String, Vec<Id>),
     DirectChange(String),
-    SceneAdd(uuid::Uuid, Vec<uuid::Uuid>, Vec<uuid::Uuid>),
-    SceneRemove(uuid::Uuid, Vec<uuid::Uuid>, Vec<uuid::Uuid>),
+    SceneAdd(Id, Vec<Option<Id>>, Vec<Id>),
+    SceneRemove(Id, Vec<Option<Id>>, Vec<Id>),
 
     //check
-    Scene(uuid::Uuid),
-    ComponentChanged(uuid::Uuid, String),
+    Scene(Id),
+    ComponentChanged(Id, String),
 
-    VecAdd(Vec<uuid::Uuid>, String, usize),
-    VecDel(Vec<uuid::Uuid>, String, usize),
+    VecAdd(Vec<Id>, String, usize),
+    VecDel(Vec<Id>, String, usize),
 
     DraggerOperation(dragger::Operation),
 }
 
-//impl<Object> Operation<Object>
-impl Operation
+impl<S:SceneT> Operation<S>
 {
     pub fn new(
-        //objects : Vec<Box<Object>>,
-        objects : Vec<Box<ToId<uuid::Uuid>>>,
+        objects : Vec<Box<S::Object>>,
         name : Vec<String>,
-        //old : Box<Any>,
-        //new : Box<Any>)
-        change : OperationDataOld
+        change : OperationData<S>
             )
-        //-> Operation<Object>
-        -> Operation
+        -> Operation<S>
     {
 
         /*
@@ -323,18 +302,20 @@ impl Operation
         Operation {
             objects : objects,
             name : name,
-            //old : old,
-            //new : new
             change : change
         }
     }
 
 }
 
-impl OperationTrait for OperationOld
+impl<S:SceneT> OperationTrait for Operation<S>
+//impl OperationTrait for Operation<ui::def::Scene>
 {
+    //type Id=ui::def::Id;
+    type Id=S::Id;
+    type Scene=S;
     //fn apply(&self) -> Change
-    fn apply(&self, rec : &mut OperationRec) -> Change
+    fn apply(&self, rec : &mut OperationReceiver<Scene=S>) -> Change<Self::Id>
     {
         match self.change {
             /*
@@ -355,7 +336,7 @@ impl OperationTrait for OperationOld
                 let s = join_string(&self.name);
                 let mut ids = Vec::new();
                 for o in &self.objects {
-                    if let Some(p) = rec.getP(o.to_id()) {
+                    if let Some(mut p) = rec.getP_copy(o.to_id()) {
                         p.add_item(s.as_ref(), i, &String::from("empty"));
                     }
                     ids.push(o.to_id());
@@ -367,10 +348,7 @@ impl OperationTrait for OperationOld
                 let s = join_string(&self.name);
                 let mut ids = Vec::new();
                 for o in &self.objects {
-                    //let mut ob = o.write().unwrap();
-                    //TODO chris
-                    //println!("yeeeeeeeeeeeee call del_item : {}", ob.name);
-                    if let Some(p) = rec.getP(o.to_id()) {
+                    if let Some(mut p) = rec.getP_copy(o.to_id()) {
                         p.del_item(s.as_ref(), i);
                     }
                     ids.push(o.to_id().clone());
@@ -403,7 +381,7 @@ impl OperationTrait for OperationOld
                 };
                 let mut ids = Vec::new();
                 for o in &self.objects {
-                    if let Some(p) = rec.getP(o.to_id()) {
+                    if let Some(mut p) = rec.getP_copy(o.to_id()) {
                     p.test_set_property_hier(
                         sp.as_str(),
                         &*new[i]);
@@ -414,38 +392,26 @@ impl OperationTrait for OperationOld
                 return Change::Objects(s, ids);
             },
             OperationData::SceneAddObjects(ref s, ref parents, ref obs)  => {
-                let mut sc = s.borrow_mut();
-                sc.add_objects(parents, obs);
-                return Change::SceneAdd(sc.id.clone(), parents.clone(), get_ids(obs));
+                rec.add_objects(s.clone(), parents, obs);
+                return Change::SceneAdd(s.clone(), parents.clone(), get_ids::<S>(obs));
             },
             OperationData::SceneRemoveObjects(ref s, ref parents, ref obs)  => {
-                let mut sc = s.borrow_mut();
-                sc.remove_objects(parents, obs);
-                return Change::SceneRemove(sc.id.clone(), parents.clone(), get_ids(obs));
+                rec.remove_objects(s.clone(), parents, obs);
+                return Change::SceneRemove(s.clone(), parents.clone(), get_ids::<S>(obs));
             },
             OperationData::SetSceneCamera(ref s, _, ref new)   => {
                 println!("operation set camera");
-                let sc = s.borrow();
-                if let Some(ref c) = sc.camera {
-                    if let Some(ref o) = *new {
-                        println!("I set thhe camera !!!!!!!");
-                        c.borrow_mut().object = o.clone();
-                        c.borrow_mut().object_id = Some(o.read().unwrap().id.clone());
-                        return Change::Scene(sc.id.clone());
-                    }
-                    else {
-                        println!("dame 10");
-                        c.borrow_mut().object_id = None;
-                    }
-                }
-                else {
-                    println!("dame 00");
-                }
+                rec.set_camera(s.clone(), new.clone());
+                return Change::Scene(s.clone());
             },
             OperationData::AddComponent(ref o, ref compo)  => {
+                //TODO
+                println!("TODO add component is not working of course, {}, {}", file!(), line!());
+                /*
                 let mut ob = o.write().unwrap();
                 ob.add_comp_data(compo.clone());
                 return Change::ComponentChanged(ob.id.clone(), compo.get_kind_string());
+                */
             },
             _ => {}
         }
@@ -454,7 +420,7 @@ impl OperationTrait for OperationOld
     }
 
     //fn undo(&self) -> Change
-    fn undo(&self, rec : &mut OperationRec) -> Change
+    fn undo(&self, rec : &mut OperationReceiver<Scene=S>) -> Change<Self::Id>
     {
         match self.change {
             /*
@@ -486,8 +452,7 @@ impl OperationTrait for OperationOld
                 let s = join_string(&self.name);
                 let mut ids = Vec::new();
                 for o in &self.objects {
-                    //let mut ob = o.write().unwrap();
-                    if let Some(p) = rec.getP(o.to_id()) {
+                    if let Some(mut p) = rec.getP_copy(o.to_id()) {
                         p.del_item(s.as_ref(), i);
                     }
                     ids.push(o.to_id());
@@ -500,7 +465,7 @@ impl OperationTrait for OperationOld
                 let mut ids = Vec::new();
                 for o in &self.objects {
                     //let mut ob = o.write().unwrap();
-                    if let Some(p) = rec.getP(o.to_id()) {
+                    if let Some(mut p) = rec.getP_copy(o.to_id()) {
                         p.add_item(s.as_ref(), i, &**value);
                     }
                     ids.push(o.to_id());
@@ -522,10 +487,10 @@ impl OperationTrait for OperationOld
                 let mut ids = Vec::new();
                 for o in &self.objects {
                     //let mut ob = o.write().unwrap();
-                    if let Some(p) = rec.getP(o.to_id()) {
-                    p.test_set_property_hier(
-                        sp.as_str(),
-                        &*old[i]);
+                    if let Some(mut p) = rec.getP_copy(o.to_id()) {
+                        p.test_set_property_hier(
+                            sp.as_str(),
+                            &*old[i]);
                     }
                     i = i +1;
                     ids.push(o.to_id());
@@ -534,33 +499,23 @@ impl OperationTrait for OperationOld
             },
             OperationData::SceneAddObjects(ref s, ref parents, ref obs)  => {
                 println!("undo scene add objects !!!");
-                let mut sc = s.borrow_mut();
-                sc.remove_objects(parents, obs);
-                return Change::SceneRemove(sc.id.clone(), parents.clone(), get_ids(obs));
+                rec.remove_objects(s.clone(), parents, obs);
+                return Change::SceneRemove(s.clone(), parents.clone(), get_ids::<S>(obs));
             },
             OperationData::SceneRemoveObjects(ref s, ref parents, ref obs)  => {
                 println!("undo scene remove objects !!!");
-                let mut sc = s.borrow_mut();
-                sc.add_objects(parents, obs);
-                return Change::SceneAdd(sc.id.clone(), parents.clone(), get_ids(obs));
+                rec.add_objects(s.clone(), parents, obs);
+                return Change::SceneAdd(s.clone(), parents.clone(), get_ids::<S>(obs));
             },
             OperationData::SetSceneCamera(ref s, ref old, _)   => {
-                let sc = s.borrow();
-                if let Some(ref c) = sc.camera {
-                    if let Some(ref o) = *old {
-                        c.borrow_mut().object = o.clone();
-                        c.borrow_mut().object_id = Some(o.read().unwrap().id.clone());
-                        return Change::Scene(sc.id.clone());
-                    }
-                    else {
-                        c.borrow_mut().object_id = None
-                    }
-                }
+                rec.set_camera(s.clone(), old.clone());
+                return Change::Scene(s.clone());
             },
             OperationData::AddComponent(ref o, ref compo)  => {
-                let mut ob = o.write().unwrap();
-                ob.remove_comp_data(compo.clone());
-                return Change::ComponentChanged(ob.id.clone(), compo.get_kind_string());
+                println!("TODO add component is not working of course, {}, {}", file!(), line!());
+                //let mut ob = o.write().unwrap();
+                //ob.remove_comp_data(compo.clone());
+                //return Change::ComponentChanged(ob.id.clone(), compo.get_kind_string());
             },
             _ => {}
         }
@@ -573,26 +528,29 @@ trait AnyClone: Any + Clone {
 }
 impl<T: Any + Clone> AnyClone for T {}
 
-pub struct OperationManager
+pub struct OperationManager<S:SceneT>
 {
     //pub undo : Vec<Operation>,
     //pub redo : Vec<Operation>,
-    pub undo : Vec<Box<OperationTrait+'static>>,
-    pub redo : Vec<Box<OperationTrait+'static>>,
+    pub undo : Vec<Box<OperationTrait<Id=S::Id,Scene=S>+'static>>,
+    pub redo : Vec<Box<OperationTrait<Id=S::Id,Scene=S>+'static>>,
+    phantom : PhantomData<S>
 }
 
-impl OperationManager
+impl<S:SceneT> OperationManager<S>
 {
     pub fn new(
-        ) -> OperationManager
+        ) -> OperationManager<S>
     {
         OperationManager {
             undo : Vec::new(),
             redo : Vec::new(),
+            phantom : PhantomData
         }
     }
 
-    pub fn add(&mut self, op : OperationOld, rec : &mut OperationRec) -> Change
+    /*
+    pub fn add(&mut self, op : OperationOld, rec : &mut OperationRec) -> ChangeOld
     {
         let change = op.apply(rec);
         self.add_undo(box op);
@@ -600,8 +558,9 @@ impl OperationManager
 
         change
     }
+    */
 
-    pub fn add_with_trait(&mut self, op : Box<OperationTrait>, rec : &mut OperationRec) -> Change
+    pub fn add_with_trait(&mut self, op : Box<OperationTrait<Id=S::Id,Scene=S>>, rec : &mut OperationReceiver<Scene=S>) -> Change<S::Id>
     {
         let change = op.apply(rec);
         self.add_undo(op);
@@ -610,34 +569,34 @@ impl OperationManager
         change
     }
 
-    pub fn add_with_trait2(&mut self, op : Box<OperationTrait>)
+    pub fn add_with_trait2(&mut self, op : Box<OperationTrait<Id=S::Id,Scene=S>>)
     {
         self.add_undo(op);
         self.redo.clear();
     }
 
-    fn add_undo(&mut self, op : Box<OperationTrait+'static>)
+    fn add_undo(&mut self, op : Box<OperationTrait<Id=S::Id,Scene=S>+'static>)
     {
         self.undo.push(op);
     }
 
-    fn add_redo(&mut self, op : Box<OperationTrait+'static>)
+    fn add_redo(&mut self, op : Box<OperationTrait<Id=S::Id,Scene=S>+'static>)
     {
         self.redo.push(op);
     }
 
 
-    fn pop_undo(&mut self) -> Option<Box<OperationTrait+'static>>
+    fn pop_undo(&mut self) -> Option<Box<OperationTrait<Id=S::Id,Scene=S>+'static>>
     {
         self.undo.pop()
     }
 
-    fn pop_redo(&mut self) -> Option<Box<OperationTrait+'static>>
+    fn pop_redo(&mut self) -> Option<Box<OperationTrait<Id=S::Id,Scene=S>+'static>>
     {
         self.redo.pop()
     }
 
-    pub fn undo(&mut self, rec : &mut OperationRec) -> Change
+    pub fn undo(&mut self, rec : &mut OperationReceiver<Scene=S>) -> Change<S::Id>
     {
         let op = match self.pop_undo() {
             Some(o) => o,
@@ -654,7 +613,7 @@ impl OperationManager
         return change;
     }
 
-    pub fn redo(&mut self, rec : &mut OperationRec) -> Change
+    pub fn redo(&mut self, rec : &mut OperationReceiver<Scene=S>) -> Change<S::Id>
     {
         let op = match self.pop_redo() {
             Some(o) => o,
@@ -689,11 +648,11 @@ fn join_string(path : &[String]) -> String
     s
 }
 
-fn get_ids(obs : &[Arc<RwLock<object::Object>>]) -> Vec<uuid::Uuid>
+fn get_ids<S:SceneT>(obs : &[S::Object]) -> Vec<S::Id>
 {
     let mut list = Vec::new();
     for o in obs {
-        list.push(o.read().unwrap().id.clone());
+        list.push(o.to_id());
     }
 
     list

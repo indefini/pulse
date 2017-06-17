@@ -3,7 +3,6 @@ use std::cell::{RefCell};
 use std::sync::{Arc, RwLock};
 use std::collections::HashMap;
 use std::fs;
-use dormin::matrix;
 
 use uuid;
 
@@ -11,9 +10,13 @@ use dormin;
 use dormin::{vec, resource, scene, factory, world, object};
 use dormin::component::mesh_render;
 use dormin::render;
+use dormin::property::PropertyGet;
+use dormin::input;
+use dormin::matrix;
+use dormin::transform;
+
 use context;
 use util;
-use dormin::input;
 
 static SCENE_SUFFIX: &str = ".scene";
 //static WORLD_SUFFIX: &str = ".world";
@@ -28,9 +31,79 @@ pub struct Data<S:SceneT>
     pub worlds : HashMap<String, Box<dormin::world::World>>,
 }
 
+use operation;
+use dormin::property::PropertyWrite;
+
+/*
+impl<S:SceneT> operation::OperationReceiver for Data<S> {
+    type Id = S::Id;
+    fn getP(&mut self, id : Self::Id) -> Option<&mut PropertyWrite>
+    {
+        None
+    }
+
+    //fn copy_object(
+}
+*/
+
+impl operation::OperationReceiver for Data<Rc<RefCell<scene::Scene>>> {
+    type Scene = Rc<RefCell<scene::Scene>>;
+    fn getP_copy(&mut self, id : <Self::Scene as SceneT>::Id) -> Option<Box<PropertyWrite>>
+    {
+        for s in self.scenes.values() {
+            for o in &s.borrow().objects {
+                if o.to_id() == id {
+                    return Some(box o.clone());
+                }
+            }
+
+        }
+
+        None
+    }
+
+    fn add_objects(
+        &mut self,
+        scene_id : <Self::Scene as SceneT>::Id,
+        parents : &[Option<<Self::Scene as SceneT>::Id>],
+        objects : &[<Self::Scene as SceneT>::Object])
+    {
+        if let Some(s) = self.get_scene(scene_id) {
+            s.borrow_mut().add_objects(parents, objects);
+        }
+    }
+
+
+    fn remove_objects(
+        &mut self,
+        scene_id : <Self::Scene as SceneT>::Id,
+        parents : &[Option<<Self::Scene as SceneT>::Id>],
+        objects : &[<Self::Scene as SceneT>::Object])
+    {
+        if let Some(s) = self.get_scene(scene_id) {
+            s.remove_objects(parents, objects);
+        }
+    }
+
+    fn set_camera(&mut self, scene_id : <Self::Scene as SceneT>::Id,
+                  camera : Option<<Self::Scene as SceneT>::Object>)
+    {
+        if let Some(s) = self.get_scene(scene_id) {
+            s.set_camera(camera);
+        }
+    }
+
+    //fn copy_object(
+}
+
+impl operation::OperationReceiver for Data<dormin::world::World> {
+    type Scene = dormin::world::World;
+}
+
+
 pub trait SceneT : ToId<<Self as SceneT>::Id> {
     type Id : Default + Eq + Clone;
-    type Object : ToId<Self::Id> + Clone + world::GetWorld<Self::Object> + GetComponent;
+    type Object : ToId<Self::Id> + Clone + world::GetWorld<Self::Object> + GetComponent + PropertyGet;
     fn init_for_play(&mut self, resource : &resource::ResourceGroup);
     fn update(&mut self, dt : f64, input : &input::Input, &resource::ResourceGroup);
     fn get_objects(&self) -> &[Self::Object];
@@ -49,11 +122,96 @@ pub trait SceneT : ToId<<Self as SceneT>::Id> {
         Vec::new()
     }
 
+    fn get_camera_obj(&self) -> Option<Self::Object>
+    {
+        println!("TODO, {}, {}", file!(), line!());
+        None
+    }
+
     fn find_objects_by_id(&self, ids : &mut Vec<Self::Id>) -> Vec<Self::Object> {
         Vec::new()
     }
 
+    fn find_object_by_id(&self, id : Self::Id) -> Option<Self::Object> {
+        None
+    }
+
     fn get_name(&self) -> String;
+
+    fn save(&self);
+
+    fn add_objects(&self, parents : &[Option<Self::Id>], obs : &[Self::Object])
+    {
+        println!("TODO, {}, {}", file!(), line!());
+    }
+
+    fn remove_objects(&self, parents : &[Option<Self::Id>], obs : &[Self::Object])
+    {
+        println!("TODO, {}, {}", file!(), line!());
+    }
+
+    fn set_camera(&self, ob : Option<Self::Object>)
+    {
+        println!("TODO, {}, {}", file!(), line!());
+    }
+
+    fn get_parent(&self, o : Self::Object) -> Option<Self::Object>
+    {
+        println!("TODO, {}, {}", file!(), line!());
+        None
+    }
+
+    fn get_children(&self, o : Self::Object) -> Vec<Self::Object>
+    {
+        println!("TODO, {}, {}", file!(), line!());
+        Vec::new()
+    }
+
+    fn set_position(&self, o : Self::Object, v : vec::Vec3)
+    {
+        println!("TODO, {}, {}", file!(), line!());
+    }
+
+    fn set_scale(&self, o : Self::Object, v : vec::Vec3)
+    {
+        println!("TODO, {}, {}", file!(), line!());
+    }
+
+    fn set_orientation(&self, o : Self::Object, ori : transform::Orientation)
+    {
+        println!("TODO, {}, {}", file!(), line!());
+    }
+
+    fn get_position(&self, o : Self::Object) -> vec::Vec3
+    {
+        println!("TODO, {}, {}", file!(), line!());
+        vec::Vec3::default()
+    }
+
+    fn get_scale(&self, o : Self::Object) -> vec::Vec3
+    {
+        println!("TODO, {}, {}", file!(), line!());
+        vec::Vec3::default()
+    }
+
+    fn get_orientation(&self, o : Self::Object) -> transform::Orientation
+    {
+        println!("TODO, {}, {}", file!(), line!());
+        transform::Orientation::default()
+    }
+
+    //TODO use &str instead of string?
+    fn get_object_name(&self, o : Self::Object) -> String
+    {
+        //"TODO name, yo".to_owned()
+        format!("TODO {}, {}", file!(), line!())
+    }
+
+    fn get_comp_data_value<T:Any+Clone>(&self, o : Self::Object) -> Option<T>
+    {
+        println!("TODO, {}, {}", file!(), line!());
+        None
+    }
 }
 
 impl SceneT for Rc<RefCell<scene::Scene>> {
@@ -83,9 +241,19 @@ impl SceneT for Rc<RefCell<scene::Scene>> {
         self.borrow().find_objects_by_id(ids)
     }
 
+    fn find_object_by_id(&self, id : Self::Id) -> Option<Self::Object>
+    {
+        self.borrow().find_object_by_id(&id)
+    }
+
     fn get_name(&self) -> String
     {
         self.borrow().name.clone()
+    }
+
+    fn save(&self)
+    {
+        self.borrow().save();
     }
 
     fn get_cameras_vec(&self) -> Vec<matrix::Matrix4>
@@ -98,6 +266,11 @@ impl SceneT for Rc<RefCell<scene::Scene>> {
         }
 
         cams
+    }
+
+    fn get_camera_obj(&self) -> Option<Self::Object>
+    {
+        self.borrow().camera.as_ref().map(|x| x.borrow().object.clone())
     }
 
     fn get_mmr(&self) -> Vec<render::MatrixMeshRender>
@@ -127,6 +300,82 @@ impl SceneT for Rc<RefCell<scene::Scene>> {
         }
 
         v
+    }
+
+    fn add_objects(&self, parents : &[Option<Self::Id>], obs : &[Self::Object])
+    {
+        self.borrow_mut().add_objects(parents, obs);
+    }
+
+    fn remove_objects(&self, parents : &[Option<Self::Id>], obs : &[Self::Object])
+    {
+        self.borrow_mut().remove_objects(parents, obs);
+    }
+
+    fn set_camera(&self, ob : Option<Self::Object>)
+    {
+        let sc = self.borrow();
+        if let Some(ref c) = sc.camera {
+            if let Some(o) = ob {
+                println!("I set thhe camera !!!!!!!");
+                c.borrow_mut().object_id = Some(o.read().unwrap().id.clone());
+                c.borrow_mut().object = o;
+            }
+            else {
+                println!("dame 10");
+                c.borrow_mut().object_id = None;
+            }
+        }
+    }
+
+    fn get_parent(&self, o : Self::Object) -> Option<Self::Object>
+    {
+        o.read().unwrap().parent.clone()
+    }
+
+    fn get_children(&self, o : Self::Object) -> Vec<Self::Object>
+    {
+        o.read().unwrap().children.clone()
+    }
+
+    fn set_position(&self, o : Self::Object, v : vec::Vec3)
+    {
+        o.write().unwrap().position = v;
+    }
+
+    fn set_scale(&self, o : Self::Object, v : vec::Vec3)
+    {
+        o.write().unwrap().scale = v;
+    }
+
+    fn set_orientation(&self, o : Self::Object, ori : transform::Orientation)
+    {
+        o.write().unwrap().orientation = ori;
+    }
+
+    fn get_position(&self, o : Self::Object) -> vec::Vec3
+    {
+        o.write().unwrap().position
+    }
+
+    fn get_scale(&self, o : Self::Object) -> vec::Vec3
+    {
+        o.write().unwrap().scale
+    }
+
+    fn get_orientation(&self, o : Self::Object) -> transform::Orientation
+    {
+        o.write().unwrap().orientation
+    }
+
+    fn get_object_name(&self, o : Self::Object) -> String
+    {
+        o.read().unwrap().name.clone()
+    }
+
+    fn get_comp_data_value<T:Any+Clone>(&self, o : Self::Object) -> Option<T>
+    {
+        o.read().unwrap().get_comp_data_value()
     }
 }
 
@@ -170,6 +419,11 @@ impl SceneT for world::World {
     {
         String::from("get_name not implemented")
     }
+
+    fn save(&self)
+    {
+        println!("TODO !!!!!!!!!!!!!!!!!!!!!! {}, {}", file!(), line!());
+    }
 }
 
 pub trait DataT<S : SceneT> {
@@ -200,6 +454,7 @@ impl<S:SceneT> DataT<S> for Data<S>
 
         None
     }
+
 }
 
 impl<S:SceneT> Data<S> {
@@ -211,6 +466,28 @@ impl<S:SceneT> Data<S> {
 
             worlds : HashMap::new(),
         }
+    }
+}
+
+use ui::PropertyUser;
+impl Data<Rc<RefCell<scene::Scene>>>
+{
+    pub fn get_property_user_copy(&self, id : uuid::Uuid) -> Option<Box<PropertyUser>>
+    {
+        for s in self.scenes.values() {
+            if s.to_id() == id {
+                return Some(box s.clone());
+            }
+
+            for o in &s.borrow().objects {
+                if o.to_id() == id {
+                    return Some(box o.clone());
+                }
+            }
+
+        }
+
+        None
     }
 }
 
@@ -233,6 +510,24 @@ impl Data<world::World>
     {
         //TODO
         self.scenes.entry("todo".to_owned()).or_insert(world::World::new())
+    }
+
+    pub fn get_property_user_copy(&self, id : usize) -> Option<Box<PropertyUser>>
+    {
+        for s in self.scenes.values() {
+            if s.to_id() == id {
+                //return Some(box s.clone());
+            }
+
+            for o in s.get_objects() {
+                if o.to_id() == id {
+                    //return Some(box o.clone());
+                }
+            }
+
+        }
+
+        None
     }
 }
 
@@ -326,8 +621,6 @@ pub fn create_scene_name(name : String) -> String
 pub trait ToId<I : Clone> {
     fn to_id(&self) -> I;
 }
-
-pub type ToIdUuid = ToId<uuid::Uuid>;
 
 pub trait ToId2 {
     type Id;

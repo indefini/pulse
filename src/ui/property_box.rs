@@ -6,18 +6,13 @@ use std::mem;
 use std::ptr;
 use std::rc::{Rc,Weak};
 use std::cell::{Cell, RefCell, BorrowState};
-use std::ffi;
 use std::ffi::{CStr,CString};
 use uuid;
 use uuid::Uuid;
 
 use ui::{Window, ButtonCallback, ChangedFunc, RegisterChangeFunc, 
-    PropertyTreeFunc, PropertyConfig, PropertyValue, RefMut, PropertyUser, PropertyShow, PropertyWidget,PropertyChange, NodeChildren, PropertyNode};
+    PropertyTreeFunc, PropertyConfig, PropertyValue, PropertyUser, PropertyShow, PropertyWidget,PropertyChange, NodeChildren, PropertyNode};
 use ui;
-use dormin::property;
-use operation;
-use control::WidgetUpdate;
-use util;
 
 #[repr(C)]
 pub struct JkPropertyBox;
@@ -70,7 +65,7 @@ pub struct PropertyBox
     pub name : String,
     pub jk_property : *const JkPropertyBox,
     pub id : uuid::Uuid,
-    current : RefCell<Option<RefMut<PropertyUser>>>,
+    current_id : Cell<Option<ui::def::Id>>,
     nodes : RefCell<NodeChildren>,
 }
 
@@ -87,25 +82,24 @@ impl PropertyBox
                     panel.eo,
                     )},
             id : uuid::Uuid::new_v4(),
-            current : RefCell::new(None),
+            current_id : Cell::new(None),
             nodes : RefCell::new(NodeChildren::None)
         }
     }
 
-    pub fn set_prop_cell(&self, p : Rc<RefCell<PropertyUser>>, title : &str)
+    pub fn set_prop(
+        &self,
+        p : &PropertyUser,
+        pid : ui::def::Id,
+        title : &str)
     {
-        *self.current.borrow_mut() = Some(RefMut::Cell(p.clone()));
-        self._set_prop(&*p.borrow().as_show(), title);
-    }
-
-    pub fn set_prop_arc(&self, p : Arc<RwLock<PropertyUser>>, title : &str)
-    {
-        *self.current.borrow_mut() = Some(RefMut::Arc(p.clone()));
-        self._set_prop(&*p.read().unwrap().as_show(), title);
+        self.current_id.set(Some(pid));
+        self._set_prop(p.as_show(), title);
     }
 
     fn _set_prop(&self, p : &PropertyShow, title : &str)
     {
+        println!("SET PROP");
         unsafe { property_box_clear(self.jk_property); }
         *self.nodes.borrow_mut() = NodeChildren::None;
         p.create_widget_inside("", self);
@@ -328,26 +322,15 @@ impl PropertyWidget for PropertyBox
 
     }
 
-    fn get_current(&self) -> Option<RefMut<PropertyUser>>
+    fn get_current_id(&self) -> Option<ui::def::Id>
     {
-        if let Some(ref cur) = *self.current.borrow() {
-            Some(cur.clone())
-        }
-        else {
-            None
-        }
+        self.current_id.get()
     }
 
-    fn set_current(&self, p : RefMut<PropertyUser>, title : &str)
+    fn set_current_id(&self, p : &PropertyUser, id : ui::def::Id, title : &str)
     {
-        *self.current.borrow_mut() = Some(p.clone());
-
-        match p {
-            RefMut::Arc(ref a) => 
-                self._set_prop(&*a.read().unwrap().as_show(), title),
-            RefMut::Cell(ref c) => 
-                self._set_prop(&*c.borrow().as_show(), title),
-        }
+        self.current_id.set(Some(id.clone()));
+        self._set_prop(p.as_show(), title);
     }
 
     fn get_property(&self, path : &str) -> Option<*const PropertyValue> 

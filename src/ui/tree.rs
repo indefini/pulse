@@ -1,18 +1,14 @@
-use std::sync::{RwLock, Arc};
 use std::collections::HashMap;
 use libc::{c_char, c_void, c_int};
-use std::mem;
 use std::collections::{LinkedList};//,Deque};
 use std::ptr;
-use std::cell::{RefCell, BorrowState};
 use std::ffi::CString;
 use uuid::Uuid;
 
-use dormin::scene;
-use dormin::object;
 use ui::Window;
-use ui::{RefMut,PropertyUser};
+use ui::{PropertyUser};
 use ui;
+use data::{ToId, SceneT, DataT};
 
 #[repr(C)]
 pub struct Elm_Object_Item;
@@ -60,16 +56,36 @@ extern {
     fn tree_clear(obj : *const JkTree);
 }
 
+struct ItemData
+{
+    object : ui::def::Object,
+    name : String,
+    has_children : bool
+}
+
+impl ItemData
+{
+    fn new(o : ui::def::Object, name : String, has_children : bool) -> ItemData
+    {
+        ItemData {
+            object : o,
+            name : name,
+            has_children : has_children
+        }
+    }
+}
+
 pub struct Tree
 {
     pub name : String,
     //TODO change the key
     //objects : HashMap<Arc<RwLock<object::Object>>, *const Elm_Object_Item >
     //objects : HashMap<String, *const Elm_Object_Item>,
-    objects : HashMap<Uuid, *const Elm_Object_Item>,
+    objects : HashMap<ui::def::Id, *const Elm_Object_Item>,
     pub jk_tree : *const JkTree,
     pub id : Uuid,
-    pub config : ui::WidgetConfig
+    pub config : ui::WidgetConfig,
+    scene : Option<ui::def::Id>
 }
 
 impl Tree
@@ -86,7 +102,8 @@ impl Tree
             jk_tree : unsafe {window_tree_new(
                     window, config.x, config.y, config.w, config.h)},
             id : Uuid::new_v4(),
-            config : config.clone()
+            config : config.clone(),
+            scene : None
         };
 
         t.set_visible(config.visible);
@@ -94,94 +111,90 @@ impl Tree
         t
     }
 
-    pub fn set_scene(&mut self, scene : &scene::Scene)
+    pub fn set_scene(&mut self, scene : &ui::def::Scene)
     {
         unsafe {tree_clear(self.jk_tree);}
         self.objects.clear();
-        for o in &scene.objects {
-            self.add_object(o.clone());
-        }
-    }
 
-    pub fn add_object(&mut self, object : Arc<RwLock<object::Object>>)
-    {
-        if self.objects.contains_key(&object.read().unwrap().id) {
-            return;
+        for o in scene.get_objects() {
+            let parent_id = scene.get_parent(o.clone()).map(|x| x.to_id());
+            let name = scene.get_object_name(o.clone());
+            let has_children = !scene.get_children(o.clone()).is_empty();
+            self._add_object(scene.get_parent(o.clone()).map(|x| x.to_id()), o, name, has_children);
         }
 
-        self._add_object(object);
+        self.scene = Some(scene.to_id());
     }
 
-    pub fn add_objects(&mut self, objects : &[Arc<RwLock<object::Object>>])
+    fn _add_object(&mut self, parent : Option<ui::def::Id>, o : &ui::def::Object, name : String, has_children : bool)
     {
-        for o in objects {
-            self.add_object(o.clone());
-        }
-    }
-
-    fn _add_object(&mut self, object : Arc<RwLock<object::Object>>)
-    {
-        let eoi = unsafe {
-            match object.read().unwrap().parent {
-                Some(ref p) =>  {
-                    match self.objects.get(&p.read().unwrap().id) {
-                        Some(item) => {
+        let eoi = match parent {
+            Some(ref p) =>  {
+                match self.objects.get(p) {
+                    Some(item) => {
+                        let item_data = 
+                            ItemData::new(o.clone(), name, has_children);
+                        unsafe { 
                             tree_object_add(
                                 self.jk_tree,
-                                mem::transmute(box object.clone()),
+                                Box::into_raw(box item_data) as *const c_void,
                                 *item)
-                        },
-                        None => {
-                            println!("problem with tree, could not find parent item");
-                            ptr::null()
                         }
+                    },
+                    None => {
+                        println!("problem with tree, could not find parent item");
+                        ptr::null()
                     }
+                }
 
-                },
-                None => {
+            },
+            None => {
+                let item_data = 
+                    ItemData::new(o.clone(), name, has_children);
+                unsafe {
                     tree_object_add(
                         self.jk_tree,
-                        mem::transmute(box object.clone()),
+                        Box::into_raw(box item_data) as *const c_void,
                         ptr::null())
                 }
             }
         };
 
         if eoi != ptr::null() {
-            self.objects.insert(object.read().unwrap().id.clone(), eoi);
+            self.objects.insert(o.to_id(), eoi);
         }
+
     }
 
-    /*
-    pub fn add_object_by_id(&mut self, id : Uuid)
+    pub fn add_object(
+        &mut self,
+        parent : Option<ui::def::Id>,
+        object : ui::def::Object,
+        name : String,
+        has_children : bool
+        )
     {
-        if self.objects.contains_key(&id) {
+        if self.objects.contains_key(&object.to_id()) {
             return;
         }
 
-        let o = match self.scene {
-            Some(s) => {
-                match  s.read().unwrap().find_object_by_id(id) {
-                    Some(o) => o,
-                    None => return
-                }
-            },
-            _ => return
-        };
-
-        self._add_object(o);
+        self._add_object(parent, &object, name, has_children);
     }
 
-    pub fn add_objects_by_id(&mut self, ids : LinkedList<Uuid>)
+    pub fn add_objects(
+        &mut self,
+        parents : &[Option<ui::def::Id>],
+        objects : &[ui::def::Object],
+        names : Vec<String>,
+        has_children : &[bool],
+        )
     {
-        for id in ids.iter()
-        {
-            self.add_object_by_id(id);
+        for (((o,p),n),child) in objects.iter().zip(parents.iter()).zip(names.into_iter()).zip(has_children.iter()) {
+            self.add_object(*p, o.clone(), n, *child);
         }
     }
-    */
 
-    pub fn remove_objects_by_id(&mut self, ids : Vec<Uuid>)
+    pub fn remove_objects_by_id(&mut self, ids : Vec<ui::def::Id>)
     {
         for id in &ids {
             let item = self.objects.remove(id);
@@ -191,13 +204,13 @@ impl Tree
         }
     }
 
-    pub fn select(&mut self, id: &Uuid)
+    pub fn select(&mut self, id: &ui::def::Id)
     {
         unsafe { tree_deselect_all(self.jk_tree); }
         self._select(id);
     }
 
-    pub fn select_objects(&mut self, ids: Vec<Uuid>)
+    pub fn select_objects(&mut self, ids: Vec<ui::def::Id>)
     {
         unsafe { tree_deselect_all(self.jk_tree); }
         for id in &ids {
@@ -205,7 +218,7 @@ impl Tree
         }
     }
 
-    fn _select(&mut self, id: &Uuid)
+    fn _select(&mut self, id: &ui::def::Id)
     {
         if let Some(item) = self.objects.get(id) {
             unsafe {tree_item_select(*item);}
@@ -213,7 +226,7 @@ impl Tree
     }
 
 
-    pub fn set_selected(&mut self, ids: LinkedList<Uuid>)
+    pub fn set_selected(&mut self, ids: LinkedList<ui::def::Id>)
     {
         unsafe { tree_deselect_all(self.jk_tree); }
 
@@ -229,7 +242,7 @@ impl Tree
         unsafe { tree_update(self.jk_tree); }
     }
 
-    pub fn update_object(& self, id: &Uuid)
+    pub fn update_object(&self, id: &ui::def::Id)
     {
         if let Some(item) = self.objects.get(id) {
             unsafe {tree_item_update(*item);}
@@ -257,31 +270,25 @@ impl Tree
 
 pub extern fn name_get(data : *const c_void) -> *const c_char
 {
-    let o : &Arc<RwLock<object::Object>> = unsafe {
-        mem::transmute(data)
-    };
+    let item_data : &ItemData = unsafe {&* (data as *const ItemData)};
 
     //println!("name get {:?}", o);
-    let cs = CString::new(o.read().unwrap().name.as_bytes()).unwrap();
+    let cs = CString::new(item_data.name.as_bytes()).unwrap();
     cs.as_ptr()
 }
 
 pub extern fn item_selected(data : *const c_void) -> ()
 {
-    let o : &Arc<RwLock<object::Object>> = unsafe {
-        mem::transmute(data)
-    };
-    println!("item_selected callback ! {}, but this function does nothing for now ", o.read().unwrap().name);
+    let item_data : &ItemData = unsafe {&* (data as *const ItemData)};
+    println!("item_selected callback ! {}, but this function does nothing for now ", item_data.name);
 }
 
 pub extern fn can_expand(data : *const c_void) -> bool
 {
-    let o : &Arc<RwLock<object::Object>> = unsafe {
-        mem::transmute(data)
-    };
+    let item_data : &ItemData = unsafe {&* (data as *const ItemData)};
 
-    println!("can expand :{}", o.read().unwrap().children.is_empty());
-    return !o.read().unwrap().children.is_empty();
+    println!("TODO can_expand, {}, {}", file!(), line!());
+    item_data.has_children
 }
 
 pub extern fn expand(
@@ -289,22 +296,39 @@ pub extern fn expand(
     data : *const c_void,
     parent : *const Elm_Object_Item) -> ()
 {
-    let o : &Arc<RwLock<object::Object>> = unsafe {
-        mem::transmute(data)
-    };
+    let item_data : &ItemData = unsafe {&* (data as *const ItemData)};
 
     let wcb : & ui::WidgetCbData = unsafe {&*(widget_cb_data as *const ui::WidgetCbData)};
     let container = &mut *wcb.container.write().unwrap();
     let t : &mut Tree = &mut *container.tree.as_mut().unwrap();
 
-    println!("expanding ! {} ", o.read().unwrap().name);
+    let scene : &ui::def::Scene = if let Some(s_id) = t.scene {
+        if let Some(s) = container.data.get_scene(s_id) {
+            s
+        }
+        else {
+            return;
+        }
+    }
+    else {
+        return;
+    };
+
+    println!("expanding ! {} ", item_data.name);
     println!("expanding ! tree name {} ", t.name);
 
-    for c in &o.read().unwrap().children {
-        println!("expanding ! with child {} ", (*c).read().unwrap().name);
+    //TODO
+    for c in scene.get_children(item_data.object.clone()) {
+        //println!("expanding ! with child {} ", (*c).read().unwrap().name);
         unsafe {
-            let eoi = tree_object_add(t.jk_tree, mem::transmute(c), parent);
-            t.objects.insert(c.read().unwrap().id.clone(), eoi);
+            let cid = c.to_id();
+            let name = scene.get_object_name(c.clone());
+            let has_children = !scene.get_children(c.clone()).is_empty();
+            let eoi = tree_object_add(
+                t.jk_tree,
+                Box::into_raw(box ItemData::new(c.clone(), name, has_children)) as *const c_void,
+                parent);
+            t.objects.insert(cid, eoi);
         }
     }
 }
@@ -318,14 +342,11 @@ pub extern fn selected(
     let container = &mut *wcb.container.write().unwrap();
     let tree_id = container.tree.as_ref().unwrap().id;
 
-    let o : &Arc<RwLock<object::Object>> = unsafe {
-        mem::transmute(data)
-    };
-
+    let item_data : &ItemData = unsafe {&* (data as *const ItemData)};
 
     println!("selected callback, TODO do the following in widget container 'handle' ");
 
-    container.handle_event(ui::Event::SelectObject(o.clone()), tree_id);
+    container.handle_event(ui::Event::SelectObject(item_data.object.clone()), tree_id);
 }
 
 pub extern fn unselected(
@@ -337,12 +358,10 @@ pub extern fn unselected(
     let container = &mut *wcb.container.write().unwrap();
     let tree_id = container.tree.as_ref().unwrap().id;
 
-    let o : &Arc<RwLock<object::Object>> = unsafe {
-        mem::transmute(data)
-    };
+    let item_data : &ItemData = unsafe {&* (data as *const ItemData)};
 
     println!("TODO,unselect do the following in widget container 'handle'");
-    container.handle_event(ui::Event::UnselectObject(o.clone()), tree_id);
+    container.handle_event(ui::Event::UnselectObject(item_data.object.clone()), tree_id);
 }
 
 impl ui::Widget for Tree

@@ -15,9 +15,9 @@ use std::io::{Read,Write};
 use std::ffi::{CString,CStr};
 use uuid::Uuid;
 
-use dormin::{vec, scene, object, camera, component, render, resource};
-use ui::{Tree,RefMut,PropertyUser,View,EditView,Command,Action,
-PropertyWidget,PropertyBox};
+use dormin::{vec, scene, object, component, render, resource};
+use ui::{Tree,PropertyUser,View,EditView,Command,Action,
+PropertyWidget,PropertyBox, PropertyId};
 use ui;
 use operation;
 
@@ -243,7 +243,7 @@ pub extern fn init_cb(data: *const c_void) -> () {
     unsafe { jk_monitor_add(file_changed, Box::into_raw(box container_arw.clone()) as *const c_void, path.as_ptr()); }
 }
 
-fn create_views(container_arw : Arw<WidgetContainer>, views_config : &[ViewConfig]) -> Vec<Box<EditView<Scene>>>
+fn create_views(container_arw : Arw<WidgetContainer>, views_config : &[ViewConfig]) -> Vec<Box<EditView<Scene2>>>
 {
     let mut views = Vec::with_capacity(views_config.len());
 
@@ -258,7 +258,7 @@ fn create_views(container_arw : Arw<WidgetContainer>, views_config : &[ViewConfi
             v.window.h,
             v.camera.clone());
 
-        views.push(view as Box<EditView<Scene>>);
+        views.push(view as Box<EditView<Scene2>>);
         let scene = if let Some(ref scene) = v.scene {
             container.data.get_or_load_scene(scene.as_str())
         }
@@ -357,8 +357,9 @@ fn init_tree(container : &Arw<WidgetContainer>, win : *const Window, tree_config
 
     match container.state.context.scene {
         Some(ref s) => {
-            let sb = &*s.borrow();
-            t.set_scene(sb);
+            println!("TODO chris, scene tree, {}, {}", file!(), line!());
+            //let sb = &*s.borrow();
+            //t.set_scene(sb);
         },
         None => {
         }
@@ -409,8 +410,7 @@ fn init_action(container : &Arw<WidgetContainer>, win : *const Window, view_id :
 
     let name = match container.state.context.scene {
         Some(ref s) => {
-            let sb = &*s.borrow();
-            sb.name.clone()
+            s.get_name()
         },
         None => {
             String::from("none")
@@ -542,7 +542,7 @@ impl WindowConfig {
                 window : v.get_config().clone(),
                 scene : match c.state.context.scene {
                     Some(ref s) => {
-                        Some(s.borrow().name.clone())
+                        Some(s.get_name())
                     },
                     None => None
                 },
@@ -622,8 +622,8 @@ pub extern fn exit_cb(data: *const c_void) -> ()
     let container = &mut *app_data.container.write().unwrap();
 
     if let Some(ref s) = container.state.context.scene {
-        println!("going to save: {}", s.borrow().name);
-        s.borrow().save();
+        println!("going to save: {}", s.get_name());
+        s.save();
     }
 
     let wc = WindowConfig::new(&*container);
@@ -632,7 +632,7 @@ pub extern fn exit_cb(data: *const c_void) -> ()
 
 pub trait Widget
 {
-    fn handle_change(&self, change : operation::Change)
+    fn handle_change(&self, change : operation::Change<Id>)
     {
         println!("please implement me");
     }
@@ -833,8 +833,22 @@ pub struct ControlContainer
 }
 */
 
+//*
 pub type Scene = Rc<RefCell<scene::Scene>>;
 pub type Object = Arc<RwLock<object::Object>>;
+pub type Id = uuid::Uuid;
+//*/
+/*
+use dormin;
+pub type Scene = dormin::world::World;
+pub type Object = usize;
+pub type Id = usize;
+*/
+
+pub type Scene2 = Scene;
+pub type Object2 = Object;
+pub type Id2 = Id;
+
 
 pub struct WidgetContainer
 {
@@ -842,9 +856,9 @@ pub struct WidgetContainer
     pub property : Box<WidgetPanel<PropertyBox>>,
     pub command : Option<Box<Command>>,
     pub action : Option<Box<Action>>,
-    pub views : Vec<Box<EditView<Scene>>>,
+    pub views : Vec<Box<EditView<Scene2>>>,
     //pub views : Vec<Box<View>>,
-    pub gameview : Option<Box<GameViewTrait<Scene>>>,
+    pub gameview : Option<Box<GameViewTrait<Scene2>>>,
     pub menu : Option<Box<Action>>,
 
     pub list : Box<ListWidget>,
@@ -852,9 +866,9 @@ pub struct WidgetContainer
     pub visible_prop : HashMap<Uuid, Weak<Widget>>,
     pub anim : Option<*const Ecore_Animator>,
 
-    pub data : Box<Data<Scene>>,
+    pub data : Box<Data<Scene2>>,
     pub resource : Rc<resource::ResourceGroup>,
-    pub state : State
+    pub state : State<Scene2>
 }
 
 impl WidgetContainer
@@ -882,7 +896,7 @@ impl WidgetContainer
         }
     }
 
-    pub fn handle_change(&mut self, change : &operation::Change, widget_origin: uuid::Uuid)
+    pub fn handle_change(&mut self, change : &operation::Change<Id2>, widget_origin: uuid::Uuid)
     {
         //if *change == operation::Change::None {
         if let operation::Change::None = *change {
@@ -903,14 +917,14 @@ impl WidgetContainer
                 if name == "name" {
                     if let Some(ref t) = self.tree {
                         if widget_origin != t.id {
-                            t.update_object(&o.read().unwrap().id);
+                            t.update_object(&o.to_id());
                         }
                     };
                 }
-                //else if name.starts_with("object/comp_data/MeshRender")
-                //else if name.contains("MeshRender")
-                //else if must_update(&*o.read().unwrap(), name)
-                let ups = must_update(&*o.read().unwrap(), name);
+
+                //TODO remove
+                /*
+                let ups = must_update(&o, name);
                 for up in &ups {
                     if let ui::ShouldUpdate::Mesh = *up {
                         let mut ob = o.write().unwrap();
@@ -920,11 +934,13 @@ impl WidgetContainer
                         }
                     }
                 }
+                */
 
                 if let Some(ref p) = self.property.widget {
-                    //p.update_object(&*o.read().unwrap(), s);
                     if widget_origin != p.id {
-                        p.update_object_property(&*o.read().unwrap(), name);
+                        if let Some(pu) = self.data.get_property_user_copy(o.to_id()) {
+                             p.update_object_property(&*pu.as_show(), name);
+                         }
                     }
                 }
             },
@@ -933,10 +949,13 @@ impl WidgetContainer
                 let sel = self.get_selected_object();
                 for id in id_list {
 
+                    
                     if name == "name" {
                         if let Some(ref t) = self.tree {
                             if widget_origin != t.id {
-                                t.update_object(id);
+                                //TODO tree
+                                println!("TODO, {}, {}", file!(), line!());
+                                //t.update_object(id);
                             }
                         };
                     }
@@ -946,14 +965,13 @@ impl WidgetContainer
                     }
 
                     if let Some(ref o) = sel {
-                        let ob = o.read().unwrap();
-
-                        if *id == ob.id  {
+                        if *id == o.to_id()  {
                             if let Some(ref mut p) = self.property.widget {
                                 if widget_origin != p.id {
                                     println!("hangle change, calling update objects");
-                                    //p.update_object(&*ob, "");
-                                    p.update_object_property(&*ob, name);
+                                    if let Some(pu) = self.data.get_property_user_copy(*id) {
+                                        p.update_object_property(&*pu.as_show(), name);
+                                    }
                                 }
                             }
                         }
@@ -968,16 +986,16 @@ impl WidgetContainer
 
                     check_mesh(name, self, *id);
                     if let Some(ref o) = sel {
-                        let ob = o.read().unwrap();
-
-                        if *id == ob.id  {
+                        if *id == o.to_id()  {
                             if let Some(ref mut p) = self.property.widget {
                                 //if widget_origin != p.id 
 				{
                                     println!("update object property, this needs more info than just update the value, must indicate it is a vec change.
                                              so we dont remove and add all children again, and so the scroller doesnt make big jump");
                                     //p.update_object(&*ob, "");
-                                    p.vec_add(&*ob, name, index);
+                                    if let Some(pu) = self.data.get_property_user_copy(*id) {
+                                    p.vec_add(pu.as_show(), name, index);
+                                    }
                                 }
                             }
                         }
@@ -992,52 +1010,52 @@ impl WidgetContainer
 
                     check_mesh(name, self, *id);
                     if let Some(ref o) = sel {
-                        let ob = o.read().unwrap();
-
-                        if *id == ob.id  {
+                        if *id == o.to_id()  {
                             if let Some(ref mut p) = self.property.widget {
                                 if widget_origin != p.id {
                                     println!("update object property, this needs more info than just update the value, must indicate it is a vec change.
                                              so we dont remove and add all children again, and so the scroller doesnt make big jump");
-                                    p.vec_del(&*ob, name, index);
+                                    if let Some(pu) = self.data.get_property_user_copy(*id) {
+                                    p.vec_del(pu.as_show(), name, index);
+                                    }
                                 }
                             }
                         }
                     }
                 }
             },
-            operation::Change::ComponentChanged(uuid, ref comp_name) => {
+            operation::Change::ComponentChanged(id, ref comp_name) => {
                 println!("comp changed : {} ", comp_name);
                 let sel = self.get_selected_object();
                 if let Some(ref o) = sel {
-                    let ob = o.read().unwrap();
-                    if uuid == ob.id  {
+                    if id == o.to_id()  {
                         if let Some(ref mut p) = self.property.widget {
                             if widget_origin != p.id {
-                                p.update_object(&*ob, "");
+                                if let Some(pu) = self.data.get_property_user_copy(id) {
+                                    p.update_object(pu.as_show(), "");
+                                }
                             }
                         }
                     }
                 }
 
+                println!("TODO MeshRender update code commented, remove? {}, {}", file!(), line!());
+                /*
                 if comp_name.starts_with("MeshRender") {
-                    let scene = self.get_scene();
-                    let oob = if let Some(ref sc) = scene {
-                        let s = sc.borrow();
-                        s.find_object_by_id(&uuid)
-                    } else {
-                        None
-                    };
+                    if let Some(ref scene) = self.get_scene() {
+                        let oob = scene.find_object_by_id(id);
 
-                    if let Some(o) = oob {
-                            let mut ob = o.write().unwrap();
+                        if let Some(o) = oob {
                             println!("please update mesh");
-                            let omr = ob.get_comp_data_value::<component::mesh_render::MeshRender>();
+                            let omr = scene.get_comp_data_value::<component::mesh_render::MeshRender>(o.clone());
                             if let Some(ref mr) = omr {
+                                let mut ob = o.write().unwrap();
                                 ob.mesh_render = Some(mr.clone());
                             }
-                    }
+                        }
+                    };
                 }
+                */
             },
             operation::Change::SceneRemove(ref id, ref parents, ref obs) => {
                 {
@@ -1065,7 +1083,11 @@ impl WidgetContainer
                 match self.tree {
                     Some(ref mut t) => {
                         if widget_origin != t.id {
-                            t.add_objects(&objects);
+                            //TODO remove Some
+                            //let p : Vec<Option<Id>> = parents.iter().map(|x| Some(*x)).collect();
+                            let n : Vec<String> = objects.iter().map(|o| scene.get_object_name(o.clone())).collect();
+                            let has_children : Vec<bool> = objects.iter().map(|o| !scene.get_children(o.clone()).is_empty()).collect();
+                            t.add_objects(parents, &objects, n, &has_children);
                         }
                     },
                     None => {
@@ -1074,81 +1096,10 @@ impl WidgetContainer
                 }
             },
             operation::Change::DraggerOperation(ref op) => {
-                let (prop, operation) = {
-                    let context = &self.state.context;;
-                    match *op {
-                        dragger::Operation::Translation(v) => {
-                            let prop = vec!["position".to_owned()];
-                            let cxpos = self.state.saved_positions.clone();
-                            let mut saved_positions = Vec::with_capacity(cxpos.len());
-                            for p in &cxpos {
-                                saved_positions.push((box *p ) as Box<Any>);
-                            }
-                            let mut new_pos = Vec::with_capacity(cxpos.len());
-                            for p in &cxpos {
-                                let np = *p + v;
-                                new_pos.push((box np) as Box<Any>);
-                            }
-                            let change = operation::OperationData::Vector(
-                                saved_positions,
-                                new_pos);
-
-                            (prop, change)
-                        },
-                        dragger::Operation::Scale(v) => {
-                            let prop = vec!["scale".to_owned()];
-                            let cxsc = self.state.saved_scales.clone();
-                            let mut saved_scales = Vec::with_capacity(cxsc.len());
-                            for p in &cxsc {
-                                saved_scales.push((box *p ) as Box<Any>);
-                            }
-                            let mut new_sc = Vec::with_capacity(cxsc.len());
-                            for s in &cxsc {
-                                let ns = *s * v;
-                                new_sc.push((box ns) as Box<Any>);
-                            }
-                            let change = operation::OperationData::Vector(
-                                saved_scales,
-                                new_sc);
-
-                            (prop, change)
-                        },
-                        dragger::Operation::Rotation(q) => {
-                            let prop = vec!["orientation".to_owned(), "*".to_owned()];
-                            let cxoris = self.state.saved_oris.clone();
-                            let mut saved_oris = Vec::with_capacity(cxoris.len());
-                            for p in &cxoris {
-                                saved_oris.push((box *p ) as Box<Any>);
-                            }
-                            let mut new_ori = Vec::with_capacity(cxoris.len());
-                            for p in &cxoris {
-                                let no = *p * q;
-                                new_ori.push((box no) as Box<Any>);
-                            }
-                            let change = operation::OperationData::Vector(
-                                saved_oris,
-                                new_ori);
-
-                            (prop, change)
-                        }
-                    }
-                };
-                self.state.request_operation(prop, operation, &mut *self.data);
-                //let op = self.state.make_operation(prop, operation);
-                //self.state.op_mgr.add_with_trait2(box op);
-                //self.state.op_mgr.redo(self.data)
+                self.handle_dragger_operation(op);
             },
-            operation::Change::Property(ref p, ref name) => {
-                match *p {
-                    RefMut::Arc(ref a) => {
-                        let prop = &*a.read().unwrap();
-                        self.handle_change_new(widget_origin, prop, name);
-                    },
-                    RefMut::Cell(ref c) => {
-                        let prop = &*c.borrow();
-                        self.handle_change_new(widget_origin, prop, name);
-                    }
-                }
+            operation::Change::PropertyId(id, ref name) => {
+                self.handle_change_new_id(widget_origin, id, name);
             },
             _ => {}
         }
@@ -1156,17 +1107,81 @@ impl WidgetContainer
         self.update_all_views();
     }
 
+    fn handle_dragger_operation(&mut self, op : &dragger::Operation) {
+        let (prop, operation) = {
+            let context = &self.state.context;;
+            match *op {
+                dragger::Operation::Translation(v) => {
+                    let prop = vec!["position".to_owned()];
+                    let cxpos = &self.state.saved_positions;;
+                    let mut saved_positions = Vec::with_capacity(cxpos.len());
+                    for p in cxpos {
+                        saved_positions.push((box *p ) as Box<Any>);
+                    }
+                    let mut new_pos = Vec::with_capacity(cxpos.len());
+                    for p in cxpos {
+                        let np = *p + v;
+                        new_pos.push((box np) as Box<Any>);
+                    }
+                    let change = operation::OperationData::Vector(
+                        saved_positions,
+                        new_pos);
+
+                    (prop, change)
+                },
+                dragger::Operation::Scale(v) => {
+                    let prop = vec!["scale".to_owned()];
+                    let cxsc = self.state.saved_scales.clone();
+                    let mut saved_scales = Vec::with_capacity(cxsc.len());
+                    for p in &cxsc {
+                        saved_scales.push((box *p ) as Box<Any>);
+                    }
+                    let mut new_sc = Vec::with_capacity(cxsc.len());
+                    for s in &cxsc {
+                        let ns = *s * v;
+                        new_sc.push((box ns) as Box<Any>);
+                    }
+                    let change = operation::OperationData::Vector(
+                        saved_scales,
+                        new_sc);
+
+                    (prop, change)
+                },
+                dragger::Operation::Rotation(q) => {
+                    let prop = vec!["orientation".to_owned(), "*".to_owned()];
+                    let cxoris = self.state.saved_oris.clone();
+                    let mut saved_oris = Vec::with_capacity(cxoris.len());
+                    for p in &cxoris {
+                        saved_oris.push((box *p ) as Box<Any>);
+                    }
+                    let mut new_ori = Vec::with_capacity(cxoris.len());
+                    for p in &cxoris {
+                        let no = *p * q;
+                        new_ori.push((box no) as Box<Any>);
+                    }
+                    let change = operation::OperationData::Vector(
+                        saved_oris,
+                        new_ori);
+
+                    (prop, change)
+                }
+            }
+        };
+        self.state.request_operation(prop, operation, &mut *self.data);
+        //let op = self.state.make_operation(prop, operation);
+        //self.state.op_mgr.add_with_trait2(box op);
+        //self.state.op_mgr.redo(self.data)
+    }
+
     pub fn handle_event(&mut self, event : Event<Object>, widget_origin: uuid::Uuid)
     {
         match event {
             Event::SelectObject(ob) => {
-                //println!("event, selected : {}", ob.read().unwrap().name);
                 let mut l = vec![ob.to_id()];
                 self.state.context.select_by_id(&mut l);
                 self.handle_event(Event::SelectedChange, widget_origin);
             },
             Event::UnselectObject(ob) => {
-                //println!("event, unselected : {}", ob.read().unwrap().name);
                 let v = vec![ob.to_id()];
                 self.state.context.remove_objects_by_id(&v);
                 self.handle_event(Event::SelectedChange, widget_origin);
@@ -1180,6 +1195,9 @@ impl WidgetContainer
                 //if self.data.apply_change(wanted_change) {
                 //  self.ui.reflect_change(wanted_change); //or something else than wanted_change
                 //}
+            },
+            Event::DraggerOperation(ref o) => {
+                self.handle_dragger_operation(o);
             },
             Event::DraggerScale(s) => {
                 let change = self.state.request_scale(s);
@@ -1209,7 +1227,7 @@ impl WidgetContainer
                         if let Some(ref s) = self.state.context.scene {
                             //p.set_scene(&*s.borrow());
                             //p.set_prop_cell(s.clone(), "scene");
-                            p.set_current(RefMut::Cell(s.clone()), "scene");
+                            p.set_current_id(&*s.borrow(), s.to_id(), "scene");
                         }
                     }
                 }
@@ -1227,11 +1245,10 @@ impl WidgetContainer
                     if let Some(o) = sel.get(0) {
                         if let Some(ref mut p) = self.property.widget {
                             if widget_origin != p.id {
-                                //p.set_object(&*o.read().unwrap());
-                                let pu = &*o.read().unwrap() as &PropertyUser;
-                                p.set_prop_arc(o.clone(), "object");
+                                println!("STUFF");
+                                p.set_prop(o, o.to_id(), "object");
                                 self.visible_prop.insert(
-                                        pu.get_id(), Rc::downgrade(p) as Weak<Widget>);
+                                        o.get_id(), Rc::downgrade(p) as Weak<Widget>);
                             }
                         }
                         else {
@@ -1347,7 +1364,10 @@ impl WidgetContainer
     {
         let pid = p.get_id();
 
+        println!("handle change new 00 ");
+
         if let Some(w) = self.visible_prop.get(&pid) {
+        println!("handle change new 11 ");
 
             if let Some(w) = w.upgrade() {
                 if w.get_id() == widget_id {
@@ -1355,14 +1375,37 @@ impl WidgetContainer
                     //continue;
                 }
 
+        println!("handle change new 22 ");
+
                 w.handle_change_prop(p, name);
             }
-            //}
         }
 
         if name == "name" {
             if let Some(ref tree) = self.tree {
                 tree.handle_change_prop(p, name);
+            }
+        }
+    }
+
+    pub fn handle_change_new_id(&self, widget_id : Uuid, pid : Id, name : &str)
+    {
+        if let Some(ppp) = self.data.get_property_user_copy(pid) {
+            if let Some(w) = self.visible_prop.get(&pid) {
+
+                if let Some(w) = w.upgrade() {
+                    if w.get_id() == widget_id {
+                        println!("same id as the widget so get out (but right now the continue is commented)");
+                        //continue;
+                    }
+
+                    w.handle_change_prop(&*ppp, name);
+                }
+            }
+            if name == "name" {
+                if let Some(ref tree) = self.tree {
+                    tree.handle_change_prop(&*ppp, name);
+                }
             }
         }
     }
@@ -1387,10 +1430,12 @@ impl WidgetContainer
         }
     }
 
-    pub fn set_scene(&mut self, scene : Scene)
+    pub fn set_scene(&mut self, scene : Scene2)
     {
         if let Some(ref mut t) = self.tree {
-            t.set_scene(&scene.borrow());
+            //TODO chris
+            println!("TODO set scene tree {}, {}", file!(), line!());
+            //t.set_scene(&scene.borrow());
         }
 
         if let Some(ref mut p) = self.property.widget {
@@ -1401,7 +1446,7 @@ impl WidgetContainer
             if let Entry::Occupied(en) = m.entries.entry(String::from("scene")) {
                 elm_object_text_set(
                     unsafe {mem::transmute(*en.get())},
-                    CString::new(scene.borrow().name.as_str()).unwrap().as_ptr());
+                    CString::new(scene.get_name().as_str()).unwrap().as_ptr());
             }
         }
 
@@ -1412,7 +1457,8 @@ impl WidgetContainer
         }
     }
 
-    fn get_selected_object(&self) -> Option<Arc<RwLock<object::Object>>>
+    //fn get_selected_object(&self) -> Option<Arc<RwLock<object::Object>>>
+    fn get_selected_object(&self) -> Option<Object>
     {
         self.state.get_selected_object()
     }
@@ -1583,15 +1629,13 @@ pub fn add_empty(container : &mut WidgetContainer, view_id : Uuid)
     let mut vec = Vec::new();
     vec.push(ao.clone());
 
-    let mut parent = Vec::new();
-    parent.push(uuid::Uuid::nil());
-
+    let parent = vec![None];
 
     let mut ops = Vec::new();
     let vs = Vec::new();
     let addob = container.state.request_operation(
             vs,
-            operation::OperationData::SceneAddObjects(s.clone(),parent,vec.clone()),
+            operation::OperationData::SceneAddObjects(s.to_id(),parent,vec.clone()),
             &mut *container.data
             );
 
@@ -1634,28 +1678,15 @@ pub fn scene_list(container : &Arw<WidgetContainer>, view_id : Uuid, obj : Optio
 pub extern fn select_list(data : *const c_void, name : *const c_char)
 {
     let wcb : & ui::WidgetCbData = unsafe {mem::transmute(data)};
-    let list : &ListWidget = unsafe {mem::transmute(wcb.widget)};
     let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
 
     let s = unsafe {CStr::from_ptr(name)}.to_str().unwrap();
     println!("selection ..........{},  {}", container.name, s);
-    //let scene = container.factory.create_scene(s);
-    /*
-    let mut scene = scene::Scene::new_from_file(s, &*container.resource);
-    if let None = scene.camera {
-        let mut cam = container.factory.create_camera();
-        cam.pan(&vec::Vec3::new(-100f64,20f64,100f64));
-        cam.lookat(vec::Vec3::new(0f64,5f64,0f64));
-        scene.camera = Some(Rc::new(RefCell::new(cam)));
-    }
-    //let scene = Rc::new(RefCell::new(ss));
-    */
-
-    //container.set_scene(scene);
     let scene = container.data.get_or_load_scene(s).clone();
     container.set_scene(scene);
 }
 
+//TODO remove?
 fn must_update(p : &ui::PropertyShow, path : &str) -> Vec<ui::ShouldUpdate>
 {
     let vs: Vec<&str> = path.split('/').collect();
@@ -1811,8 +1842,10 @@ fn create_gameview_window(
 
 }
 
-fn check_mesh(name : &str, wc : &WidgetContainer, id : uuid::Uuid)
+fn check_mesh(name : &str, wc : &WidgetContainer, id : Id2)
 {
+    println!("TODO remove this check_mesh {}, {}", file!(), line!());
+    /*
     if name.starts_with("comp_data") {
         println!("TODO, only update when it was a mesh.
                                  right now 'MeshRender' is not in the property path...,
@@ -1820,8 +1853,7 @@ fn check_mesh(name : &str, wc : &WidgetContainer, id : uuid::Uuid)
                                  or check serde first");
         let scene = wc.get_scene();
         let oob = if let Some(ref sc) = scene {
-            let s = sc.borrow();
-            s.find_object_by_id(&id)
+            sc.find_object_by_id(id)
         } else {
             None
         };
@@ -1838,6 +1870,6 @@ fn check_mesh(name : &str, wc : &WidgetContainer, id : uuid::Uuid)
             }
         }
     }
-
+    */
 }
 

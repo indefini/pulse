@@ -7,7 +7,6 @@ use std::cell::{Cell, RefCell, BorrowState};
 use std::any::{Any};
 use std::ffi::{CStr,CString};
 use uuid;
-use uuid::Uuid;
 
 use dormin::scene;
 use dormin::camera;
@@ -16,15 +15,10 @@ use ui::{Window, ButtonCallback};
 use ui::{ChangedFunc, RegisterChangeFunc, PropertyTreeFunc, PropertyValue, PropertyConfig, PropertyUser,
 PropertyShow, PropertyId, RefMut, Elm_Object_Item, ShouldUpdate, PropertyWidget, PropertyList, JkPropertyList, PropertyChange};
 use ui;
-use dormin::property;
-use operation;
 use control::WidgetUpdate;
 use dormin::vec;
 use dormin::transform;
 use dormin::resource;
-use dormin::mesh;
-use dormin::material;
-use dormin::property::PropertyGet;
 use dormin::component;
 use dormin::component::CompData;
 use dormin::armature;
@@ -200,6 +194,8 @@ impl PropertyShow for String {
     }
 }
 
+//impl PropertyShow for usize {//TODO}
+
 impl<T : PropertyShow> PropertyShow for Box<T> {
 
     fn create_widget_itself(&self, field : &str) -> Option<*const PropertyValue>
@@ -265,6 +261,50 @@ impl<T : PropertyShow> PropertyShow for Rc<RefCell<T>> {
         self.borrow().to_update()
     }
 }
+
+impl<T : PropertyShow> PropertyShow for Arc<RwLock<T>> {
+
+    fn get_property(&self, field : &str) -> Option<&PropertyShow>
+    {
+        panic!("panic to see if this is called");
+    }
+
+    fn update_property(&self, widget : &PropertyWidget, all_path: &str, path : Vec<String>)
+    {
+        self.read().unwrap().update_property(widget, all_path, path);
+    }
+
+    fn update_property_new(&self, widget : &PropertyWidget, all_path: &str, path : Vec<String>, change : PropertyChange)
+    {
+        self.read().unwrap().update_property_new(widget, all_path, path, change);
+    }
+
+    fn is_node(&self) -> bool
+    {
+        self.read().unwrap().is_node()
+    }
+
+    fn to_update(&self) -> ShouldUpdate
+    {
+        self.read().unwrap().to_update()
+    }
+
+    fn create_widget_itself(&self, field : &str) -> Option<*const PropertyValue>
+    {
+        self.read().unwrap().create_widget_itself(field)
+    }
+
+    fn create_widget_inside(&self, path : &str, widget : &PropertyWidget)//, parent : *const PropertyValue)
+    {
+        self.read().unwrap().create_widget_inside(path, widget)
+    }
+
+    fn update_widget(&self, pv : *const PropertyValue) {
+        self.read().unwrap().update_widget(pv)
+        //println!("update_widget not implemented for this type");
+    }
+}
+
 
 impl<T : PropertyShow> PropertyShow for Option<T> {
 
@@ -894,7 +934,7 @@ pub extern fn vec_del(
 
 impl PropertyId for object::Object
 {
-    fn get_id(&self) -> uuid::Uuid
+    fn get_id(&self) -> ui::def::Id
     {
         return self.id
     }
@@ -902,7 +942,7 @@ impl PropertyId for object::Object
 
 impl PropertyId for scene::Scene
 {
-    fn get_id(&self) -> uuid::Uuid
+    fn get_id(&self) -> ui::def::Id
     {
         return self.id
     }

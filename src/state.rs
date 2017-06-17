@@ -1,87 +1,38 @@
-use std::sync::{Arc,RwLock};
 use std::rc::{Rc};
 use std::cell::{RefCell};
 use std::any::Any;
 
-use dormin;
-use dormin::{vec, transform, object, component};
+use dormin::{vec, transform, component};
 use dormin::property::PropertyGet;
 
 use context;
 use operation;
-use uuid;
-use data::ToIdUuid;
+use data::{SceneT,ToId};
 
-//TODO remove
 use ui;
 
-trait GetParent<Graph, Id> {
-    fn get_parent(&self, graph : &Graph) -> Option<Id>;
-}
-
-impl<Graph> GetParent<Graph, uuid::Uuid> for Arc<RwLock<object::Object>>
-{
-    fn get_parent(&self, graph : &Graph) -> Option<uuid::Uuid>
-    {
-        self.read().unwrap().parent.as_ref().map(|p| p.read().unwrap().id.clone())
-    }
-}
-
-trait Transformable<Data> {
-    fn set_position(&self, data : &mut Data, v : vec::Vec3);
-}
-
-impl<Data> Transformable<Data> for Arc<RwLock<object::Object>>
-{
-    fn set_position(&self, data : &mut Data, v : vec::Vec3)
-    {
-        self.write().unwrap().position = v;
-    }
-}
-
-impl<'a> Transformable<dormin::world::WorldRefDataMut<'a>> for dormin::world::EntityMut
-{
-    fn set_position(&self, data : &mut dormin::world::WorldRefDataMut, v : vec::Vec3)
-    {
-        if let Some(t) = data.world.get_comp_mut::<transform::Transform>(data.data, self)
-        {
-            t.position = v;
-        }
-    }
-}
-
+/*
 struct WorldChange
 {
     ob : dormin::world::EntityRef,
     what : String,
     value : vec::Vec3
 }
+*/
 
-impl Transformable<Vec<WorldChange>> for dormin::world::EntityRef
+
+pub struct State<S:SceneT>
 {
-    fn set_position(&self, data : &mut Vec<WorldChange>, v : vec::Vec3)
-    {
-        data.push(WorldChange { ob : self.clone(), what : "position".to_owned(), value :v});
-    }
-}
-
-
-
-struct NoGraph;
-struct NoData;
-
-pub struct State
-{
-    pub context : Box<context::Context<ui::def::Scene>>,
-    pub op_mgr : operation::OperationManager,
+    pub context : Box<context::Context<S>>,
+    pub op_mgr : operation::OperationManager<S>,
     
     pub saved_positions : Vec<vec::Vec3>,
     pub saved_scales : Vec<vec::Vec3>,
     pub saved_oris : Vec<transform::Orientation>
 }
 
-impl State {
-    pub fn new() -> State
+impl<S:SceneT+Clone+'static> State<S> {
+    pub fn new() -> State<S>
     {
         State {
             context : box context::Context::new(),
@@ -95,33 +46,35 @@ impl State {
 
     pub fn save_positions(&mut self)
     {
+        let s = self.context.scene.as_ref().unwrap();
         self.saved_positions = 
             self.context.selected.iter().map(
-                |o| o.read().unwrap().position
+                |o| s.get_position(o.clone())
                 ).collect();
     }
 
     pub fn save_scales(&mut self)
     {
-        self.saved_scales = self.context.selected.iter().map(|o| o.read().unwrap().scale).collect();
+        let s = self.context.scene.as_ref().unwrap();
+        self.saved_scales = self.context.selected.iter().map(|o| s.get_scale(o.clone())).collect();
     }
 
     pub fn save_oris(&mut self)
     {
-        self.saved_oris = self.context.selected.iter().map(|o| o.read().unwrap().orientation).collect();
+        let s = self.context.scene.as_ref().unwrap();
+        self.saved_oris = self.context.selected.iter().map(|o| s.get_orientation(o.clone())).collect();
     }
 
     pub fn make_operation(
         &mut self,
         name : Vec<String>,
-        op_data : operation::OperationDataOld
-        ) -> operation::Operation
+        op_data : operation::OperationData<S>
+        ) -> operation::Operation<S>
     {
-        let obs : Vec<Box<ToIdUuid>> =
-            self.context.selected.iter().map(|x| (box x.clone()) as Box<ToIdUuid>).collect();
+        let obs : Vec<Box<S::Object>> =
+            self.context.selected.iter().map(|x| (box x.clone())).collect();
 
         operation::Operation::new(
-            //self.context.selected.iter().map(|x| box x.clone()).collect(),
             obs,
             name.clone(),
             op_data
@@ -131,9 +84,9 @@ impl State {
     pub fn request_operation(
         &mut self,
         name : Vec<String>,
-        op_data : operation::OperationDataOld,
-        rec : &mut operation::OperationRec
-        ) -> operation::Change
+        op_data : operation::OperationData<S>,
+        rec : &mut operation::OperationReceiver<Scene=S>
+        ) -> operation::Change<S::Id>
     {
         let op = self.make_operation(name, op_data);
         let change = self.op_mgr.add_with_trait(box op, rec);
@@ -162,20 +115,20 @@ impl State {
     }
     */
 
-    pub fn undo(&mut self, rec : &mut operation::OperationRec) -> operation::Change
+    pub fn undo(&mut self, rec : &mut operation::OperationReceiver<Scene=S>) -> operation::Change<S::Id>
     {
         self.op_mgr.undo(rec)
     }
 
-    pub fn redo(&mut self, rec : &mut operation::OperationRec) -> operation::Change
+    pub fn redo(&mut self, rec : &mut operation::OperationReceiver<Scene=S>) -> operation::Change<S::Id>
     {
         self.op_mgr.redo(rec)
     }
 
     pub fn remove_selected_objects(
         &mut self,
-        rec : &mut operation::OperationRec
-        ) -> operation::Change
+        rec : &mut operation::OperationReceiver<Scene=S>
+        ) -> operation::Change<S::Id>
     {
         println!("state remove sel");
 
@@ -189,21 +142,21 @@ impl State {
         let mut parent = Vec::new();
         for o in &list {
             vec.push(o.clone());
-            let parent_id = o.get_parent(&NoGraph).unwrap_or(uuid::Uuid::nil());
+            let parent_id = s.get_parent(o.clone()).map(|x| x.to_id());
             parent.push(parent_id);
         }
 
         let vs = Vec::new();
         return self.request_operation(
             vs,
-            operation::OperationData::SceneRemoveObjects(s.clone(), parent, vec),
+            operation::OperationData::SceneRemoveObjects(s.to_id(), parent, vec),
             rec
             );
 
         //return operation::Change::SceneRemove(s.read().unwrap().id, vec);
     }
 
-    pub fn get_selected_object(&self) -> Option<Arc<RwLock<object::Object>>>
+    pub fn get_selected_object(&self) -> Option<S::Object>
     {
         match self.context.selected.get(0) {
             Some(o) => return Some(o.clone()),
@@ -217,9 +170,9 @@ impl State {
     pub fn request_operation_vec_del(
         &mut self,
         node : Rc<RefCell<ui::PropertyNode>>,
-        rec : &mut operation::OperationRec
+        rec : &mut operation::OperationReceiver<Scene=S>
         )
-        -> operation::Change
+        -> operation::Change<S::Id>
     {
         let node = node.borrow();
         let path = &node.get_path();
@@ -258,12 +211,14 @@ impl State {
 
     pub fn request_translation(
         &mut self,
-        translation : vec::Vec3) -> operation::Change
+        translation : vec::Vec3) -> operation::Change<S::Id>
     {
+        let s = self.context.scene.as_ref().unwrap();
+
         let sp = self.saved_positions.clone();
 
         for (i,o) in self.context.selected.iter().enumerate() {
-            o.set_position(&mut NoData, sp[i] + translation);
+            s.set_position(o.clone(), sp[i] + translation);
         }
 
         return operation::Change::DirectChange("position".to_owned());
@@ -271,12 +226,13 @@ impl State {
 
     pub fn request_scale(
         &mut self,
-        scale : vec::Vec3) -> operation::Change
+        scale : vec::Vec3) -> operation::Change<S::Id>
     {
+        let s = self.context.scene.as_ref().unwrap();
         let sp = self.saved_scales.clone();
 
         for (i,o) in self.context.selected.iter().enumerate() {
-            o.write().unwrap().scale = sp[i] * scale;
+            s.set_scale(o.clone(), sp[i] * scale);
         }
 
         return operation::Change::DirectChange("scale".to_owned());
@@ -284,12 +240,13 @@ impl State {
 
     pub fn request_rotation(
         &mut self,
-        rotation : vec::Quat) -> operation::Change
+        rotation : vec::Quat) -> operation::Change<S::Id>
     {
+        let s = self.context.scene.as_ref().unwrap();
         let so = self.saved_oris.clone();
 
         for (i,o) in self.context.selected.iter().enumerate() {
-            o.write().unwrap().orientation = so[i] * transform::Orientation::new_with_quat(&rotation);
+            s.set_orientation(o.clone(), so[i] * transform::Orientation::new_with_quat(&rotation));
         }
 
         operation::Change::DirectChange("orientation/*".to_owned())
@@ -297,15 +254,15 @@ impl State {
 
     pub fn request_operation_property_old_new_dontcheckequal(
         &mut self,
-        property : ui::RefMut<ui::PropertyUser>,
+        id : S::Id,
         name : &str,
         old : Box<Any>,
         new : Box<Any>,
-        rec : &mut operation::OperationRec
-        ) -> operation::Change
+        rec : &mut operation::OperationReceiver<Scene=S>
+        ) -> operation::Change<S::Id>
     {
-        let op = operation::OldNew::new(
-            property,
+        let op : operation::OldNew<S> = operation::OldNew::new(
+            id,
             String::from(name),
             old,
             new
@@ -317,17 +274,19 @@ impl State {
 
     pub fn request_operation_property_old_new<T : Any+PartialEq>(
         &mut self,
-        property : ui::RefMut<ui::PropertyUser>,
+        id : S::Id,
         name : &str,
         old : Box<T>,
         new : Box<T>,
-        rec : &mut operation::OperationRec
-        ) -> operation::Change
+        rec : &mut operation::OperationReceiver<Scene=S>
+        ) -> operation::Change<S::Id>
     {
         if *old == *new {
             return operation::Change::None;
         }
 
+        {
+        // DEBUG, can erase
         match (&*old as &Any).downcast_ref::<f64>() {
             Some(v) => println!("****************     {}",*v),
             None => {println!("cannot downcast");}
@@ -337,9 +296,10 @@ impl State {
             Some(v) => println!("****************  nnnnnew    {}",*v),
             None => {println!("cannot downcast");}
         }
+        }
 
-        let op = operation::OldNew::new(
-            property,
+        let op : operation::OldNew<S> = operation::OldNew::new(
+            id,
             String::from(name),
             old,
             new
@@ -353,7 +313,7 @@ impl State {
         &mut self,
         property : &mut ui::PropertyUser,
         name : &str,
-        new : &Any) -> operation::Change
+        new : &Any) -> operation::Change<S::Id>
     {
         println!("call from here 00 : {}", name);
         property.test_set_property_hier(name, new);
@@ -395,9 +355,9 @@ impl State {
     pub fn request_operation_vec_add(
         &mut self,
         node : Rc<RefCell<ui::PropertyNode>>,
-        rec : &mut operation::OperationRec
+        rec : &mut operation::OperationReceiver<Scene=S>
         )
-        -> operation::Change
+        -> operation::Change<S::Id>
     {
         let nodeb = node.borrow();
         let path = &nodeb.get_path();
@@ -431,8 +391,8 @@ impl State {
     pub fn copy_selected_objects(
         &mut self,
         //TODO factory : &factory::Factory,
-        rec : &mut operation::OperationRec
-        ) -> operation::Change
+        rec : &mut operation::OperationReceiver<Scene=S>
+        ) -> operation::Change<S::Id>
     {
         let s = match self.context.scene {
             Some(ref s) => s.clone(),
@@ -442,16 +402,9 @@ impl State {
         let mut vec = Vec::new();
         let mut parents = Vec::new();
         for o in &self.context.selected {
-            //vec.push(o.clone());
-            let ob = o.read().unwrap();
             println!("COPY is not working because of this TODO");
             //TODO vec.push(Arc::new(RwLock::new(factory.copy_object(&*ob))));
-            let parent_id = if let Some(ref p) = ob.parent {
-                p.read().unwrap().id
-            }
-            else {
-                uuid::Uuid::nil()
-            };
+            let parent_id = s.get_parent(o.clone()).map(|x| x.to_id());
 
             parents.push(parent_id);
         }
@@ -459,18 +412,16 @@ impl State {
         let vs = Vec::new();
         return self.request_operation(
             vs,
-            operation::OperationData::SceneAddObjects(s, parents, vec),
+            operation::OperationData::SceneAddObjects(s.to_id(), parents, vec),
             rec
             );
-
-        //return operation::Change::SceneRemove(s.read().unwrap().id, vec);
     }
 
     pub fn add_component(
         &mut self,
         component_name : &str,
-        rec : &mut operation::OperationRec
-        ) -> operation::Change
+        rec : &mut operation::OperationReceiver<Scene=S>
+        ) -> operation::Change<S::Id>
     {
         let o = if let Some(o) = self.context.selected.get(0) {
             o.clone()
@@ -498,8 +449,8 @@ impl State {
 
     pub fn set_scene_camera(
         &mut self,
-        rec : &mut operation::OperationRec
-        ) -> operation::Change
+        rec : &mut operation::OperationReceiver<Scene=S>
+        ) -> operation::Change<S::Id>
     {
         println!("control remove sel");
 
@@ -508,10 +459,7 @@ impl State {
             None => return operation::Change::None
         };
 
-        let current = match s.borrow().camera {
-            None => None,
-            Some(ref c) => Some(c.borrow().object.clone())
-        };
+        let current = s.get_camera_obj();
 
         let o = self.get_selected_object();
         println!("control set camera");
@@ -519,12 +467,9 @@ impl State {
         let vs = Vec::new();
         return self.request_operation(
             vs,
-            operation::OperationData::SetSceneCamera(s,current, o.clone()),
+            operation::OperationData::SetSceneCamera(s.to_id(),current, o.clone()),
             rec
             );
-
-        //return operation::Change::SceneRemove(s.read().unwrap().id, vec);
-
     }
 
 }
