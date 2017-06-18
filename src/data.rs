@@ -137,6 +137,7 @@ pub trait SceneT : ToId<<Self as SceneT>::Id> {
     }
 
     fn get_name(&self) -> String;
+    fn set_name(&self, s : String);
 
     fn save(&self);
 
@@ -249,6 +250,11 @@ impl SceneT for Rc<RefCell<scene::Scene>> {
     fn get_name(&self) -> String
     {
         self.borrow().name.clone()
+    }
+
+    fn set_name(&self, s : String)
+    {
+        self.borrow_mut().name = s;
     }
 
     fn save(&self)
@@ -418,6 +424,11 @@ impl SceneT for world::World {
     fn get_name(&self) -> String
     {
         String::from("get_name not implemented")
+    }
+
+    fn set_name(&self, s : String)
+    {
+        println!("TODO !!!!!!!!!!!!!!!!!!!!!! {}, {} ", file!(), line!());
     }
 
     fn save(&self)

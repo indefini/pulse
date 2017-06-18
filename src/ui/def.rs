@@ -1724,10 +1724,10 @@ pub fn scene_rename(container : &mut WidgetContainer, widget_id : Uuid, name : &
         return;
     };
 
-    let _ = fs::remove_file(s.borrow().name.as_str());
+    let _ = fs::remove_file(s.get_name().as_str());
 
-    s.borrow_mut().name = String::from(name);
-    s.borrow().save();
+    s.set_name(String::from(name));
+    s.save();
 
     /*
     let addob = container.request_operation(
