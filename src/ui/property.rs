@@ -23,6 +23,7 @@ use dormin::component;
 use dormin::component::CompData;
 use dormin::armature;
 use dormin::transform::Orientation;
+use dormin::world;
 
 #[repr(C)]
 pub struct JkPropertyCb;
@@ -721,7 +722,7 @@ impl ui::PropertyShow for Orientation {
 
 
 macro_rules! property_show_methods(
-    ($my_type:ty, [ $($member:ident),+ ]) => (
+    ($my_type:ty, [ $($member:ident),* ]) => (
 
             fn create_widget_itself(&self, field : &str) -> Option<*const PropertyValue>
             {
@@ -742,7 +743,7 @@ macro_rules! property_show_methods(
                         widget.add_simple_item(s.as_str(), pv);
                         self.$member.create_widget_inside(s.as_str(), widget);
                     }
-                 )+
+                 )*
             }
 
             fn get_property(&self, field : &str) -> Option<&PropertyShow>
@@ -750,7 +751,7 @@ macro_rules! property_show_methods(
                 match field {
                 $(
                     stringify!($member) => Some(&self.$member as &PropertyShow),
-                 )+
+                 )*
                     _ => None
                 }
             }
@@ -767,14 +768,14 @@ macro_rules! property_show_methods(
                     $(
                         let s = pp.clone() + "/" + stringify!($member);
                         self.$member.update_property(widget, s.as_str(), Vec::new());
-                    )+
+                    )*
                     return;
                 }
 
                 match path[0].as_str() {
                 $(
                     stringify!($member) => self.$member.update_property(widget, all_path, path[1..].to_vec()),
-                 )+
+                 )*
                     _ => {}
                 }
             }
@@ -791,14 +792,14 @@ macro_rules! property_show_methods(
                     $(
                         let s = pp.clone() + "/" + stringify!($member);
                         self.$member.update_property_new(widget, s.as_str(), Vec::new(),change.clone());
-                    )+
+                    )*
                     return;
                 }
 
                 match path[0].as_str() {
                 $(
                     stringify!($member) => self.$member.update_property_new(widget, all_path, path[1..].to_vec(), change),
-                 )+
+                 )*
                     _ => {}
                 }
             }
@@ -853,6 +854,8 @@ property_show_impl!(armature::ArmaturePath,[name]);
 property_show_impl!(scene::Scene,[name,camera]);
 property_show_impl!(camera::Camera,[data]);
 property_show_impl!(camera::CameraData,[far,near]);
+
+property_show_impl!(world::World,[]);
 
 pub fn make_vec_from_str(s : &str) -> Vec<String>
 {

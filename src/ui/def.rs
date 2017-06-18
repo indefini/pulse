@@ -1077,7 +1077,7 @@ impl WidgetContainer
                     None => return
                 };
 
-                let objects = scene.borrow().find_objects_by_id(&mut obs.clone());
+                let objects = scene.find_objects_by_id(&mut obs.clone());
 
                 // todo
                 match self.tree {
@@ -1227,7 +1227,7 @@ impl WidgetContainer
                         if let Some(ref s) = self.state.context.scene {
                             //p.set_scene(&*s.borrow());
                             //p.set_prop_cell(s.clone(), "scene");
-                            p.set_current_id(&*s.borrow(), s.to_id(), "scene");
+                            p.set_current_id(s, s.to_id(), "scene");
                         }
                     }
                 }
