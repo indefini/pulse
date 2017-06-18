@@ -43,7 +43,8 @@ impl ViewT<Rc<RefCell<scene::Scene>>> for View2<render::GameRender,Rc<RefCell<sc
     {
         let scene = scene.borrow();
         if let Some(ref camera) = scene.camera {
-        let camera = camera.borrow();
+            let mut camera = camera.borrow_mut();
+            camera.set_resolution(self.config.w,self.config.h);
             self.render.draw(
                 &render::CameraIdMat::from_camera(&camera),
                 &scene.objects,
@@ -60,6 +61,8 @@ impl ViewT<Rc<RefCell<scene::Scene>>> for View2<render::GameRender,Rc<RefCell<sc
 
     fn resize(&mut self, w : c_int, h : c_int)
     {
+        self.config.w = w;
+        self.config.h = h;
         self.render.resize(w, h);
     }
 

@@ -1819,7 +1819,7 @@ fn create_gameview_window(
 
     let container : &mut ui::WidgetContainer = &mut *container.write().unwrap();
 
-    let render = render::GameRender::new(scene.borrow().camera.clone().unwrap(), container.resource.clone());
+    let render = render::GameRender::new(container.resource.clone());
 
     /*
     ui::gameview::GameView::new(
