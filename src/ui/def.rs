@@ -1836,7 +1836,7 @@ fn create_gameview_window(
         &*container.data as *const DataT<Scene>,
         config.clone(),
         render,
-        scene.borrow().id,
+        scene.to_id(),
         )
         //*/
 
