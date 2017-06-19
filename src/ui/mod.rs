@@ -126,14 +126,14 @@ impl PropertyConfig
 
 use dormin::property::{PropertyWrite, PropertyGet};
 
-pub trait PropertyUser : PropertyWrite + PropertyGet + PropertyShow + PropertyId {
+pub trait PropertyUser : PropertyWrite + PropertyGet + PropertyShow + PropertyId<def::Id> {
     fn as_show(&self) -> &PropertyShow;
     fn as_write(&self) -> &PropertyWrite;
-    fn as_id(&self) -> &PropertyId;
+    fn as_id(&self) -> &PropertyId<def::Id>;
     fn as_get(&self) -> &PropertyGet;
 }
 
-impl<T: PropertyWrite + PropertyGet + PropertyShow + PropertyId > PropertyUser for T {
+impl<T: PropertyWrite + PropertyGet + PropertyShow + PropertyId<def::Id> > PropertyUser for T {
 
     fn as_show(&self) -> &PropertyShow
     {
@@ -150,7 +150,7 @@ impl<T: PropertyWrite + PropertyGet + PropertyShow + PropertyId > PropertyUser f
         self
     }
 
-    fn as_id(&self) -> &PropertyId
+    fn as_id(&self) -> &PropertyId<def::Id>
     {
         self
     }
@@ -244,22 +244,22 @@ pub trait PropertyShow
     }
 }
 
-pub trait PropertyId
+pub trait PropertyId<Id>
 {
-    fn get_id(&self) -> def::Id;
+    fn get_id(&self) -> Id;
 }
 
-impl<T: PropertyId> PropertyId for Arc<RwLock<T>>
+impl<T: PropertyId<Id>, Id> PropertyId<Id> for Arc<RwLock<T>>
 {
-    fn get_id(&self) -> def::Id
+    fn get_id(&self) -> Id
     {
         self.read().unwrap().get_id()
     }
 }
 
-impl<T: PropertyId> PropertyId for Rc<RefCell<T>>
+impl<T: PropertyId<Id>, Id> PropertyId<Id> for Rc<RefCell<T>>
 {
-    fn get_id(&self) -> def::Id
+    fn get_id(&self) -> Id
     {
         self.borrow().get_id()
     }

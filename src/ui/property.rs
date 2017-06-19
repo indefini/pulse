@@ -935,21 +935,39 @@ pub extern fn vec_del(
     container.handle_change(&change, uuid::Uuid::nil());
 }
 
-impl PropertyId for object::Object
+impl PropertyId<uuid::Uuid> for object::Object
 {
-    fn get_id(&self) -> ui::def::Id
+    fn get_id(&self) -> uuid::Uuid
     {
         return self.id
     }
 }
 
-impl PropertyId for scene::Scene
+impl PropertyId<uuid::Uuid> for scene::Scene
 {
-    fn get_id(&self) -> ui::def::Id
+    fn get_id(&self) -> uuid::Uuid
     {
         return self.id
     }
 }
+
+impl PropertyId<usize> for world::World
+{
+    fn get_id(&self) -> usize
+    {
+        return 0usize
+    }
+}
+
+impl PropertyId<usize> for usize
+{
+    fn get_id(&self) -> usize
+    {
+        return *self
+    }
+}
+
+
 
 pub fn add_node(
     name : &str
