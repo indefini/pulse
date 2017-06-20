@@ -833,7 +833,7 @@ pub struct ControlContainer
 }
 */
 
-//*
+///*
 pub type Scene = Rc<RefCell<scene::Scene>>;
 pub type Object = Arc<RwLock<object::Object>>;
 pub type Id = uuid::Uuid;
@@ -1611,8 +1611,6 @@ pub fn add_empty(container : &mut WidgetContainer, view_id : Uuid)
 {
     println!("add empty");
 
-    let mut o = container.data.factory.create_object("new object");
-
     let position = if let Some(v) = container.find_view(view_id) {
         let (p,q) = v.get_camera().transform.get_pos_quat();
         p + q.rotate_vec3(&vec::Vec3::new(0f64,0f64,-100f64))
@@ -1621,35 +1619,33 @@ pub fn add_empty(container : &mut WidgetContainer, view_id : Uuid)
         vec::Vec3::zero()
     };
 
-    o.position = position;
 
-    let s = if let Some(ref s) = container.state.context.scene {
-        s.clone()
+    let scene_id = if let Some(ref s) = container.state.context.scene {
+        s.to_id()
     }
     else {
         return;
     };
 
-    let ao =  Arc::new(RwLock::new(o));
-    let mut vec = Vec::new();
-    vec.push(ao.clone());
+    let vec = if let Some(s) = container.data.get_scene_mut(scene_id) {
+        let o = s.create_empty_object("new object");
+        s.set_position(o.clone(), position);
+
+        vec![o.clone()]
+    }
+    else {
+        return;
+    };
 
     let parent = vec![None];
 
-    let mut ops = Vec::new();
-    let vs = Vec::new();
     let addob = container.state.request_operation(
-            vs,
-            operation::OperationData::SceneAddObjects(s.to_id(),parent,vec.clone()),
+            vec![],
+            operation::OperationData::SceneAddObjects(scene_id,parent,vec.clone()),
             &mut *container.data
             );
 
-    ops.push(addob);
-
-    for op in &ops {
-        container.handle_change(op, view_id);
-    }
-
+    container.handle_change(&addob, view_id);
     container.handle_event(ui::Event::ChangeSelected(vec), view_id);
 }
 

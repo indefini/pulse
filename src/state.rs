@@ -7,7 +7,7 @@ use dormin::property::PropertyGet;
 
 use context;
 use operation;
-use data::{SceneT,ToId};
+use data::{Data, DataT, SceneT,ToId};
 
 use ui;
 
@@ -44,25 +44,18 @@ impl<S:SceneT+Clone+'static> State<S> {
         }
     }
 
-    pub fn save_positions(&mut self)
+    pub fn save_transforms(&mut self, data : &DataT<S>)
     {
-        let s = self.context.scene.as_ref().unwrap();
-        self.saved_positions = 
+        let sid = self.context.scene.as_ref().unwrap().to_id();
+
+        let scene = data.get_scene(sid).unwrap();
+        self.saved_positions =
             self.context.selected.iter().map(
-                |o| s.get_position(o.clone())
+                |o| scene.get_position(o.clone())
                 ).collect();
-    }
 
-    pub fn save_scales(&mut self)
-    {
-        let s = self.context.scene.as_ref().unwrap();
-        self.saved_scales = self.context.selected.iter().map(|o| s.get_scale(o.clone())).collect();
-    }
-
-    pub fn save_oris(&mut self)
-    {
-        let s = self.context.scene.as_ref().unwrap();
-        self.saved_oris = self.context.selected.iter().map(|o| s.get_orientation(o.clone())).collect();
+        self.saved_scales = self.context.selected.iter().map(|o| scene.get_scale(o.clone())).collect();
+        self.saved_oris = self.context.selected.iter().map(|o| scene.get_orientation(o.clone())).collect();
     }
 
     pub fn make_operation(
@@ -127,33 +120,38 @@ impl<S:SceneT+Clone+'static> State<S> {
 
     pub fn remove_selected_objects(
         &mut self,
-        rec : &mut operation::OperationReceiver<Scene=S>
-        ) -> operation::Change<S::Id>
+        //rec : &mut operation::OperationReceiver<Scene=S>
+        data : &mut Data<S>,
+        ) -> operation::Change<S::Id> where Data<S> : operation::OperationReceiver<Scene=S>
     {
         println!("state remove sel");
 
-        let s = match self.context.scene {
-            Some(ref s) => s.clone(),
-            None => return operation::Change::None
+        let list = self.context.selected.to_vec();
+
+        let sid = if let Some(ref s) = self.context.scene {
+            s.to_id()
+        }
+        else {
+            return operation::Change::None;
         };
 
-        let list = self.context.selected.to_vec();
         let mut vec = Vec::new();
         let mut parent = Vec::new();
-        for o in &list {
-            vec.push(o.clone());
-            let parent_id = s.get_parent(o.clone()).map(|x| x.to_id());
-            parent.push(parent_id);
+        {
+            let s = data.get_scene(sid.clone()).unwrap();
+
+            for o in &list {
+                vec.push(o.clone());
+                let parent_id = s.get_parent(o.clone()).map(|x| x.to_id());
+                parent.push(parent_id);
+            }
         }
 
-        let vs = Vec::new();
         return self.request_operation(
-            vs,
-            operation::OperationData::SceneRemoveObjects(s.to_id(), parent, vec),
-            rec
+            vec![],
+            operation::OperationData::SceneRemoveObjects(sid, parent, vec),
+            data
             );
-
-        //return operation::Change::SceneRemove(s.read().unwrap().id, vec);
     }
 
     pub fn get_selected_object(&self) -> Option<S::Object>

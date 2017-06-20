@@ -21,8 +21,7 @@ use dormin::world::{GetWorld, NoGraph};
 use util;
 use context;
 use data;
-use data::SceneT;
-use data::GetComponent;
+use data::{DataT,SceneT,GetComponent,ToId};
 
 
 #[link(name = "joker")]
@@ -534,11 +533,24 @@ pub extern fn mouse_down(
             y,
             timestamp);
 
+
     for op in op_list.into_iter() {
         if let ui::Event::DraggerClicked = op {
+        /*
+        let scene = container.data.get_scene(container.state.context.scene.unwrap().to_id()).unwrap();
+        let saved_positions = 
+            container.state.context.selected.iter().map(
+                |o| scene.get_position(o.clone())
+                ).collect();
+                */
+
+            container.state.save_transforms(&*container.data);
+
+            /*
             container.state.save_positions();
             container.state.save_scales();
             container.state.save_oris();
+            */
         }
         container.views[wcb.index].handle_event(&op);
         let id = container.views[wcb.index].get_id();

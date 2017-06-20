@@ -15,6 +15,7 @@ use util::Arw;
 use dormin::input;
 use dormin::scene;
 use dormin::render;
+use dormin::world;
 use data::{Data, DataT, SceneT};
 
 /*
@@ -75,8 +76,43 @@ impl ViewT<Rc<RefCell<scene::Scene>>> for View2<render::GameRender,Rc<RefCell<sc
     {
         self.input.add_key(keycode);
     }
+}
+
+impl ViewT<world::World> for View2<render::GameRender,world::World> {
+
+    fn draw(&mut self, scene : &world::World) -> bool
+    {
+        //TODO
+        println!("TODO {}, {}", file!(), line!());
+        false
+    }
+
+    fn init(&mut self) {
+        println!("TODO {}, {}", file!(), line!());
+        self.render.init();
+    }
+
+    fn resize(&mut self, w : c_int, h : c_int)
+    {
+        self.config.w = w;
+        self.config.h = h;
+        self.render.resize(w, h);
+    }
+
+    fn get_scene_id(&self) -> usize
+    {
+        //TODO 
+        println!("TODO {}, {}", file!(), line!());
+        0usize
+    }
+
+    fn handle_key(&mut self, keycode : u8)
+    {
+        self.input.add_key(keycode);
+    }
 
 }
+
 
 pub struct View2<R, S : SceneT>
 {
@@ -100,7 +136,7 @@ impl<R:'static, S:SceneT+'static> View2<R,S> where View2<R,S> : ViewT<S> {
         config : ui::WidgetConfig,
         r : R,
         id : S::Id
-        ) -> Box<View2<R,S>> where Dispatcher : DataT<S>
+        ) -> Box<View2<R,S>> //where Dispatcher : DataT<S>
     {
         //let render = box GameRender::new(camera, resource.clone());
 
@@ -190,7 +226,7 @@ extern fn request_update_again_view2<Scene>(data : *const c_void) -> bool
 }
 
 
-pub extern fn gv_draw_cb<S:SceneT>(v : *const c_void) where Dispatcher : DataT<S>
+pub extern fn gv_draw_cb<S:SceneT>(v : *const c_void) //where Dispatcher : DataT<S>
 {
     unsafe {
         //let gv : *mut View2 = mem::transmute(v);

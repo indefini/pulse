@@ -213,6 +213,9 @@ pub trait SceneT : ToId<<Self as SceneT>::Id> {
         println!("TODO, {}, {}", file!(), line!());
         None
     }
+
+    fn create_empty_object(&mut self, name : &str) -> Self::Object;
+
 }
 
 impl SceneT for Rc<RefCell<scene::Scene>> {
@@ -383,6 +386,11 @@ impl SceneT for Rc<RefCell<scene::Scene>> {
     {
         o.read().unwrap().get_comp_data_value()
     }
+
+    fn create_empty_object(&mut self, name : &str) -> Self::Object
+    {
+       Arc::new(RwLock::new(object::Object::new(name)))
+    }
 }
 
 impl ToId<usize> for world::World
@@ -435,6 +443,12 @@ impl SceneT for world::World {
     {
         println!("TODO !!!!!!!!!!!!!!!!!!!!!! {}, {}", file!(), line!());
     }
+
+    fn create_empty_object(&mut self, name : &str) -> Self::Object
+    {
+        println!("TODO !!!!!!!!!!!!!!!!!!!!!! {}, {}", file!(), line!());
+        0usize
+    }
 }
 
 pub trait DataT<S : SceneT> {
@@ -478,10 +492,51 @@ impl<S:SceneT> Data<S> {
             worlds : HashMap::new(),
         }
     }
+
+    pub fn create_scene_name_with_context(&self, context : &context::Context<S>)
+    -> String
+    {
+        let newname = match context.scene {
+            Some(ref sc) => {
+                let scene = self.get_scene(sc.to_id()).unwrap();
+                let s_name = scene.get_name();
+                let old = if s_name.ends_with(SCENE_SUFFIX) {
+                    let i = s_name.len() - SCENE_SUFFIX.len();
+                    let (yep,_) = s_name.split_at(i);
+                    yep
+                }
+                else {
+                    s_name.as_ref()
+                };
+                String::from(old)
+            },
+            None => String::from("scene/new.scene")
+        };
+
+        create_scene_name(newname)
+    }
+}
+
+fn create_scene_name(name : String) -> String
+{
+    let mut i = 0i32;
+    let mut s = name.clone();
+    loop {
+        s.push_str(format!("{:03}",i).as_str());
+        s.push_str(SCENE_SUFFIX);
+
+        if let Err(_) = fs::metadata(s.as_str()) {
+            break;
+        }
+
+        i = i+1;
+        s = name.clone();
+    }
+
+    s
 }
 
 use ui::PropertyUser;
-//*
 impl Data<Rc<RefCell<scene::Scene>>>
 {
     pub fn get_property_user_copy(&self, id : uuid::Uuid) -> Option<Box<PropertyUser>>
@@ -502,7 +557,6 @@ impl Data<Rc<RefCell<scene::Scene>>>
         None
     }
 }
-//*/
 
 impl Data<world::World>
 {
@@ -588,47 +642,6 @@ impl Data<Rc<RefCell<scene::Scene>>>
             self.get_or_load_scene(first_key.as_str())
         }
     }
-}
-
-pub fn create_scene_name_with_context<S:SceneT>(context : &context::Context<S>)
-    -> String
-{
-    let newname = match context.scene {
-        Some(ref sc) => {
-            let s_name = sc.get_name();
-            let old = if s_name.ends_with(SCENE_SUFFIX) {
-                let i = s_name.len() - SCENE_SUFFIX.len();
-                let (yep,_) = s_name.split_at(i);
-                yep
-            }
-            else {
-                s_name.as_ref()
-            };
-            String::from(old)
-        },
-        None => String::from("scene/new.scene")
-    };
-
-    create_scene_name(newname)
-}
-
-pub fn create_scene_name(name : String) -> String
-{
-    let mut i = 0i32;
-    let mut s = name.clone();
-    loop {
-        s.push_str(format!("{:03}",i).as_str());
-        s.push_str(SCENE_SUFFIX);
-
-        if let Err(_) = fs::metadata(s.as_str()) {
-            break;
-        }
-
-        i = i+1;
-        s = name.clone();
-    }
-
-    s
 }
 
 pub trait ToId<I : Clone> {
