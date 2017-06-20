@@ -481,6 +481,7 @@ impl<S:SceneT> Data<S> {
 }
 
 use ui::PropertyUser;
+//*
 impl Data<Rc<RefCell<scene::Scene>>>
 {
     pub fn get_property_user_copy(&self, id : uuid::Uuid) -> Option<Box<PropertyUser>>
@@ -501,6 +502,7 @@ impl Data<Rc<RefCell<scene::Scene>>>
         None
     }
 }
+//*/
 
 impl Data<world::World>
 {

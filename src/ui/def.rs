@@ -863,7 +863,7 @@ pub struct WidgetContainer
 
     pub list : Box<ListWidget>,
     pub name : String,
-    pub visible_prop : HashMap<Uuid, Weak<Widget>>,
+    pub visible_prop : HashMap<Id, Weak<Widget>>,
     pub anim : Option<*const Ecore_Animator>,
 
     pub data : Box<Data<Scene2>>,
@@ -1242,13 +1242,18 @@ impl WidgetContainer
                     }
                 }
                 else {
-                    if let Some(o) = sel.get(0) {
+                    let opid = sel.get(0).map(|x| x.to_id()); 
+
+                    //if let Some(o) = sel.get(0) {
+                    if let Some(oid) = opid  {
                         if let Some(ref mut p) = self.property.widget {
                             if widget_origin != p.id {
                                 println!("STUFF");
-                                p.set_prop(o, o.to_id(), "object");
+                                if let Some(ppp) = self.data.get_property_user_copy(oid) {
+                                p.set_prop(&*ppp, oid, "object");
+                            }
                                 self.visible_prop.insert(
-                                        o.get_id(), Rc::downgrade(p) as Weak<Widget>);
+                                        oid, Rc::downgrade(p) as Weak<Widget>);
                             }
                         }
                         else {
