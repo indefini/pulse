@@ -3,7 +3,7 @@ use data::{ToId, SceneT};
 pub struct Context<S:SceneT>
 {
     pub selected : Vec<S::Object>,
-    pub scene : Option<S>,
+    pub scene : Option<S::SceneRef>,
 }
 
 impl<S : Clone+SceneT> Context<S>

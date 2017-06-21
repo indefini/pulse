@@ -1188,7 +1188,7 @@ impl WidgetContainer
             },
             Event::DraggerTranslation(t) => {
                 //TODO instead of this : 
-                let change = self.state.request_translation(t);
+                let change = self.state.request_translation(&mut *self.data,t);
                 self.handle_change(&change, widget_origin);
                 //TODO we should do this:
                 //let wanted_change = self.state.request_change_from_event(event)

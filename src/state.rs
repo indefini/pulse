@@ -209,9 +209,10 @@ impl<S:SceneT+Clone+'static> State<S> {
 
     pub fn request_translation(
         &mut self,
+        data : &mut Data<S>,
         translation : vec::Vec3) -> operation::Change<S::Id>
     {
-        let s = self.context.scene.as_ref().unwrap();
+        let s = data.get_scene(self.context.scene.as_ref().unwrap().to_id()).unwrap();
 
         let sp = self.saved_positions.clone();
 
@@ -224,9 +225,10 @@ impl<S:SceneT+Clone+'static> State<S> {
 
     pub fn request_scale(
         &mut self,
+        data : &mut Data<S>,
         scale : vec::Vec3) -> operation::Change<S::Id>
     {
-        let s = self.context.scene.as_ref().unwrap();
+        let s = data.get_scene(self.context.scene.as_ref().unwrap().to_id()).unwrap();
         let sp = self.saved_scales.clone();
 
         for (i,o) in self.context.selected.iter().enumerate() {
@@ -238,9 +240,10 @@ impl<S:SceneT+Clone+'static> State<S> {
 
     pub fn request_rotation(
         &mut self,
+        data : &mut Data<S>,
         rotation : vec::Quat) -> operation::Change<S::Id>
     {
-        let s = self.context.scene.as_ref().unwrap();
+        let s = data.get_scene(self.context.scene.as_ref().unwrap().to_id()).unwrap();
         let so = self.saved_oris.clone();
 
         for (i,o) in self.context.selected.iter().enumerate() {
@@ -389,29 +392,35 @@ impl<S:SceneT+Clone+'static> State<S> {
     pub fn copy_selected_objects(
         &mut self,
         //TODO factory : &factory::Factory,
-        rec : &mut operation::OperationReceiver<Scene=S>
-        ) -> operation::Change<S::Id>
+        data : &mut Data<S>,
+        ) -> operation::Change<S::Id> where Data<S> : operation::OperationReceiver<Scene=S>
     {
-        let s = match self.context.scene {
-            Some(ref s) => s.clone(),
-            None => return operation::Change::None
+        let sid = if let Some(ref s) = self.context.scene {
+            s.to_id()
+        }
+        else {
+            return operation::Change::None;
         };
 
         let mut vec = Vec::new();
         let mut parents = Vec::new();
-        for o in &self.context.selected {
-            println!("COPY is not working because of this TODO");
-            //TODO vec.push(Arc::new(RwLock::new(factory.copy_object(&*ob))));
-            let parent_id = s.get_parent(o.clone()).map(|x| x.to_id());
+        {
+            let s = data.get_scene(sid.clone()).unwrap();
 
-            parents.push(parent_id);
+            for o in &self.context.selected {
+                println!("COPY is not working because of this TODO");
+                //TODO vec.push(Arc::new(RwLock::new(factory.copy_object(&*ob))));
+                let parent_id = s.get_parent(o.clone()).map(|x| x.to_id());
+
+                parents.push(parent_id);
+            }
         }
 
         let vs = Vec::new();
         return self.request_operation(
             vs,
-            operation::OperationData::SceneAddObjects(s.to_id(), parents, vec),
-            rec
+            operation::OperationData::SceneAddObjects(sid, parents, vec),
+            data
             );
     }
 
