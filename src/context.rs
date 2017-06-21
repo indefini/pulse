@@ -3,7 +3,7 @@ use data::{ToId, SceneT};
 pub struct Context<S:SceneT>
 {
     pub selected : Vec<S::Object>,
-    pub scene : Option<S::SceneRef>,
+    pub scene : Option<S::Id>,
 }
 
 impl<S : Clone+SceneT> Context<S>
@@ -16,13 +16,13 @@ impl<S : Clone+SceneT> Context<S>
         }
     }
 
-    pub fn set_scene(&mut self, scene : S)
+    pub fn set_scene(&mut self, scene : S::Id)
     {
         self.scene = Some(scene);
         self.selected.clear();
     }
 
-    pub fn get_scene(&self) -> Option<S>
+    pub fn get_scene(&self) -> Option<S::Id>
     {
         self.scene.clone()
     }
@@ -81,6 +81,12 @@ impl<S:SceneT> Context<S>
         false
     }
 
+    pub fn select_by_ob(&mut self, obs : &mut Vec<S::Object>)
+    {
+        self.selected.append(obs);
+    }
+
+    /*
     pub fn select_by_id(&mut self, ids : &mut Vec<S::Id>)
     {
         //TODO same as the code at the end of mouse_up, so factorize
@@ -105,5 +111,6 @@ impl<S:SceneT> Context<S>
         //}
 
     }
+    */
 }
 

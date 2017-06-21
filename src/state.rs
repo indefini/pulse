@@ -46,9 +46,9 @@ impl<S:SceneT+Clone+'static> State<S> {
 
     pub fn save_transforms(&mut self, data : &DataT<S>)
     {
-        let sid = self.context.scene.as_ref().unwrap().to_id();
+        let sid = self.context.scene.as_ref().unwrap();
 
-        let scene = data.get_scene(sid).unwrap();
+        let scene = data.get_scene(sid.clone()).unwrap();
         self.saved_positions =
             self.context.selected.iter().map(
                 |o| scene.get_position(o.clone())
@@ -129,7 +129,7 @@ impl<S:SceneT+Clone+'static> State<S> {
         let list = self.context.selected.to_vec();
 
         let sid = if let Some(ref s) = self.context.scene {
-            s.to_id()
+            s.clone()
         }
         else {
             return operation::Change::None;
@@ -212,7 +212,7 @@ impl<S:SceneT+Clone+'static> State<S> {
         data : &mut Data<S>,
         translation : vec::Vec3) -> operation::Change<S::Id>
     {
-        let s = data.get_scene(self.context.scene.as_ref().unwrap().to_id()).unwrap();
+        let s = data.get_scene(self.context.scene.as_ref().unwrap().clone()).unwrap();
 
         let sp = self.saved_positions.clone();
 
@@ -228,7 +228,7 @@ impl<S:SceneT+Clone+'static> State<S> {
         data : &mut Data<S>,
         scale : vec::Vec3) -> operation::Change<S::Id>
     {
-        let s = data.get_scene(self.context.scene.as_ref().unwrap().to_id()).unwrap();
+        let s = data.get_scene(self.context.scene.as_ref().unwrap().clone()).unwrap();
         let sp = self.saved_scales.clone();
 
         for (i,o) in self.context.selected.iter().enumerate() {
@@ -243,7 +243,7 @@ impl<S:SceneT+Clone+'static> State<S> {
         data : &mut Data<S>,
         rotation : vec::Quat) -> operation::Change<S::Id>
     {
-        let s = data.get_scene(self.context.scene.as_ref().unwrap().to_id()).unwrap();
+        let s = data.get_scene(self.context.scene.as_ref().unwrap().clone()).unwrap();
         let so = self.saved_oris.clone();
 
         for (i,o) in self.context.selected.iter().enumerate() {
@@ -396,7 +396,7 @@ impl<S:SceneT+Clone+'static> State<S> {
         ) -> operation::Change<S::Id> where Data<S> : operation::OperationReceiver<Scene=S>
     {
         let sid = if let Some(ref s) = self.context.scene {
-            s.to_id()
+            s.clone()
         }
         else {
             return operation::Change::None;
@@ -456,17 +456,22 @@ impl<S:SceneT+Clone+'static> State<S> {
 
     pub fn set_scene_camera(
         &mut self,
-        rec : &mut operation::OperationReceiver<Scene=S>
-        ) -> operation::Change<S::Id>
+        data : &mut Data<S>,
+        ) -> operation::Change<S::Id> where Data<S> : operation::OperationReceiver<Scene=S>
     {
         println!("control remove sel");
 
-        let s = match self.context.scene {
-            Some(ref s) => s.clone(),
-            None => return operation::Change::None
+        let sid = if let Some(ref s) = self.context.scene {
+            s.clone()
+        }
+        else {
+            return operation::Change::None;
         };
 
-        let current = s.get_camera_obj();
+        let current = {
+            let s = data.get_scene(sid.clone()).unwrap();
+            s.get_camera_obj()
+        };
 
         let o = self.get_selected_object();
         println!("control set camera");
@@ -474,8 +479,8 @@ impl<S:SceneT+Clone+'static> State<S> {
         let vs = Vec::new();
         return self.request_operation(
             vs,
-            operation::OperationData::SetSceneCamera(s.to_id(),current, o.clone()),
-            rec
+            operation::OperationData::SetSceneCamera(sid,current, o.clone()),
+            data
             );
     }
 

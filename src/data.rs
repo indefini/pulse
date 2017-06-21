@@ -104,7 +104,6 @@ impl operation::OperationReceiver for Data<dormin::world::World> {
 pub trait SceneT : ToId<<Self as SceneT>::Id> {
     type Id : Default + Eq + Clone;
     type Object : ToId<Self::Id> + Clone + world::GetWorld<Self::Object> + GetComponent + PropertyGet;
-    type SceneRef : ToId<Self::Id> + Clone;
     fn init_for_play(&mut self, resource : &resource::ResourceGroup);
     fn update(&mut self, dt : f64, input : &input::Input, &resource::ResourceGroup);
     fn get_objects(&self) -> &[Self::Object];
@@ -222,7 +221,6 @@ pub trait SceneT : ToId<<Self as SceneT>::Id> {
 impl SceneT for Rc<RefCell<scene::Scene>> {
     type Id = uuid::Uuid;
     type Object = Arc<RwLock<object::Object>>;
-    type SceneRef = Rc<RefCell<scene::Scene>>;
     fn update(&mut self, dt : f64, input : &input::Input, res :&resource::ResourceGroup)
     {
         self.borrow_mut().update(dt, input, res);
@@ -415,7 +413,6 @@ impl ToId<usize> for usize
 impl SceneT for world::World {
     type Id = usize;
     type Object = usize;
-    type SceneRef = usize;
     fn update(&mut self, dt : f64, input : &input::Input, res :&resource::ResourceGroup)
     {
         println!("TODO !!!!!!!!!!!!!!!!!!!!!!");
@@ -501,7 +498,7 @@ impl<S:SceneT> Data<S> {
     {
         let newname = match context.scene {
             Some(ref sc) => {
-                let scene = self.get_scene(sc.to_id()).unwrap();
+                let scene = self.get_scene(sc.clone()).unwrap();
                 let s_name = scene.get_name();
                 let old = if s_name.ends_with(SCENE_SUFFIX) {
                     let i = s_name.len() - SCENE_SUFFIX.len();
