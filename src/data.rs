@@ -103,7 +103,7 @@ impl operation::OperationReceiver for Data<dormin::world::World> {
 
 pub trait SceneT : ToId<<Self as SceneT>::Id> {
     type Id : Default + Eq + Clone;
-    type Object : ToId<Self::Id> + Clone + world::GetWorld<Self::Object> + GetComponent + PropertyGet;
+    type Object : ToId<Self::Id> + Clone + GetWorld<Self::Object> + GetComponent + PropertyGet;
     fn init_for_play(&mut self, resource : &resource::ResourceGroup);
     fn update(&mut self, dt : f64, input : &input::Input, &resource::ResourceGroup);
     fn get_objects(&self) -> &[Self::Object];
@@ -137,7 +137,7 @@ pub trait SceneT : ToId<<Self as SceneT>::Id> {
     }
 
     fn get_name(&self) -> String;
-    fn set_name(&self, s : String);
+    fn set_name(&mut self, s : String);
 
     fn save(&self);
 
@@ -201,6 +201,9 @@ pub trait SceneT : ToId<<Self as SceneT>::Id> {
         transform::Orientation::default()
     }
 
+    fn get_transform(&self, o: Self::Object) -> transform::Transform;
+    fn get_world_transform(&self, o: Self::Object) -> transform::Transform;
+
     //TODO use &str instead of string?
     fn get_object_name(&self, o : Self::Object) -> String
     {
@@ -255,7 +258,7 @@ impl SceneT for Rc<RefCell<scene::Scene>> {
         self.borrow().name.clone()
     }
 
-    fn set_name(&self, s : String)
+    fn set_name(&mut self, s : String)
     {
         self.borrow_mut().name = s;
     }
@@ -377,6 +380,15 @@ impl SceneT for Rc<RefCell<scene::Scene>> {
         o.write().unwrap().orientation
     }
 
+    fn get_transform(&self, o: Self::Object) -> transform::Transform
+    {
+        o.read().unwrap().make_transform()
+    }
+    fn get_world_transform(&self, o: Self::Object) -> transform::Transform
+    {
+        o.read().unwrap().make_world_transform()
+    }
+
     fn get_object_name(&self, o : Self::Object) -> String
     {
         o.read().unwrap().name.clone()
@@ -409,9 +421,18 @@ impl ToId<usize> for usize
     }
 }
 
+impl ToId<usize> for world::Entity
+{
+    fn to_id(&self) -> usize
+    {
+        self.id
+    }
+}
+
 impl SceneT for world::World {
     type Id = usize;
-    type Object = usize;
+    //type Object = usize;
+    type Object = world::Entity;
     fn update(&mut self, dt : f64, input : &input::Input, res :&resource::ResourceGroup)
     {
         println!("TODO !!!!!!!!!!!!!!!!!!!!!!");
@@ -430,12 +451,12 @@ impl SceneT for world::World {
 
     fn get_name(&self) -> String
     {
-        String::from("get_name not implemented")
+        self.name.clone()
     }
 
-    fn set_name(&self, s : String)
+    fn set_name(&mut self, s : String)
     {
-        println!("TODO !!!!!!!!!!!!!!!!!!!!!! {}, {} ", file!(), line!());
+        self.name = s;
     }
 
     fn save(&self)
@@ -445,8 +466,18 @@ impl SceneT for world::World {
 
     fn create_empty_object(&mut self, name : &str) -> Self::Object
     {
-        println!("TODO !!!!!!!!!!!!!!!!!!!!!! {}, {}", file!(), line!());
-        0usize
+        self.add_entity(name.to_owned())
+    }
+
+    fn get_transform(&self, o: Self::Object) -> transform::Transform
+    {
+        //self.get::<transform::Transform>(o.id).unwrap_or_default()
+        Default::default()
+    }
+
+    fn get_world_transform(&self, o: Self::Object) -> transform::Transform
+    {
+        Default::default()
     }
 }
 
@@ -565,7 +596,7 @@ impl Data<world::World>
     {
         self.id_count +=1;
         self.scenes.entry(name.clone()).or_insert(
-                world::World::new(self.id_count)
+                world::World::new(name, self.id_count)
             )
     }
 
@@ -573,14 +604,27 @@ impl Data<world::World>
     {
         //TODO
         self.id_count +=1;
-        self.scenes.entry(String::from(name)).or_insert(world::World::new(self.id_count))
+        self.scenes.entry(String::from(name)).or_insert(world::World::new(name.to_owned(), self.id_count))
     }
 
     pub fn get_or_load_any_scene(&mut self) -> &mut world::World
     {
         //TODO
         self.id_count +=1;
-        self.scenes.entry("todo".to_owned()).or_insert(world::World::new(self.id_count))
+
+        if self.scenes.is_empty() {
+            let files = util::get_files_in_dir("world");
+            if files.is_empty() {
+                self.add_empty_scene(String::from("world/new.scene"))
+            }
+            else {
+                self.get_or_load_scene(files[0].to_str().unwrap())
+            }
+        }
+        else {
+            let first_key = self.scenes.keys().nth(0).unwrap().clone();
+            self.get_or_load_scene(first_key.as_str())
+        }
     }
 
     pub fn get_property_user_copy(&self, id : usize) -> Option<Box<PropertyUser>>
@@ -700,6 +744,20 @@ impl GetComponent for usize
     }
 }
 
+impl GetComponent for world::Entity
+{
+    fn get_comp<C:Clone+'static>(&self, data : &GetDataT) -> Option<C>
+    {
+        if let Some(ref mr) = data.get_data(self.id) {
+            if let Some(mmr) = (mr as &Any).downcast_ref::<C>() {
+                return Some(mmr.clone());
+            }
+        }
+        None
+    }
+}
+
+
 impl ToId<uuid::Uuid> for Arc<RwLock<object::Object>>
 {
     fn to_id(&self) -> uuid::Uuid
@@ -713,6 +771,63 @@ impl ToId<uuid::Uuid> for Rc<RefCell<scene::Scene>>
     fn to_id(&self) -> uuid::Uuid
     {
         self.borrow().id
+    }
+}
+
+use dormin::world::{Graph};
+pub trait GetWorld<T> {
+    fn get_world_transform(&self, graph : &Graph<T>) -> transform::Transform;
+    fn get_transform(&self) -> transform::Transform;
+}
+
+//TODO remove
+impl<T> GetWorld<T> for usize
+{
+    fn get_world_transform(&self, graph : &Graph<T>) -> transform::Transform
+    {
+        //TODO
+        println!("todo should remove this {}, {}", file!(), line!() );
+        transform::Transform::default()
+    }
+
+    fn get_transform(&self) -> transform::Transform
+    {
+        transform::Transform::default()
+    }
+}
+
+impl<T> GetWorld<T> for dormin::world::Entity
+{
+    fn get_world_transform(&self, graph : &world::Graph<T>) -> transform::Transform
+    {
+        //TODO
+        println!("todo should remove this {}, {}", file!(), line!() );
+        transform::Transform::default()
+    }
+
+    fn get_transform(&self) -> transform::Transform
+    {
+        transform::Transform::default()
+    }
+}
+
+impl<T> GetWorld<T> for Arc<RwLock<dormin::object::Object>> {
+    fn get_world_transform(&self, graph : &world::Graph<T>) -> transform::Transform
+    {
+        let o = self.read().unwrap();
+        transform::Transform::from_position_orientation_scale(
+            o.world_position(),
+            transform::Orientation::Quat(o.world_orientation()),
+            o.world_scale())
+    }
+
+    fn get_transform(&self) -> transform::Transform
+    {
+        let o = self.read().unwrap();
+        transform::Transform::from_position_orientation_scale(
+            o.position,
+            o.orientation,
+            o.scale)
     }
 }
 

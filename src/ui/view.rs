@@ -17,11 +17,11 @@ use dormin::material;
 use dormin::{camera2};
 use control::Control;
 use dormin::component::mesh_render;
-use dormin::world::{GetWorld, NoGraph};
+use dormin::world::{NoGraph};
 use util;
 use context;
 use data;
-use data::{Data, DataT,SceneT,GetComponent,ToId};
+use data::{Data, DataT,SceneT,GetComponent,ToId, GetWorld};
 
 
 #[link(name = "joker")]
@@ -306,7 +306,7 @@ impl<S:SceneT> EditView<S> for View
             cams.push(mmr);
         }
         if cams.is_empty() {
-            panic!("cam is empty");
+            println!("The scene has no camera");
         }
 
         let sel : Vec<render::MatrixMeshRender> = sel.iter().

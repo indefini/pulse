@@ -9,14 +9,13 @@ use dragger;
 use dormin::intersection;
 use dormin::vec;
 use dormin::resource;
-use dormin::world::GetWorld;
 use ui;
 use ui::view::CameraView;
 use data::SceneT;
 
 use dormin::world;
 use data;
-use data::{Data, DataT, ToId, GetComponent};
+use data::{Data, DataT, ToId, GetComponent, GetWorld};
 use dormin::component::mesh_render;
 
 use util;

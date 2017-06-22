@@ -4,7 +4,7 @@ use std::mem;
 use std::ffi::{CString, CStr};
 use std::str;
 use libc::{c_void, c_int, size_t, c_char};
-use dormin::world::GetWorld;
+use data::GetWorld;
 use dormin::world;
 
 

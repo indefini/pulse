@@ -842,7 +842,7 @@ pub type Id = uuid::Uuid;
 //*
 use dormin;
 pub type Scene = dormin::world::World;
-pub type Object = usize;
+pub type Object = dormin::world::Entity;//usize;
 pub type Id = usize;
 //*/
 
@@ -1721,7 +1721,7 @@ pub fn scene_rename(container : &mut WidgetContainer, widget_id : Uuid, name : &
 {
 
     let s = if let Some(s) = container.state.context.scene {
-        container.data.get_scene(s).unwrap()
+        container.data.get_scene_mut(s).unwrap()
     }
     else {
         return;
