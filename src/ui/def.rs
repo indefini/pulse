@@ -834,17 +834,17 @@ pub struct ControlContainer
 }
 */
 
-///*
+/*
 pub type Scene = Rc<RefCell<scene::Scene>>;
 pub type Object = Arc<RwLock<object::Object>>;
 pub type Id = uuid::Uuid;
-//*/
-/*
+*/
+//*
 use dormin;
 pub type Scene = dormin::world::World;
 pub type Object = usize;
 pub type Id = usize;
-*/
+//*/
 
 pub type Scene2 = Scene;
 pub type Object2 = Object;

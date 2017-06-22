@@ -28,7 +28,7 @@ pub struct Data<S:SceneT>
     pub factory : factory::Factory,
     pub scenes : HashMap<String, S>,
 
-    pub worlds : HashMap<String, Box<dormin::world::World>>,
+    id_count : usize,
 }
 
 use operation;
@@ -397,8 +397,7 @@ impl ToId<usize> for world::World
 {
     fn to_id(&self) -> usize
     {
-        println!("TO TODO, world ToId");
-        0usize
+        self.id
     }
 }
 
@@ -489,7 +488,7 @@ impl<S:SceneT> Data<S> {
             factory : factory::Factory::new(),
             scenes : HashMap::new(),
 
-            worlds : HashMap::new(),
+            id_count : 0usize
         }
     }
 
@@ -537,6 +536,7 @@ fn create_scene_name(name : String) -> String
 }
 
 use ui::PropertyUser;
+/*
 impl Data<Rc<RefCell<scene::Scene>>>
 {
     pub fn get_property_user_copy(&self, id : uuid::Uuid) -> Option<Box<PropertyUser>>
@@ -557,26 +557,30 @@ impl Data<Rc<RefCell<scene::Scene>>>
         None
     }
 }
+*/
 
 impl Data<world::World>
 {
     pub fn add_empty_scene(&mut self, name : String) -> &mut world::World
     {
+        self.id_count +=1;
         self.scenes.entry(name.clone()).or_insert(
-                world::World::new()
+                world::World::new(self.id_count)
             )
     }
 
     pub fn get_or_load_scene(&mut self, name : &str) -> &mut world::World
     {
         //TODO
-        self.scenes.entry(String::from(name)).or_insert(world::World::new())
+        self.id_count +=1;
+        self.scenes.entry(String::from(name)).or_insert(world::World::new(self.id_count))
     }
 
     pub fn get_or_load_any_scene(&mut self) -> &mut world::World
     {
         //TODO
-        self.scenes.entry("todo".to_owned()).or_insert(world::World::new())
+        self.id_count +=1;
+        self.scenes.entry("todo".to_owned()).or_insert(world::World::new(self.id_count))
     }
 
     pub fn get_property_user_copy(&self, id : usize) -> Option<Box<PropertyUser>>

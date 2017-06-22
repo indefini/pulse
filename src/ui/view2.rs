@@ -238,10 +238,11 @@ pub extern fn gv_draw_cb<S:SceneT>(v : *const c_void) //where Dispatcher : DataT
         let gldata : &GlViewData<S> = &*(v as *const GlViewData<S>) ;
 
         let id = (*gldata.view).get_scene_id();
-        let scene = (*gldata.dis).get_scene(id) ;
+        if let Some(scene) = (*gldata.dis).get_scene(id) {
 
         //let scene = gldata.dis.get_scene((*gldata.view).get_scene_id());
-        (*gldata.view).draw(scene.unwrap());
+        (*gldata.view).draw(scene);
+        }
 
         //TODO
         /*
