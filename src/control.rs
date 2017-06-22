@@ -16,7 +16,7 @@ use data::SceneT;
 
 use dormin::world;
 use data;
-use data::GetComponent;
+use data::{Data, DataT, ToId, GetComponent};
 use dormin::component::mesh_render;
 
 use util;
@@ -95,6 +95,7 @@ impl Control
 
     pub fn mouse_up<S:SceneT>(
             &mut self,
+            data : &Data<S>,
             camera : &camera2::CameraTransform,
             context : &context::Context<S>,
             button : i32,
@@ -149,7 +150,7 @@ impl Control
         };
         */
         let scene = match context.scene {
-             Some(ref s) => s.clone(),
+             Some(ref sid) => data.get_scene(sid.clone()).unwrap(),
              None => {
                  println!("no scene ");
                  return ui::Event::Empty;
@@ -157,7 +158,8 @@ impl Control
         };
 
         //TODO
-        println!("TODO dont test all objects in the scene, but only visible ones : {}", scene.get_objects().len());
+        //println!("TODO dont test all objects in the scene, but only visible ones : {}", scene.get_objects().len());
+        println!("TODO dont test all objects in the scene, but only visible ones. {}, {}", file!(), line!());
 
         let mut found_length = 0f64;
         let mut closest_obj = None;
@@ -280,6 +282,7 @@ impl Control
 
     pub fn mouse_move<S:SceneT>(
         &mut self,
+        data : &Data<S>,
         camera : &mut CameraView,
         context : &context::Context<S>,
         mod_flag : i32,
@@ -370,7 +373,7 @@ impl Control
 
                     let mut obvec = Vec::new();
                     let mut has_changed = false;
-                    for o in &s.get_objects_vec() {
+                    for o in &data.get_scene(s).unwrap().get_objects_vec() {
 
                         let mm = &mut *self.resource.mesh_manager.borrow_mut();
                         let t = o.get_world_transform(&world::NoGraph);

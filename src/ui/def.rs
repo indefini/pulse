@@ -409,8 +409,8 @@ fn init_action(container : &Arw<WidgetContainer>, win : *const Window, view_id :
         ad.clone());
 
     let name = match container.state.context.scene {
-        Some(ref s) => {
-            s.get_name()
+        Some(s) => {
+            container.data.get_scene(s).unwrap().get_name()
         },
         None => {
             String::from("none")
@@ -541,8 +541,8 @@ impl WindowConfig {
             let vc = ViewConfig {
                 window : v.get_config().clone(),
                 scene : match c.state.context.scene {
-                    Some(ref s) => {
-                        Some(s.get_name())
+                    Some(s) => {
+                        Some(c.data.get_scene(s).unwrap().get_name())
                     },
                     None => None
                 },
@@ -621,9 +621,10 @@ pub extern fn exit_cb(data: *const c_void) -> ()
     let app_data : &AppCbData = { let d = data as *const AppCbData; unsafe {&*d}};
     let container = &mut *app_data.container.write().unwrap();
 
-    if let Some(ref s) = container.state.context.scene {
-        println!("going to save: {}", s.get_name());
-        s.save();
+    if let Some(s) = container.state.context.scene {
+        let scene = container.data.get_scene(s).unwrap();
+        println!("going to save: {}", scene.get_name());
+        scene.save();
     }
 
     let wc = WindowConfig::new(&*container);
@@ -1072,21 +1073,22 @@ impl WidgetContainer
                 self.handle_event(Event::SelectedChange, widget_origin);
             },
             operation::Change::SceneAdd(ref id, ref parents, ref obs) => {
+
+                let (objects, n, has_children) = {
                 let scene = match self.get_scene() {
                     Some(s) => s,
                     None => return
                 };
-
-                let objects = scene.find_objects_by_id(&mut obs.clone());
+                    let objs = scene.find_objects_by_id(&mut obs.clone());
+                    let n : Vec<String> = objs.iter().map(|o| scene.get_object_name(o.clone())).collect();
+                    let has_children : Vec<bool> = objs.iter().map(|o| !scene.get_children(o.clone()).is_empty()).collect();
+                    (objs,n,has_children)
+                };
 
                 // todo
                 match self.tree {
                     Some(ref mut t) => {
                         if widget_origin != t.id {
-                            //TODO remove Some
-                            //let p : Vec<Option<Id>> = parents.iter().map(|x| Some(*x)).collect();
-                            let n : Vec<String> = objects.iter().map(|o| scene.get_object_name(o.clone())).collect();
-                            let has_children : Vec<bool> = objects.iter().map(|o| !scene.get_children(o.clone()).is_empty()).collect();
                             t.add_objects(parents, &objects, n, &has_children);
                         }
                     },
@@ -1177,8 +1179,10 @@ impl WidgetContainer
     {
         match event {
             Event::SelectObject(ob) => {
-                let mut l = vec![ob.to_id()];
-                self.state.context.select_by_id(&mut l);
+                //let mut l = vec![ob.to_id()];
+                //self.state.context.select_by_id(&mut l);
+                let mut l = vec![ob];
+                self.state.context.select_by_ob(&mut l);
                 self.handle_event(Event::SelectedChange, widget_origin);
             },
             Event::UnselectObject(ob) => {
@@ -1188,7 +1192,7 @@ impl WidgetContainer
             },
             Event::DraggerTranslation(t) => {
                 //TODO instead of this : 
-                let change = self.state.request_translation(t);
+                let change = self.state.request_translation(&mut *self.data,t);
                 self.handle_change(&change, widget_origin);
                 //TODO we should do this:
                 //let wanted_change = self.state.request_change_from_event(event)
@@ -1200,11 +1204,11 @@ impl WidgetContainer
                 self.handle_dragger_operation(o);
             },
             Event::DraggerScale(s) => {
-                let change = self.state.request_scale(s);
+                let change = self.state.request_scale(&mut *self.data,s);
                 self.handle_change(&change, widget_origin);
             },
             Event::DraggerRotation(r) => {
-                let change = self.state.request_rotation(r);
+                let change = self.state.request_rotation(&mut *self.data,r);
                 self.handle_change(&change, widget_origin);
             },
             Event::ChangeSelected(ref list) => {
@@ -1224,10 +1228,10 @@ impl WidgetContainer
 
                 if sel.is_empty() {
                     if let Some(ref mut p) = self.property.widget {
-                        if let Some(ref s) = self.state.context.scene {
+                        if let Some(s) = self.state.context.scene {
                             //p.set_scene(&*s.borrow());
                             //p.set_prop_cell(s.clone(), "scene");
-                            p.set_current_id(s, s.to_id(), "scene");
+                            p.set_current_id(self.data.get_scene(s).unwrap(), s, "scene");
                         }
                     }
                 }
@@ -1277,9 +1281,9 @@ impl WidgetContainer
         }
     }
 
-    fn get_scene(&self) -> Option<Scene>
+    fn get_scene(&self) -> Option<&Scene>
     {
-        self.state.context.scene.clone()
+        self.state.context.scene.map(|x| self.data.get_scene(x).unwrap())
     }
 
     pub fn find_view(&self, id : Uuid) -> Option<&EditView<Scene>>
@@ -1315,22 +1319,20 @@ impl WidgetContainer
         }
     }
 
-    fn can_create_gameview(&mut self) -> Option<Scene>
+    fn can_create_gameview(&mut self) -> Option<Id>
     {
         if self.gameview.is_some() {
             return None;
         }
 
-        let scene = if let Some(ref mut s) = self.state.context.scene {
-            let mut scene = s.clone();
-            scene.init_for_play(&self.resource);
-            scene
+        if let Some(sid) = self.state.context.scene {
+            self.data.get_scene_mut(sid).unwrap().init_for_play(&self.resource);
+            Some(sid)
         }
         else {
-            return None;
-        };
+            None
+        }
 
-        Some(scene)
     }
 
     pub fn set_gameview(&mut self, gv : Box<GameViewTrait<Scene>>)
@@ -1455,7 +1457,7 @@ impl WidgetContainer
             }
         }
 
-        self.state.context.set_scene(scene);
+        self.state.context.set_scene(scene.to_id());
 
         for view in &self.views {
             view.request_update();
@@ -1620,8 +1622,8 @@ pub fn add_empty(container : &mut WidgetContainer, view_id : Uuid)
     };
 
 
-    let scene_id = if let Some(ref s) = container.state.context.scene {
-        s.to_id()
+    let scene_id = if let Some(s) = container.state.context.scene {
+        s
     }
     else {
         return;
@@ -1718,8 +1720,8 @@ fn must_update(p : &ui::PropertyShow, path : &str) -> Vec<ui::ShouldUpdate>
 pub fn scene_rename(container : &mut WidgetContainer, widget_id : Uuid, name : &str)
 {
 
-    let s = if let Some(ref s) = container.state.context.scene {
-        s.clone()
+    let s = if let Some(s) = container.state.context.scene {
+        container.data.get_scene(s).unwrap()
     }
     else {
         return;
@@ -1806,7 +1808,7 @@ extern fn gv_close_cb(data : *mut c_void) {
 
 fn create_gameview_window(
     container : Arw<ui::WidgetContainer>,
-    scene : Scene,
+    scene_id : Id,
     config : &WidgetConfig
     ) -> Box<ui::gameview::GameViewTrait<Scene>>
 {
@@ -1837,7 +1839,7 @@ fn create_gameview_window(
         &*container.data as *const DataT<Scene>,
         config.clone(),
         render,
-        scene.to_id(),
+        scene_id,
         )
         //*/
 

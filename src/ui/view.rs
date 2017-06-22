@@ -21,7 +21,7 @@ use dormin::world::{GetWorld, NoGraph};
 use util;
 use context;
 use data;
-use data::{DataT,SceneT,GetComponent,ToId};
+use data::{Data, DataT,SceneT,GetComponent,ToId};
 
 
 #[link(name = "joker")]
@@ -57,7 +57,7 @@ pub trait EditView<S:SceneT> : ui::Widget {
 
     //TODO glview cb and draw stuff
     fn init_render(&mut self);
-    fn draw(&mut self, context : &context::Context<S>) -> bool;
+    fn draw(&mut self, data : &Data<S>, context : &context::Context<S>) -> bool;
     fn resize(&mut self, w : c_int, h : c_int);
     fn is_loading_resource(&self) -> bool;
 
@@ -72,6 +72,7 @@ pub trait EditView<S:SceneT> : ui::Widget {
 
     fn mouse_up(
             &mut self,
+            data : &Data<S>,
             context : &context::Context<S>,
             button : i32,
             x : i32,
@@ -80,6 +81,7 @@ pub trait EditView<S:SceneT> : ui::Widget {
 
     fn mouse_move(
         &mut self,
+        data : &Data<S>,
         context : &context::Context<S>,
         mod_flag : i32,
         button : i32,
@@ -252,10 +254,14 @@ impl<S:SceneT> EditView<S> for View
         true
     }
 
-    fn draw(&mut self, context : &context::Context<S>) -> bool
+    fn draw(&mut self, data : &Data<S>, context : &context::Context<S>) -> bool
     {
+
         let (obs, cameras) = match context.scene {
-            Some(ref s) => (s.get_mmr(), s.get_cameras_vec()),
+            Some(ref sid) => {
+                let s = data.get_scene(sid.clone()).unwrap();
+                (s.get_mmr(), s.get_cameras_vec())
+            },
             None => return false
         };
 
@@ -265,7 +271,6 @@ impl<S:SceneT> EditView<S> for View
         let mut center = vec::Vec3::zero();
         let mut ori = vec::Quat::identity();
         for o in sel {
-            use data;
             center = center + o.get_world_transform(&NoGraph).position;
             ori = ori * o.get_world_transform(&NoGraph).orientation.as_quat();
         }
@@ -351,22 +356,33 @@ impl<S:SceneT> EditView<S> for View
             y : i32,
             timestamp : i32) -> Vec<ui::Event<S::Object>>
     {
-        self.control.mouse_down(&self.camera.to_camera2_transform(), context,  modifier, button, x, y, timestamp)
+        self.control.mouse_down(
+            &self.camera.to_camera2_transform(),
+            context,  modifier, button, x, y, timestamp)
     }
 
     fn mouse_up(
             &mut self,
+            data : &Data<S>,
             context : &context::Context<S>,
             button : i32,
             x : i32,
             y : i32,
             timestamp : i32) -> ui::Event<S::Object>
     {
-        self.control.mouse_up(&self.camera.to_camera2_transform(), context, button, x, y, timestamp)
+        self.control.mouse_up(
+            data,
+            &self.camera.to_camera2_transform(),
+            context,
+            button,
+            x,
+            y,
+            timestamp)
     }
 
     fn mouse_move(
         &mut self,
+        data : &Data<S>,
         context : &context::Context<S>,
         mod_flag : i32,
         button : i32,
@@ -376,7 +392,17 @@ impl<S:SceneT> EditView<S> for View
         prevy : i32,
         timestamp : i32) -> Vec<ui::Event<S::Object>>
     {
-        self.control.mouse_move(&mut self.camera, context, mod_flag, button, curx, cury, prevx, prevy, timestamp)
+        self.control.mouse_move(
+            data,
+            &mut self.camera,
+            context,
+            mod_flag,
+            button,
+            curx,
+            cury,
+            prevx,
+            prevy,
+            timestamp)
     }
 
     fn mouse_wheel(
@@ -571,7 +597,7 @@ pub extern fn mouse_up(
     let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
 
     let event =
-        container.views[wcb.index].mouse_up(&*container.state.context, button, x, y, timestamp);
+        container.views[wcb.index].mouse_up(&*container.data, &*container.state.context, button, x, y, timestamp);
 
     container.views[wcb.index].handle_event(&event);
     let id = container.views[wcb.index].get_id();
@@ -594,6 +620,7 @@ pub extern fn mouse_move(
 
     let events =
         container.views[wcb.index].mouse_move(
+            &*container.data,
             &*container.state.context,
             modifiers_flag,
             button,
@@ -757,7 +784,7 @@ pub extern fn draw_cb(data : *const c_void) -> ()
     let wcb : &ui::WidgetCbData = unsafe {&* (data as *const ui::WidgetCbData)};
     let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
 
-    let draw_not_done = container.views[wcb.index].draw(&*container.state.context);
+    let draw_not_done = container.views[wcb.index].draw(&*container.data, &*container.state.context);
 
     if draw_not_done {
         unsafe {

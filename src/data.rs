@@ -498,7 +498,7 @@ impl<S:SceneT> Data<S> {
     {
         let newname = match context.scene {
             Some(ref sc) => {
-                let scene = self.get_scene(sc.to_id()).unwrap();
+                let scene = self.get_scene(sc.clone()).unwrap();
                 let s_name = scene.get_name();
                 let old = if s_name.ends_with(SCENE_SUFFIX) {
                     let i = s_name.len() - SCENE_SUFFIX.len();
