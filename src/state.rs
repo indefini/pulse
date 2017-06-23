@@ -212,7 +212,7 @@ impl<S:SceneT+Clone+'static> State<S> {
         data : &mut Data<S>,
         translation : vec::Vec3) -> operation::Change<S::Id>
     {
-        let s = data.get_scene(self.context.scene.as_ref().unwrap().clone()).unwrap();
+        let s = data.get_scene_mut(self.context.scene.as_ref().unwrap().clone()).unwrap();
 
         let sp = self.saved_positions.clone();
 

@@ -18,6 +18,13 @@ use dormin::transform;
 use context;
 use util;
 
+use std::path::Path;
+use std::fmt;
+use serde;
+use serde_json;
+use std::fs::File;
+use std::io::{Read,Write};
+
 static SCENE_SUFFIX: &str = ".scene";
 //static WORLD_SUFFIX: &str = ".world";
 
@@ -73,7 +80,6 @@ impl operation::OperationReceiver for Data<Rc<RefCell<scene::Scene>>> {
         }
     }
 
-
     fn remove_objects(
         &mut self,
         scene_id : <Self::Scene as SceneT>::Id,
@@ -98,6 +104,18 @@ impl operation::OperationReceiver for Data<Rc<RefCell<scene::Scene>>> {
 
 impl operation::OperationReceiver for Data<dormin::world::World> {
     type Scene = dormin::world::World;
+
+    fn add_objects(
+        &mut self,
+        scene_id : <Self::Scene as SceneT>::Id,
+        parents : &[Option<<Self::Scene as SceneT>::Id>],
+        objects : &[<Self::Scene as SceneT>::Object])
+    {
+        if let Some(s) = self.get_scene(scene_id) {
+            s.add_objects(parents, objects);
+        }
+    }
+
 }
 
 
@@ -168,7 +186,7 @@ pub trait SceneT : ToId<<Self as SceneT>::Id> {
         Vec::new()
     }
 
-    fn set_position(&self, o : Self::Object, v : vec::Vec3)
+    fn set_position(&mut self, o : Self::Object, v : vec::Vec3)
     {
         println!("TODO, {}, {}", file!(), line!());
     }
@@ -218,6 +236,11 @@ pub trait SceneT : ToId<<Self as SceneT>::Id> {
     }
 
     fn create_empty_object(&mut self, name : &str) -> Self::Object;
+    fn create_empty_object_string(&mut self, name : &str) -> String
+    {
+        String::new()
+    }
+
 
 }
 
@@ -350,7 +373,7 @@ impl SceneT for Rc<RefCell<scene::Scene>> {
         o.read().unwrap().children.clone()
     }
 
-    fn set_position(&self, o : Self::Object, v : vec::Vec3)
+    fn set_position(&mut self, o : Self::Object, v : vec::Vec3)
     {
         o.write().unwrap().position = v;
     }
@@ -462,11 +485,26 @@ impl SceneT for world::World {
     fn save(&self)
     {
         println!("TODO !!!!!!!!!!!!!!!!!!!!!! {}, {}", file!(), line!());
+        println!("save scene todo serialize");
+        let path : &Path = self.name.as_ref();
+        let mut file = File::create(path).ok().unwrap();
+
+        let js = serde_json::to_string_pretty(self);
+        let result = file.write(js.unwrap().as_bytes());
     }
 
     fn create_empty_object(&mut self, name : &str) -> Self::Object
     {
-        self.add_entity(name.to_owned())
+        let mut e = self.create_entity(name.to_owned());
+        e.add_comp::<transform::Transform>();
+        e
+    }
+
+    fn set_position(&mut self, o : Self::Object, v : vec::Vec3)
+    {
+        if let Some(t) = self.get_comp_mut::<transform::Transform>(&o.to_mut()) {
+            t.position = v;
+        }
     }
 
     fn get_transform(&self, o: Self::Object) -> transform::Transform
@@ -478,6 +516,11 @@ impl SceneT for world::World {
     {
         //TODO with parent
         self.data.get::<transform::Transform>(o.id).map_or(Default::default(), |x| x.clone())
+    }
+
+    fn add_objects(&self, parents : &[Option<Self::Id>], obs : &[Self::Object])
+    {
+        self.add_entities(parents, obs);
     }
 }
 
