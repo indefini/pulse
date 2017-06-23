@@ -471,13 +471,13 @@ impl SceneT for world::World {
 
     fn get_transform(&self, o: Self::Object) -> transform::Transform
     {
-        //self.get::<transform::Transform>(o.id).unwrap_or_default()
-        Default::default()
+        self.data.get::<transform::Transform>(o.id).map_or(Default::default(), |x| x.clone())
     }
 
     fn get_world_transform(&self, o: Self::Object) -> transform::Transform
     {
-        Default::default()
+        //TODO with parent
+        self.data.get::<transform::Transform>(o.id).map_or(Default::default(), |x| x.clone())
     }
 }
 
