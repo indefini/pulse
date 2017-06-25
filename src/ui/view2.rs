@@ -83,7 +83,7 @@ impl ViewT<world::World> for View2<render::GameRender,world::World> {
     fn draw(&mut self, scene : &world::World) -> bool
     {
         //TODO
-        println!("TODO {}, {}", file!(), line!());
+        println!("TODO view2 draw {}, {}", file!(), line!());
         false
     }
 
@@ -101,9 +101,7 @@ impl ViewT<world::World> for View2<render::GameRender,world::World> {
 
     fn get_scene_id(&self) -> usize
     {
-        //TODO 
-        println!("TODO {}, {}", file!(), line!());
-        0usize
+        self.scene_id
     }
 
     fn handle_key(&mut self, keycode : u8)

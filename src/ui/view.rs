@@ -257,10 +257,10 @@ impl<S:SceneT> EditView<S> for View
     fn draw(&mut self, data : &Data<S>, context : &context::Context<S>) -> bool
     {
 
-        let (obs, cameras) = match context.scene {
+        let (obs, cameras, scene) = match context.scene {
             Some(ref sid) => {
                 let s = data.get_scene(sid.clone()).unwrap();
-                (s.get_mmr(), s.get_cameras_vec())
+                (s.get_mmr(), s.get_cameras_vec(), s)
             },
             None => return false
         };
@@ -271,8 +271,9 @@ impl<S:SceneT> EditView<S> for View
         let mut center = vec::Vec3::zero();
         let mut ori = vec::Quat::identity();
         for o in sel {
-            center = center + o.get_world_transform(&NoGraph).position;
-            ori = ori * o.get_world_transform(&NoGraph).orientation.as_quat();
+            let t = scene.get_world_transform(o.clone());
+            center = center + t.position;
+            ori = ori * t.orientation.as_quat();
         }
 
         if !sel.is_empty() {
@@ -310,11 +311,7 @@ impl<S:SceneT> EditView<S> for View
         }
 
         let sel : Vec<render::MatrixMeshRender> = sel.iter().
-            filter_map(|x| x.get_comp::<mesh_render::MeshRender>(&data::NoData).
-                       map(|m| render::MatrixMeshRender::new(
-                               *x.get_world_transform(&NoGraph).get_or_compute_local_matrix(), m)
-                           )
-                       ).collect();
+            filter_map(|x| scene.get_object_mmr(x.clone())).collect();
 
         self.camera.transform.set_as_dirty();
         self.camera.transform.compute_local_matrix();

@@ -111,7 +111,7 @@ impl operation::OperationReceiver for Data<dormin::world::World> {
         parents : &[Option<<Self::Scene as SceneT>::Id>],
         objects : &[<Self::Scene as SceneT>::Object])
     {
-        if let Some(s) = self.get_scene(scene_id) {
+        if let Some(s) = self.get_scene_mut(scene_id) {
             s.add_objects(parents, objects);
         }
     }
@@ -132,11 +132,19 @@ pub trait SceneT : ToId<<Self as SceneT>::Id> {
 
     fn get_mmr(&self) -> Vec<render::MatrixMeshRender>
     {
+        println!("TODO {}, {}", file!(), line!());
         Vec::new()
+    }
+
+    fn get_object_mmr(&self, o : Self::Object) -> Option<render::MatrixMeshRender>
+    {
+        println!("TODO {}, {}", file!(), line!());
+        None
     }
 
     fn get_cameras_vec(&self) -> Vec<matrix::Matrix4>
     {
+        println!("TODO {}, {}", file!(), line!());
         Vec::new()
     }
 
@@ -147,10 +155,12 @@ pub trait SceneT : ToId<<Self as SceneT>::Id> {
     }
 
     fn find_objects_by_id(&self, ids : &mut Vec<Self::Id>) -> Vec<Self::Object> {
+        println!("TODO {}, {}", file!(), line!());
         Vec::new()
     }
 
     fn find_object_by_id(&self, id : Self::Id) -> Option<Self::Object> {
+        println!("TODO {}, {}", file!(), line!());
         None
     }
 
@@ -159,7 +169,7 @@ pub trait SceneT : ToId<<Self as SceneT>::Id> {
 
     fn save(&self);
 
-    fn add_objects(&self, parents : &[Option<Self::Id>], obs : &[Self::Object])
+    fn add_objects(&mut self, parents : &[Option<Self::Id>], obs : &[Self::Object])
     {
         println!("TODO, {}, {}", file!(), line!());
     }
@@ -238,6 +248,7 @@ pub trait SceneT : ToId<<Self as SceneT>::Id> {
     fn create_empty_object(&mut self, name : &str) -> Self::Object;
     fn create_empty_object_string(&mut self, name : &str) -> String
     {
+        println!("TODO {}, {}", file!(), line!());
         String::new()
     }
 
@@ -337,7 +348,7 @@ impl SceneT for Rc<RefCell<scene::Scene>> {
         v
     }
 
-    fn add_objects(&self, parents : &[Option<Self::Id>], obs : &[Self::Object])
+    fn add_objects(&mut self, parents : &[Option<Self::Id>], obs : &[Self::Object])
     {
         self.borrow_mut().add_objects(parents, obs);
     }
@@ -497,6 +508,9 @@ impl SceneT for world::World {
     {
         let mut e = self.create_entity(name.to_owned());
         e.add_comp::<transform::Transform>();
+        if let Some(mr) = e.add_comp_return::<mesh_render::MeshRender>() {
+            mr.set_with_names("model/skeletonmesh.mesh", "material/simple.mat");
+        }
         e
     }
 
@@ -509,18 +523,94 @@ impl SceneT for world::World {
 
     fn get_transform(&self, o: Self::Object) -> transform::Transform
     {
-        self.data.get::<transform::Transform>(o.id).map_or(Default::default(), |x| x.clone())
+        if let Some(oref) = o.to_ref() {
+            self.get_transform(oref)
+        }
+        else if let Some(oref) = self.find(&o) {
+            self.get_transform(oref)
+        }
+        else {
+            println!("TODO cannot make ref {}, {}", file!(), line!());
+            Default::default()
+        }
     }
 
     fn get_world_transform(&self, o: Self::Object) -> transform::Transform
     {
         //TODO with parent
-        self.data.get::<transform::Transform>(o.id).map_or(Default::default(), |x| x.clone())
+        //self.get_comp::<transform::Transform>(o.to_ref()).map_or(Default::default(), |x| x.clone())
+        //Default::default()
+        //
+        println!("object is : {:?}", o);
+        if let Some(oref) = o.to_ref() {
+            self.get_world_transform(oref)
+        }
+        else if let Some(oref) = self.find(&o) {
+            println!("object found!!!!! : {:?}", o);
+            self.get_transform(oref)
+        }
+        else {
+            println!("TODO cannot make ref {}, {}", file!(), line!());
+            println!("object was : {:?}", o);
+            Default::default()
+        }
     }
 
-    fn add_objects(&self, parents : &[Option<Self::Id>], obs : &[Self::Object])
+    fn add_objects(&mut self, parents : &[Option<Self::Id>], obs : &[Self::Object])
     {
         self.add_entities(parents, obs);
+    }
+
+    fn get_mmr(&self) -> Vec<render::MatrixMeshRender>
+    {
+        fn object_to_mmr(o : &object::Object) -> Option<render::MatrixMeshRender>
+        {
+            o.mesh_render.as_ref().map(|x| render::MatrixMeshRender::new(o.get_world_matrix().clone(), x.clone()))
+        }
+
+        fn children_mmr(o : &object::Object) -> Vec<render::MatrixMeshRender>
+        {
+            o.children.iter().filter_map(|x| object_to_mmr(&*x.read().unwrap())).collect()
+        }
+
+        fn object_and_child(o : &object::Object) -> Vec<render::MatrixMeshRender>
+        {
+            let mut v = children_mmr(o);
+            if let Some(m) = object_to_mmr(o) {
+                v.push(m);
+            }
+            v
+        }
+
+        let mut v = Vec::new();
+        for (i,o) in self.data.mesh_render.iter().enumerate() {
+            let owner = self.owners.mesh_render[i];
+            let mut t = self.get_world_transform(world::EntityRef::new(0,owner));
+            t.set_as_dirty();
+            let m = t.get_or_compute_local_matrix();
+            //let mmr = render::MatrixMeshRender::new(matrix::Matrix4::identity(), o.clone());
+            let mmr = render::MatrixMeshRender::new(m.clone(), o.clone());
+            v.push(mmr);
+            
+
+            //v.append(&mut object_and_child(&*o.read().unwrap()));
+        }
+
+        v
+    }
+
+    fn get_object_mmr(&self, o : Self::Object) -> Option<render::MatrixMeshRender>
+    {
+        if let Some(e) = self.find(&o) {
+            if let Some(mr) = self.get_comp::<mesh_render::MeshRender>(e.clone())  {
+                let mut t = self.get_world_transform(e);
+                t.set_as_dirty();
+                let m = t.get_or_compute_local_matrix();
+                return Some(render::MatrixMeshRender::new(m.clone(), mr.clone()));
+            }
+        }
+
+        None
     }
 }
 
@@ -844,12 +934,13 @@ impl<T> GetWorld<T> for dormin::world::Entity
     fn get_world_transform(&self, graph : &world::Graph<T>) -> transform::Transform
     {
         //TODO
-        println!("todo should remove this {}, {}", file!(), line!() );
+        println!("todo remove this trait? {}, {}", file!(), line!() );
         transform::Transform::default()
     }
 
     fn get_transform(&self) -> transform::Transform
     {
+        println!("todo remove this trait? {}, {}", file!(), line!() );
         transform::Transform::default()
     }
 }

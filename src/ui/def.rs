@@ -1621,7 +1621,6 @@ pub fn add_empty(container : &mut WidgetContainer, view_id : Uuid)
         vec::Vec3::zero()
     };
 
-
     let scene_id = if let Some(s) = container.state.context.scene {
         s
     }
@@ -1630,8 +1629,13 @@ pub fn add_empty(container : &mut WidgetContainer, view_id : Uuid)
     };
 
     let vec = if let Some(s) = container.data.get_scene_mut(scene_id) {
-        let o = s.create_empty_object("new object");
-        s.set_position(o.clone(), position);
+        let mut o = s.create_empty_object("new object");
+        {
+            if let Some(t) = o.data.get_one_mut::<dormin::transform::Transform>() {
+            //t.position = vec::Vec3::new(1f64,2f64,3f64);// position;
+            t.position = position;
+            }
+        }
 
         vec![o.clone()]
     }
