@@ -199,11 +199,13 @@ impl Control
         }
         */
 
+        println!("TODO change get_objects_vec with get_mesh_transforms?, {}, {}", file!(), line!());
+
         for o in &scene.get_objects_vec() {
             let mm = &mut *self.resource.mesh_manager.borrow_mut();
-            let t = o.get_world_transform(&world::NoGraph);
-            if let Some(mr) = o.get_comp::<mesh_render::MeshRender>(&data::NoData) {
-                if let Some(mesh) = mr.mesh.get_ref(mm) {
+            let t = scene.get_world_transform(o.clone());
+            if let Some(mt) = scene.get_object_mt(o.clone()) {
+                if let Some(mesh) = mt.mesh.get_ref(mm) {
 
             let mt = intersection::MeshTransform::with_transform(mesh, &t);
             let ir = intersection::ray_mesh_transform(&r, &mt);

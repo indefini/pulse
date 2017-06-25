@@ -276,6 +276,7 @@ impl<S:SceneT> EditView<S> for View
             ori = ori * t.orientation.as_quat();
         }
 
+        println!("seeeeelllllllllllllllll : {}", sel.len());
         if !sel.is_empty() {
             center = center / (sel.len() as f64);
 

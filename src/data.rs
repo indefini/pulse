@@ -14,13 +14,12 @@ use dormin::property::PropertyGet;
 use dormin::input;
 use dormin::matrix;
 use dormin::transform;
+use dormin::intersection;
 
 use context;
 use util;
 
 use std::path::Path;
-use std::fmt;
-use serde;
 use serde_json;
 use std::fs::File;
 use std::io::{Read,Write};
@@ -118,6 +117,29 @@ impl operation::OperationReceiver for Data<dormin::world::World> {
 
 }
 
+use dormin::resource::ResTT;
+use dormin::mesh;
+pub struct MeshTransform
+{
+    pub mesh : ResTT<mesh::Mesh>,
+    pub position : vec::Vec3,
+    pub orientation : vec::Quat,
+    pub scale : vec::Vec3
+}
+
+impl MeshTransform
+{
+    pub fn with_transform(mesh : ResTT<mesh::Mesh>, transform : &transform::Transform) -> MeshTransform
+    {
+        MeshTransform {
+            mesh : mesh,
+            position : transform.position,
+            orientation : transform.orientation.as_quat(),
+            scale : transform.scale
+        }
+    }
+}
+
 
 pub trait SceneT : ToId<<Self as SceneT>::Id> {
     type Id : Default + Eq + Clone;
@@ -127,6 +149,7 @@ pub trait SceneT : ToId<<Self as SceneT>::Id> {
     fn get_objects(&self) -> &[Self::Object];
     fn get_objects_vec(&self) -> Vec<Self::Object>
     {
+        println!("TODO {}, {}", file!(), line!());
         Vec::new()
     }
 
@@ -137,6 +160,12 @@ pub trait SceneT : ToId<<Self as SceneT>::Id> {
     }
 
     fn get_object_mmr(&self, o : Self::Object) -> Option<render::MatrixMeshRender>
+    {
+        println!("TODO {}, {}", file!(), line!());
+        None
+    }
+
+    fn get_object_mt(&self, o : Self::Object) -> Option<MeshTransform>
     {
         println!("TODO {}, {}", file!(), line!());
         None
@@ -235,6 +264,7 @@ pub trait SceneT : ToId<<Self as SceneT>::Id> {
     //TODO use &str instead of string?
     fn get_object_name(&self, o : Self::Object) -> String
     {
+        println!("TODO {}, {}", file!(), line!());
         //"TODO name, yo".to_owned()
         format!("TODO {}, {}", file!(), line!())
     }
@@ -479,8 +509,14 @@ impl SceneT for world::World {
 
     fn get_objects(&self) -> &[Self::Object]
     {
+        println!("TODO !!!!!!!!!!!!!!!!!!!!!! {}, {} ", file!(), line!());
         //TODO
         &[]
+    }
+
+    fn get_objects_vec(&self) -> Vec<Self::Object>
+    {
+        self.entities.iter().map(|x| world::Entity::from_ref(x)).collect()
     }
 
     fn get_name(&self) -> String
@@ -612,6 +648,19 @@ impl SceneT for world::World {
 
         None
     }
+
+    fn get_object_mt(&self, o : Self::Object) -> Option<MeshTransform>
+    {
+        println!("TODO {}, {}", file!(), line!());
+        if let Some(e) = self.find(&o) {
+            if let Some(mr) = self.get_comp::<mesh_render::MeshRender>(e.clone())  {
+                let t = self.get_world_transform(e);
+                return Some(MeshTransform::with_transform(mr.mesh.clone(),&t));
+            }
+        }
+
+        None
+    }
 }
 
 pub trait DataT<S : SceneT> {
@@ -737,7 +786,8 @@ impl Data<world::World>
     {
         //TODO
         self.id_count +=1;
-        self.scenes.entry(String::from(name)).or_insert(world::World::new(name.to_owned(), self.id_count))
+        self.scenes.entry(String::from(name)).or_insert(
+            world::World::new_from_file(name, self.id_count))
     }
 
     pub fn get_or_load_any_scene(&mut self) -> &mut world::World
