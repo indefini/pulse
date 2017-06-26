@@ -23,6 +23,16 @@ pub trait OperationReceiver {
         None
     }
 
+    fn get_property_write(
+        &mut self,
+        scene_id : <Self::Scene as SceneT>::Id,
+        object_id : <Self::Scene as SceneT>::Id,
+        property : &str) -> Option<(&mut PropertyWrite,String)>
+    {
+        println!("TODO or erase {}, {}", file!(), line!());
+        None
+    }
+
     fn add_objects(
         &mut self,
         scene_id : <Self::Scene as SceneT>::Id,
@@ -381,10 +391,12 @@ impl<S:SceneT> OperationTrait for Operation<S>
                 };
                 let mut ids = Vec::new();
                 for o in &self.objects {
+                    //println!("please take the object with id '{:?}', and set the property '{}' to value {:?}",o.to_id(), sp, new[i]);
+                    println!("please take the object, and set the property '{}' to value {:?}", sp, new[i]);
                     if let Some(mut p) = rec.getP_copy(o.to_id()) {
-                    p.test_set_property_hier(
-                        sp.as_str(),
-                        &*new[i]);
+                        p.test_set_property_hier(
+                            sp.as_str(),
+                            &*new[i]);
                     }
                     i = i +1;
                     ids.push(o.to_id());

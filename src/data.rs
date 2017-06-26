@@ -14,7 +14,6 @@ use dormin::property::PropertyGet;
 use dormin::input;
 use dormin::matrix;
 use dormin::transform;
-use dormin::intersection;
 
 use context;
 use util;
@@ -115,6 +114,22 @@ impl operation::OperationReceiver for Data<dormin::world::World> {
         }
     }
 
+    fn get_property_write(
+        &mut self, 
+        scene_id : <Self::Scene as SceneT>::Id,
+        object_id : <Self::Scene as SceneT>::Id,
+        property : &str)
+        -> Option<(&mut PropertyWrite, String)>
+    {
+        println!("TODO or erase {}, {}", file!(), line!());
+        if property == "position" {
+            //if let Some(o) = self.find_with_id(id) {
+             //   return self.get_comp_mut::<transform::Transform>(o).map(|x| (x,property.to_owned()));
+            //}
+        }
+        None
+    }
+
 }
 
 use dormin::resource::ResTT;
@@ -173,7 +188,7 @@ pub trait SceneT : ToId<<Self as SceneT>::Id> {
 
     fn get_cameras_vec(&self) -> Vec<matrix::Matrix4>
     {
-        println!("TODO {}, {}", file!(), line!());
+        println!("TODO get cameras_vec {}, {}", file!(), line!());
         Vec::new()
     }
 
@@ -548,6 +563,11 @@ impl SceneT for world::World {
             mr.set_with_names("model/skeletonmesh.mesh", "material/simple.mat");
         }
         e
+    }
+
+    fn get_position(&self, o : Self::Object) -> vec::Vec3
+    {
+        self.get_comp::<transform::Transform>(o.to_ref().unwrap()).map_or(vec::Vec3::zero(), |t| t.position)
     }
 
     fn set_position(&mut self, o : Self::Object, v : vec::Vec3)
