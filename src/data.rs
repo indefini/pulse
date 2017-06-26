@@ -121,12 +121,20 @@ impl operation::OperationReceiver for Data<dormin::world::World> {
         property : &str)
         -> Option<(&mut PropertyWrite, String)>
     {
-        println!("TODO or erase {}, {}", file!(), line!());
-        if property == "position" {
-            //if let Some(o) = self.find_with_id(id) {
-             //   return self.get_comp_mut::<transform::Transform>(o).map(|x| (x,property.to_owned()));
-            //}
+        for s in self.scenes.values_mut() {
+            if s.id != scene_id {
+                //continue;
+            }
+
+            if property == "position" {
+                if let Some(ref o) = s.find_with_id(object_id) {
+            println!("TODO or erase {}, {}, {}", property, file!(), line!());
+                   return s.get_comp_mut::<transform::Transform>(&o.to_mut()).map(|x| (x as &mut PropertyWrite,property.to_owned()));
+                }
+            }
+
         }
+
         None
     }
 
@@ -572,7 +580,7 @@ impl SceneT for world::World {
 
     fn set_position(&mut self, o : Self::Object, v : vec::Vec3)
     {
-        if let Some(t) = self.get_comp_mut::<transform::Transform>(&o.to_mut()) {
+        if let Some(t) = self.get_comp_mut::<transform::Transform>(&o.to_mut().unwrap()) {
             t.position = v;
         }
     }

@@ -346,8 +346,10 @@ impl<S:SceneT> OperationTrait for Operation<S>
                 let s = join_string(&self.name);
                 let mut ids = Vec::new();
                 for o in &self.objects {
-                    if let Some(mut p) = rec.getP_copy(o.to_id()) {
-                        p.add_item(s.as_ref(), i, &String::from("empty"));
+                    //if let Some(mut p) = rec.getP_copy(o.to_id()) {
+                    if let Some((p, news)) = rec.get_property_write(o.to_id(),o.to_id(),s.as_ref()) {
+                        //p.add_item(s.as_ref(), i, &String::from("empty"));
+                        p.add_item(news.as_ref(), i, &String::from("empty"));
                     }
                     ids.push(o.to_id());
                 }
@@ -393,9 +395,12 @@ impl<S:SceneT> OperationTrait for Operation<S>
                 for o in &self.objects {
                     //println!("please take the object with id '{:?}', and set the property '{}' to value {:?}",o.to_id(), sp, new[i]);
                     println!("please take the object, and set the property '{}' to value {:?}", sp, new[i]);
-                    if let Some(mut p) = rec.getP_copy(o.to_id()) {
+                    //if let Some(mut p) = rec.getP_copy(o.to_id()) {
+                    if let Some((p, news)) = rec.get_property_write(o.to_id(),o.to_id(),sp.as_ref()) {
+                    println!("yes it is good");
                         p.test_set_property_hier(
-                            sp.as_str(),
+                            //sp.as_str(),
+                            news.as_str(),
                             &*new[i]);
                     }
                     i = i +1;
@@ -499,9 +504,11 @@ impl<S:SceneT> OperationTrait for Operation<S>
                 let mut ids = Vec::new();
                 for o in &self.objects {
                     //let mut ob = o.write().unwrap();
-                    if let Some(mut p) = rec.getP_copy(o.to_id()) {
+                    //if let Some(mut p) = rec.getP_copy(o.to_id()) {
+                    if let Some((p, news)) = rec.get_property_write(o.to_id(),o.to_id(),sp.as_ref()) {
                         p.test_set_property_hier(
-                            sp.as_str(),
+                            //sp.as_str(),
+                            news.as_str(),
                             &*old[i]);
                     }
                     i = i +1;
