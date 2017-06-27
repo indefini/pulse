@@ -3,6 +3,7 @@ use std::cell::{RefCell};
 use std::sync::{Arc, RwLock};
 use std::collections::HashMap;
 use std::fs;
+use std::hash::Hash;
 
 use uuid;
 
@@ -165,7 +166,7 @@ impl MeshTransform
 
 
 pub trait SceneT : ToId<<Self as SceneT>::Id> {
-    type Id : Default + Eq + Clone;
+    type Id : Default + Eq + Clone + Hash;
     type Object : ToId<Self::Id> + Clone + GetWorld<Self::Object> + GetComponent + PropertyGet;
     fn init_for_play(&mut self, resource : &resource::ResourceGroup);
     fn update(&mut self, dt : f64, input : &input::Input, &resource::ResourceGroup);

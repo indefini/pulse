@@ -5,7 +5,6 @@ use std::collections::{HashMap,HashSet};
 use std::sync::{Arc,RwLock};
 use std::cell::RefCell;
 use std::rc::{Rc,Weak};
-use uuid;
 
 #[repr(C)]
 pub struct JkGlview;

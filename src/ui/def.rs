@@ -229,7 +229,7 @@ pub extern fn init_cb(data: *const c_void) -> () {
 
     let wc = WindowConfig::load();
 
-    let mut views = create_views(container_arw.clone(), &wc.views);
+    let mut views = create_views(&mut*container_arw.write().unwrap(), &wc.views);
     init_views(container_arw.clone(), &wc, &mut views);
 
     {
@@ -243,12 +243,12 @@ pub extern fn init_cb(data: *const c_void) -> () {
     unsafe { jk_monitor_add(file_changed, Box::into_raw(box container_arw.clone()) as *const c_void, path.as_ptr()); }
 }
 
-fn create_views(container_arw : Arw<WidgetContainer>, views_config : &[ViewConfig]) -> Vec<Box<EditView<Scene2>>>
+fn create_views(container : &mut WidgetContainer, views_config : &[ViewConfig]) -> Vec<Box<EditView<Scene>>>
 {
     let mut views = Vec::with_capacity(views_config.len());
 
     for v in views_config {
-        let container = &mut *container_arw.write().unwrap();
+        //let container = &mut *container_arw.write().unwrap();
         let render = box render::Render::new(&container.data.factory, container.resource.clone());
 
         let view = box View::new(
@@ -258,7 +258,7 @@ fn create_views(container_arw : Arw<WidgetContainer>, views_config : &[ViewConfi
             v.window.h,
             v.camera.clone());
 
-        views.push(view as Box<EditView<Scene2>>);
+        views.push(view as Box<EditView<Scene>>);
         let scene = if let Some(ref scene) = v.scene {
             container.data.get_or_load_scene(scene.as_str())
         }
@@ -284,7 +284,7 @@ fn init_views<S:SceneT>(container_arw : Arw<WidgetContainer>, wc : &WindowConfig
 
         //TODO remove from here?
         init_property(&container_arw, win, &pc);
-        init_tree(&container_arw, win, &tc);
+        init_tree::<S>(&container_arw, win, &tc);
         init_action(&container_arw, win, v.get_id());
 
         {
@@ -332,7 +332,7 @@ fn init_property(container : &Arw<WidgetContainer>, win : *const Window, pc : &W
     container.property.widget = Some(p);
 }
 
-fn init_tree(container : &Arw<WidgetContainer>, win : *const Window, tree_config : &WidgetConfig)
+fn init_tree<Scene:SceneT>(container : &Arw<WidgetContainer>, win : *const Window, tree_config : &WidgetConfig)
 {
     let container_arw = container.clone();
     let container = &mut *container.write().unwrap();
@@ -344,12 +344,12 @@ fn init_tree(container : &Arw<WidgetContainer>, win : *const Window, tree_config
         ui::tree::tree_register_cb(
             t.jk_tree,
             Box::into_raw(box tsd) as *const c_void,
-            ui::tree::name_get,
-            ui::tree::item_selected,
-            ui::tree::can_expand,
-            ui::tree::expand,
-            ui::tree::selected,
-            ui::tree::unselected,
+            ui::tree::name_get::<Scene>,
+            ui::tree::item_selected::<Scene>,
+            ui::tree::can_expand::<Scene>,
+            ui::tree::expand::<Scene>,
+            ui::tree::selected::<Scene>,
+            ui::tree::unselected::<Scene>,
             //TODO remove panel_move
             ui::tree::panel_move,
             );
@@ -846,20 +846,16 @@ pub type Object = dormin::world::Entity;//usize;
 pub type Id = usize;
 //*/
 
-pub type Scene2 = Scene;
-pub type Object2 = Object;
-pub type Id2 = Id;
-
 
 pub struct WidgetContainer
 {
-    pub tree : Option<Box<Tree>>,
+    pub tree : Option<Box<Tree<Scene>>>,
     pub property : Box<WidgetPanel<PropertyBox>>,
     pub command : Option<Box<Command>>,
     pub action : Option<Box<Action>>,
-    pub views : Vec<Box<EditView<Scene2>>>,
+    pub views : Vec<Box<EditView<Scene>>>,
     //pub views : Vec<Box<View>>,
-    pub gameview : Option<Box<GameViewTrait<Scene2>>>,
+    pub gameview : Option<Box<GameViewTrait<Scene>>>,
     pub menu : Option<Box<Action>>,
 
     pub list : Box<ListWidget>,
@@ -867,9 +863,9 @@ pub struct WidgetContainer
     pub visible_prop : HashMap<Id, Weak<Widget>>,
     pub anim : Option<*const Ecore_Animator>,
 
-    pub data : Box<Data<Scene2>>,
+    pub data : Box<Data<Scene>>,
     pub resource : Rc<resource::ResourceGroup>,
-    pub state : State<Scene2>
+    pub state : State<Scene>
 }
 
 impl WidgetContainer
@@ -897,7 +893,7 @@ impl WidgetContainer
         }
     }
 
-    pub fn handle_change(&mut self, change : &operation::Change<Id2>, widget_origin: uuid::Uuid)
+    pub fn handle_change(&mut self, change : &operation::Change<Id>, widget_origin: uuid::Uuid)
     {
         //if *change == operation::Change::None {
         if let operation::Change::None = *change {
@@ -1437,7 +1433,7 @@ impl WidgetContainer
         }
     }
 
-    pub fn set_scene(&mut self, scene : Scene2)
+    pub fn set_scene(&mut self, scene : Scene)
     {
         if let Some(ref mut t) = self.tree {
             //TODO chris
@@ -1563,19 +1559,16 @@ pub struct AppCbData
     pub container : Arw<WidgetContainer>
 }
 
-impl Clone for AppCbData {
-    fn clone(&self) -> AppCbData
-    {
-        AppCbData {
-            container : self.container.clone()
-        }
-    }
-}
-
 impl AppCbData {
     pub fn new() -> AppCbData {
         AppCbData {
             container : Arc::new(RwLock::new(WidgetContainer::new()))
+        }
+    }
+
+    pub fn with_widget_container(wc : WidgetContainer) -> AppCbData {
+        AppCbData {
+            container : Arc::new(RwLock::new(wc))
         }
     }
 }
@@ -1849,7 +1842,7 @@ fn create_gameview_window(
 
 }
 
-fn check_mesh(name : &str, wc : &WidgetContainer, id : Id2)
+fn check_mesh(name : &str, wc : &WidgetContainer, id : Id)
 {
     println!("TODO remove this check_mesh {}, {}", file!(), line!());
     /*
