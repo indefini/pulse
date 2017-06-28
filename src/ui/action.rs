@@ -17,6 +17,7 @@ use ui;
 use dormin::resource;
 use uuid;
 use data;
+use data::SceneT;
 
 #[repr(C)]
 pub struct JkAction;
@@ -96,7 +97,7 @@ impl Action
         }
     }
 
-    pub fn add_button(&self, name : &str, cb : ButtonCallback, data : ui::WidgetCbData) -> *const ui::Evas_Object
+    pub fn add_button<S:SceneT>(&self, name : &str, cb : ButtonCallback, data : ui::WidgetCbData<S>) -> *const ui::Evas_Object
     {
         unsafe 
         {
@@ -160,7 +161,7 @@ impl Action
         }
     }
 
-    pub fn add_entry(&mut self, key : String, name : &str, cb : EntryCallback, data : ui::WidgetCbData)
+    pub fn add_entry<S:SceneT>(&mut self, key : String, name : &str, cb : EntryCallback, data : ui::WidgetCbData<S>)
         -> *const JkEntry
     {
         let en = unsafe {
@@ -189,31 +190,31 @@ impl Action
 
 }
 
-pub extern fn add_empty(data : *const c_void)
+pub extern fn add_empty<S:SceneT>(data : *const c_void)
 {
-    let wcb : & ui::WidgetCbData = unsafe {mem::transmute(data)};
+    let wcb : & ui::WidgetCbData<S> = unsafe {mem::transmute(data)};
     let action : &Action = unsafe {mem::transmute(wcb.widget)};
     //let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
-    let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
+    let container : &mut ui::WidgetContainer<S> = &mut *wcb.container.write().unwrap();
 
     ui::add_empty(container, action.view_id);
 }
 
-pub extern fn scene_new(data : *const c_void)
+pub extern fn scene_new<S:SceneT>(data : *const c_void)
 {
-    let wcb : & ui::WidgetCbData = unsafe {mem::transmute(data)};
+    let wcb : & ui::WidgetCbData<S> = unsafe {mem::transmute(data)};
     let action : &Action = unsafe {mem::transmute(wcb.widget)};
     //let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
-    let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
+    let container : &mut ui::WidgetContainer<S> = &mut *wcb.container.write().unwrap();
 
     let name = container.data.create_scene_name_with_context(&*container.state.context);
     let scene = container.data.get_or_load_scene(&name).clone();
     container.set_scene(scene);
 }
 
-pub extern fn scene_list(data : *const c_void)
+pub extern fn scene_list<S:SceneT>(data : *const c_void)
 {
-    let wcb : & ui::WidgetCbData = unsafe {mem::transmute(data)};
+    let wcb : & ui::WidgetCbData<S> = unsafe {mem::transmute(data)};
     let action : &Action = unsafe {mem::transmute(wcb.widget)};
     //let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
 
@@ -221,12 +222,12 @@ pub extern fn scene_list(data : *const c_void)
 }
 
 
-pub extern fn scene_rename(data : *const c_void, name : *const c_char)
+pub extern fn scene_rename<S:SceneT>(data : *const c_void, name : *const c_char)
 {
-    let wcb : & ui::WidgetCbData = unsafe {mem::transmute(data)};
+    let wcb : & ui::WidgetCbData<S> = unsafe {mem::transmute(data)};
     let action : &Action = unsafe {mem::transmute(wcb.widget)};
     //let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
-    let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
+    let container : &mut ui::WidgetContainer<S> = &mut *wcb.container.write().unwrap();
 
     let s = unsafe {CStr::from_ptr(name)}.to_str().unwrap();
 
@@ -234,11 +235,11 @@ pub extern fn scene_rename(data : *const c_void, name : *const c_char)
     ui::scene_rename(container, action.view_id, s);
 }
 
-pub extern fn open_game_view(data : *const c_void)
+pub extern fn open_game_view<S:SceneT>(data : *const c_void)
 {
-    let wcb : & ui::WidgetCbData = unsafe {mem::transmute(data)};
+    let wcb : & ui::WidgetCbData<S> = unsafe {mem::transmute(data)};
     //let action : &Action = unsafe {mem::transmute(wcb.widget)};
-    let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
+    let container : &mut ui::WidgetContainer<S> = &mut *wcb.container.write().unwrap();
 
     if container.open_gameview() {
         return;
@@ -260,16 +261,16 @@ pub extern fn open_game_view(data : *const c_void)
     */
 }
 
-pub extern fn play_scene(data : *const c_void)
+pub extern fn play_scene<S:SceneT>(data : *const c_void)
 {
-    let wcb : & ui::WidgetCbData = unsafe {mem::transmute(data)};
+    let wcb : & ui::WidgetCbData<S> = unsafe {mem::transmute(data)};
     let action : &Action = unsafe {mem::transmute(wcb.widget)};
-    let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
+    let container : &mut ui::WidgetContainer<S> = &mut *wcb.container.write().unwrap();
 
     if container.play_gameview() {
         if container.anim.is_none() {
             container.anim = Some( unsafe {
-                ui::ecore_animator_add(ui::update_play_cb, Box::into_raw(box wcb.container.clone()) as *const c_void)
+                ui::ecore_animator_add(ui::update_play_cb::<S>, Box::into_raw(box wcb.container.clone()) as *const c_void)
             });
         }
         return;
@@ -298,11 +299,11 @@ pub extern fn play_scene(data : *const c_void)
     */
 }
 
-pub extern fn pause_scene(data : *const c_void)
+pub extern fn pause_scene<S:SceneT>(data : *const c_void)
 {
-    let wcb : & ui::WidgetCbData = unsafe {mem::transmute(data)};
+    let wcb : & ui::WidgetCbData<S> = unsafe {mem::transmute(data)};
     let action : &Action = unsafe {mem::transmute(wcb.widget)};
-    let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
+    let container : &mut ui::WidgetContainer<S> = &mut *wcb.container.write().unwrap();
 
 
     if let Some(ref mut gv) = container.gameview {
@@ -320,11 +321,11 @@ use std::fs;
 extern crate libloading;
 static mut libi : Option<i32> = None;
 
-pub extern fn compile_test(data : *const c_void)
+pub extern fn compile_test<S:SceneT>(data : *const c_void)
 {
-    let wcb : & ui::WidgetCbData = unsafe {mem::transmute(data)};
+    let wcb : & ui::WidgetCbData<S> = unsafe {mem::transmute(data)};
     let action : &Action = unsafe {mem::transmute(wcb.widget)};
-    let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
+    let container : &mut ui::WidgetContainer<S> = &mut *wcb.container.write().unwrap();
     
     println!("compile test!!!!!!!!!!!!!!!!!!!!");
     
@@ -379,7 +380,7 @@ pub extern fn compile_test(data : *const c_void)
             };
             println!("{}",fun());
 
-            let build_mesh : libloading::Symbol<unsafe extern fn(&mut ui::WidgetContainer, Uuid)> = if let Ok(f) = lib.get(b"build_mesh2") {
+            let build_mesh : libloading::Symbol<unsafe extern fn(&mut ui::WidgetContainer<S>, Uuid)> = if let Ok(f) = lib.get(b"build_mesh2") {
                 f
             }
             else {

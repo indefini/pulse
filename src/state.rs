@@ -7,7 +7,7 @@ use dormin::property::PropertyGet;
 
 use context;
 use operation;
-use data::{Data, DataT, SceneT,ToId};
+use data::{Data, SceneT,ToId};
 
 use ui;
 
@@ -31,7 +31,7 @@ pub struct State<S:SceneT>
     pub saved_oris : Vec<transform::Orientation>
 }
 
-impl<S:SceneT+Clone+'static> State<S> {
+impl<S:SceneT+'static> State<S> {
     pub fn new() -> State<S>
     {
         State {
@@ -44,7 +44,7 @@ impl<S:SceneT+Clone+'static> State<S> {
         }
     }
 
-    pub fn save_transforms(&mut self, data : &DataT<S>)
+    pub fn save_transforms(&mut self, data : &Data<S>)
     {
         let sid = self.context.scene.as_ref().unwrap();
 
@@ -78,7 +78,7 @@ impl<S:SceneT+Clone+'static> State<S> {
         &mut self,
         name : Vec<String>,
         op_data : operation::OperationData<S>,
-        rec : &mut operation::OperationReceiver<Scene=S>
+        rec : &mut Data<S>
         ) -> operation::Change<S::Id>
     {
         let op = self.make_operation(name, op_data);
@@ -108,21 +108,20 @@ impl<S:SceneT+Clone+'static> State<S> {
     }
     */
 
-    pub fn undo(&mut self, rec : &mut operation::OperationReceiver<Scene=S>) -> operation::Change<S::Id>
+    pub fn undo(&mut self, rec : &mut Data<S>) -> operation::Change<S::Id>
     {
         self.op_mgr.undo(rec)
     }
 
-    pub fn redo(&mut self, rec : &mut operation::OperationReceiver<Scene=S>) -> operation::Change<S::Id>
+    pub fn redo(&mut self, rec : &mut Data<S>) -> operation::Change<S::Id>
     {
         self.op_mgr.redo(rec)
     }
 
     pub fn remove_selected_objects(
         &mut self,
-        //rec : &mut operation::OperationReceiver<Scene=S>
         data : &mut Data<S>,
-        ) -> operation::Change<S::Id> where Data<S> : operation::OperationReceiver<Scene=S>
+        ) -> operation::Change<S::Id>
     {
         println!("state remove sel");
 
@@ -168,7 +167,7 @@ impl<S:SceneT+Clone+'static> State<S> {
     pub fn request_operation_vec_del(
         &mut self,
         node : Rc<RefCell<ui::PropertyNode>>,
-        rec : &mut operation::OperationReceiver<Scene=S>
+        rec : &mut Data<S>
         )
         -> operation::Change<S::Id>
     {
@@ -259,7 +258,7 @@ impl<S:SceneT+Clone+'static> State<S> {
         name : &str,
         old : Box<Any>,
         new : Box<Any>,
-        rec : &mut operation::OperationReceiver<Scene=S>
+        rec : &mut Data<S>
         ) -> operation::Change<S::Id>
     {
         let op : operation::OldNew<S> = operation::OldNew::new(
@@ -279,7 +278,7 @@ impl<S:SceneT+Clone+'static> State<S> {
         name : &str,
         old : Box<T>,
         new : Box<T>,
-        rec : &mut operation::OperationReceiver<Scene=S>
+        rec : &mut Data<S>,
         ) -> operation::Change<S::Id>
     {
         if *old == *new {
@@ -312,7 +311,7 @@ impl<S:SceneT+Clone+'static> State<S> {
 
     pub fn request_direct_change_property(
         &mut self,
-        property : &mut ui::PropertyUser,
+        property : &mut ui::PropertyUser<S>,
         name : &str,
         new : &Any) -> operation::Change<S::Id>
     {
@@ -356,7 +355,7 @@ impl<S:SceneT+Clone+'static> State<S> {
     pub fn request_operation_vec_add(
         &mut self,
         node : Rc<RefCell<ui::PropertyNode>>,
-        rec : &mut operation::OperationReceiver<Scene=S>
+        rec : &mut Data<S>
         )
         -> operation::Change<S::Id>
     {
@@ -393,7 +392,7 @@ impl<S:SceneT+Clone+'static> State<S> {
         &mut self,
         //TODO factory : &factory::Factory,
         data : &mut Data<S>,
-        ) -> operation::Change<S::Id> where Data<S> : operation::OperationReceiver<Scene=S>
+        ) -> operation::Change<S::Id>
     {
         let sid = if let Some(ref s) = self.context.scene {
             s.clone()
@@ -427,7 +426,7 @@ impl<S:SceneT+Clone+'static> State<S> {
     pub fn add_component(
         &mut self,
         component_name : &str,
-        rec : &mut operation::OperationReceiver<Scene=S>
+        rec : &mut Data<S>
         ) -> operation::Change<S::Id>
     {
         let o = if let Some(o) = self.context.selected.get(0) {
@@ -457,7 +456,7 @@ impl<S:SceneT+Clone+'static> State<S> {
     pub fn set_scene_camera(
         &mut self,
         data : &mut Data<S>,
-        ) -> operation::Change<S::Id> where Data<S> : operation::OperationReceiver<Scene=S>
+        ) -> operation::Change<S::Id>
     {
         println!("control remove sel");
 

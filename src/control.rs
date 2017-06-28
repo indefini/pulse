@@ -15,7 +15,7 @@ use data::SceneT;
 
 use dormin::world;
 use data;
-use data::{Data, DataT, ToId, GetComponent, GetWorld};
+use data::{Data, ToId, GetComponent, GetWorld};
 use dormin::component::mesh_render;
 
 use util;

@@ -79,12 +79,12 @@ pub mod gameview;
 
 
 pub type ChangedFunc = extern fn(
-    app : *const WidgetCbData,
+    app : *const c_void,
     property : *const c_void,
     data : *const c_void);
 
 pub type RegisterChangeFunc = extern fn(
-    app : *const WidgetCbData,
+    app : *const c_void,
     property : *const c_void,
     old : *const c_void,
     new : *const c_void,
@@ -293,7 +293,7 @@ pub enum ShouldUpdate
     Mesh
 }
 
-pub trait PropertyWidget<Scene : SceneT> : Widget {
+pub trait PropertyWidget {
 
     fn add_simple_item(&self, field : &str, item : *const PropertyValue);
     fn add_option(&self, field : &str, is_some : bool) -> *const PropertyValue;
@@ -306,14 +306,16 @@ pub trait PropertyWidget<Scene : SceneT> : Widget {
     fn update_vec(&self, widget_entry : *const PropertyValue, len : usize);
     fn update_enum(&self, path : &str, widget_entry : *const PropertyValue, value : &str);
 
-    fn get_current_id(&self) -> Option<Scene::Id>;
-    fn set_current_id(&self, p : &PropertyUser<Scene>, id : Scene::Id, title : &str);
-
     fn get_property(&self, path : &str) -> Option<*const PropertyValue> 
     {
         println!("PropertyWidget, 'get_property' not implemented no return None");
         None
     }
+}
+
+pub trait PropertyWidgetGen<Scene : SceneT> : PropertyWidget + Widget<Scene> {
+    fn get_current_id(&self) -> Option<Scene::Id>;
+    fn set_current_id(&self, p : &PropertyShow, id : Scene::Id, title : &str);
 }
 
 pub enum NodeChildren

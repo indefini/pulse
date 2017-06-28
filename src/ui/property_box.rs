@@ -11,7 +11,7 @@ use uuid;
 use uuid::Uuid;
 
 use ui::{Window, ButtonCallback, ChangedFunc, RegisterChangeFunc, 
-    PropertyTreeFunc, PropertyConfig, PropertyValue, PropertyUser, PropertyShow, PropertyWidget,PropertyChange, NodeChildren, PropertyNode};
+    PropertyTreeFunc, PropertyConfig, PropertyValue, PropertyUser, PropertyShow, PropertyWidget, PropertyWidgetGen, PropertyChange, NodeChildren, PropertyNode};
 use ui;
 use data::SceneT;
 
@@ -90,7 +90,7 @@ impl<Scene:SceneT> PropertyBox<Scene>
 
     pub fn set_prop(
         &self,
-        p : &PropertyUser,
+        p : &PropertyUser<Scene>,
         pid : Scene::Id,
         title : &str)
     {
@@ -323,17 +323,6 @@ impl<Scene:SceneT> PropertyWidget for PropertyBox<Scene>
 
     }
 
-    fn get_current_id(&self) -> Option<Scene::Id>
-    {
-        self.current_id.get()
-    }
-
-    fn set_current_id(&self, p : &PropertyUser, id : Scene::Id, title : &str)
-    {
-        self.current_id.set(Some(id.clone()));
-        self._set_prop(p.as_show(), title);
-    }
-
     fn get_property(&self, path : &str) -> Option<*const PropertyValue> 
     {
         if let Some(n) = self.get_node(path) {
@@ -346,14 +335,28 @@ impl<Scene:SceneT> PropertyWidget for PropertyBox<Scene>
 
 }
 
-impl<Scene:SceneT> ui::Widget for PropertyBox<Scene>
+impl<Scene:SceneT> PropertyWidgetGen<Scene> for PropertyBox<Scene>
+{
+    fn get_current_id(&self) -> Option<Scene::Id>
+    {
+        self.current_id.get()
+    }
+
+    fn set_current_id(&self, p : &PropertyShow, id : Scene::Id, title : &str)
+    {
+        self.current_id.set(Some(id.clone()));
+        self._set_prop(p, title);
+    }
+}
+
+impl<Scene:SceneT> ui::Widget<Scene> for PropertyBox<Scene>
 {
     fn get_id(&self) -> Uuid
     {
         self.id
     }
 
-    fn handle_change_prop(&self, prop_user : &PropertyUser, name : &str)
+    fn handle_change_prop(&self, prop_user : &PropertyUser<Scene>, name : &str)
     {
         self.update_object_property(prop_user.as_show(), name);
     }

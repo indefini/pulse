@@ -18,6 +18,8 @@ use dormin::transform;
 
 use context;
 use util;
+use ui::PropertyUser;
+use ui::PropertyShow;
 
 use std::path::Path;
 use serde_json;
@@ -37,109 +39,7 @@ pub struct Data<S:SceneT>
     id_count : usize,
 }
 
-use operation;
 use dormin::property::PropertyWrite;
-
-/*
-impl<S:SceneT> operation::OperationReceiver for Data<S> {
-    type Id = S::Id;
-    fn getP(&mut self, id : Self::Id) -> Option<&mut PropertyWrite>
-    {
-        None
-    }
-
-    //fn copy_object(
-}
-*/
-
-impl operation::OperationReceiver for Data<Rc<RefCell<scene::Scene>>> {
-    type Scene = Rc<RefCell<scene::Scene>>;
-    fn getP_copy(&mut self, id : <Self::Scene as SceneT>::Id) -> Option<Box<PropertyWrite>>
-    {
-        for s in self.scenes.values() {
-            for o in &s.borrow().objects {
-                if o.to_id() == id {
-                    return Some(box o.clone());
-                }
-            }
-
-        }
-
-        None
-    }
-
-    fn add_objects(
-        &mut self,
-        scene_id : <Self::Scene as SceneT>::Id,
-        parents : &[Option<<Self::Scene as SceneT>::Id>],
-        objects : &[<Self::Scene as SceneT>::Object])
-    {
-        if let Some(s) = self.get_scene(scene_id) {
-            s.borrow_mut().add_objects(parents, objects);
-        }
-    }
-
-    fn remove_objects(
-        &mut self,
-        scene_id : <Self::Scene as SceneT>::Id,
-        parents : &[Option<<Self::Scene as SceneT>::Id>],
-        objects : &[<Self::Scene as SceneT>::Object])
-    {
-        if let Some(s) = self.get_scene(scene_id) {
-            s.remove_objects(parents, objects);
-        }
-    }
-
-    fn set_camera(&mut self, scene_id : <Self::Scene as SceneT>::Id,
-                  camera : Option<<Self::Scene as SceneT>::Object>)
-    {
-        if let Some(s) = self.get_scene(scene_id) {
-            s.set_camera(camera);
-        }
-    }
-
-    //fn copy_object(
-}
-
-impl operation::OperationReceiver for Data<dormin::world::World> {
-    type Scene = dormin::world::World;
-
-    fn add_objects(
-        &mut self,
-        scene_id : <Self::Scene as SceneT>::Id,
-        parents : &[Option<<Self::Scene as SceneT>::Id>],
-        objects : &[<Self::Scene as SceneT>::Object])
-    {
-        if let Some(s) = self.get_scene_mut(scene_id) {
-            s.add_objects(parents, objects);
-        }
-    }
-
-    fn get_property_write(
-        &mut self, 
-        scene_id : <Self::Scene as SceneT>::Id,
-        object_id : <Self::Scene as SceneT>::Id,
-        property : &str)
-        -> Option<(&mut PropertyWrite, String)>
-    {
-        for s in self.scenes.values_mut() {
-            if s.id != scene_id {
-                //continue;
-            }
-
-            if property == "position" {
-                if let Some(ref o) = s.find_with_id(object_id) {
-            println!("TODO or erase {}, {}, {}", property, file!(), line!());
-                   return s.get_comp_mut::<transform::Transform>(&o.to_mut()).map(|x| (x as &mut PropertyWrite,property.to_owned()));
-                }
-            }
-
-        }
-
-        None
-    }
-
-}
 
 use dormin::resource::ResTT;
 use dormin::mesh;
@@ -164,10 +64,11 @@ impl MeshTransform
     }
 }
 
-
-pub trait SceneT : ToId<<Self as SceneT>::Id> {
-    type Id : Default + Eq + Clone + Hash;
+pub trait SceneT : ToId<<Self as SceneT>::Id> + Clone + 'static + PropertyShow {
+    type Id : Default + Eq + Clone + Hash + Copy;
     type Object : ToId<Self::Id> + Clone + GetWorld<Self::Object> + GetComponent + PropertyGet;
+    fn new_empty(name : &str, count : usize) -> Self;
+    fn new_from_file(name : &str, count : usize) -> Self;
     fn init_for_play(&mut self, resource : &resource::ResourceGroup);
     fn update(&mut self, dt : f64, input : &input::Input, &resource::ResourceGroup);
     fn get_objects(&self) -> &[Self::Object];
@@ -207,12 +108,12 @@ pub trait SceneT : ToId<<Self as SceneT>::Id> {
         None
     }
 
-    fn find_objects_by_id(&self, ids : &mut Vec<Self::Id>) -> Vec<Self::Object> {
+    fn find_objects_with_id(&self, ids : &mut Vec<Self::Id>) -> Vec<Self::Object> {
         println!("TODO {}, {}", file!(), line!());
         Vec::new()
     }
 
-    fn find_object_by_id(&self, id : Self::Id) -> Option<Self::Object> {
+    fn find_object_with_id(&self, id : Self::Id) -> Option<Self::Object> {
         println!("TODO {}, {}", file!(), line!());
         None
     }
@@ -300,18 +201,43 @@ pub trait SceneT : ToId<<Self as SceneT>::Id> {
     }
 
     fn create_empty_object(&mut self, name : &str) -> Self::Object;
+    fn create_empty_object_at_position(&mut self, name : &str, v : vec::Vec3) -> Self::Object;
     fn create_empty_object_string(&mut self, name : &str) -> String
     {
         println!("TODO {}, {}", file!(), line!());
         String::new()
     }
 
+    fn get_property_write_from_object(&mut self, o : Self::Object, name :&str) 
+        -> Option<(&mut PropertyWrite, String)>;
 
 }
 
 impl SceneT for Rc<RefCell<scene::Scene>> {
     type Id = uuid::Uuid;
     type Object = Arc<RwLock<object::Object>>;
+
+    fn new_empty(name : &str, count : usize) -> Self
+    {
+        let s = scene::Scene::new(name, uuid::Uuid::new_v4(), dormin::camera::Camera::new());
+        Rc::new(RefCell::new(s))
+    }
+    
+    fn new_from_file(name : &str, count : usize) -> Self
+    {
+        let s = scene::Scene::new_from_file(name);
+        /*
+                if let None = s.camera {
+                    let mut cam = self.factory.create_camera();
+                    cam.pan(&vec::Vec3::new(-100f64,20f64,100f64));
+                    cam.lookat(vec::Vec3::new(0f64,5f64,0f64));
+                    ns.camera = Some(Rc::new(RefCell::new(cam)));
+                }
+                */
+
+        Rc::new(RefCell::new(s))
+    }
+
     fn update(&mut self, dt : f64, input : &input::Input, res :&resource::ResourceGroup)
     {
         self.borrow_mut().update(dt, input, res);
@@ -332,13 +258,13 @@ impl SceneT for Rc<RefCell<scene::Scene>> {
         self.borrow().objects.clone()
     }
 
-    fn find_objects_by_id(&self, ids : &mut Vec<Self::Id>) -> Vec<Self::Object> {
+    fn find_objects_with_id(&self, ids : &mut Vec<Self::Id>) -> Vec<Self::Object> {
         self.borrow().find_objects_by_id(ids)
     }
 
-    fn find_object_by_id(&self, id : Self::Id) -> Option<Self::Object>
+    fn find_object_with_id(&self, id : Self::Id) -> Option<Self::Object>
     {
-        self.borrow().find_object_by_id(&id)
+        self.borrow().find_object_with_id(&id)
     }
 
     fn get_name(&self) -> String
@@ -491,6 +417,22 @@ impl SceneT for Rc<RefCell<scene::Scene>> {
     {
        Arc::new(RwLock::new(object::Object::new(name)))
     }
+
+    fn create_empty_object_at_position(&mut self, name : &str, v : vec::Vec3) -> Self::Object
+    {
+       let mut o = object::Object::new(name);
+       o.position = v;
+       Arc::new(RwLock::new(o))
+    }
+
+    fn get_property_write_from_object(&mut self, o : Self::Object, name :&str) 
+        -> Option<(&mut PropertyWrite, String)>
+    {
+        println!("TODO {}, {}", file!(), line!());
+        //Some((&mut o.clone(), name.to_owned()))
+        None
+    }
+
 }
 
 impl ToId<usize> for world::World
@@ -521,6 +463,17 @@ impl SceneT for world::World {
     type Id = usize;
     //type Object = usize;
     type Object = world::Entity;
+
+    fn new_empty(name : &str, count : usize) -> Self
+    {
+        world::World::new(name.to_owned(), count)
+    }
+
+    fn new_from_file(name : &str, count : usize) -> Self
+    {
+        world::World::new_from_file(name, count)
+    }
+
     fn update(&mut self, dt : f64, input : &input::Input, res :&resource::ResourceGroup)
     {
         println!("TODO !!!!!!!!!!!!!!!!!!!!!!");
@@ -572,6 +525,16 @@ impl SceneT for world::World {
             mr.set_with_names("model/skeletonmesh.mesh", "material/simple.mat");
         }
         e
+    }
+
+    fn create_empty_object_at_position(&mut self, name : &str, v : vec::Vec3) -> Self::Object
+    {
+        let mut o = self.create_empty_object(name);
+        if let Some(t) = o.data.get_one_mut::<dormin::transform::Transform>() {
+            t.position = v;
+        }
+        o
+
     }
 
     fn get_position(&self, o : Self::Object) -> vec::Vec3
@@ -628,37 +591,14 @@ impl SceneT for world::World {
 
     fn get_mmr(&self) -> Vec<render::MatrixMeshRender>
     {
-        fn object_to_mmr(o : &object::Object) -> Option<render::MatrixMeshRender>
-        {
-            o.mesh_render.as_ref().map(|x| render::MatrixMeshRender::new(o.get_world_matrix().clone(), x.clone()))
-        }
-
-        fn children_mmr(o : &object::Object) -> Vec<render::MatrixMeshRender>
-        {
-            o.children.iter().filter_map(|x| object_to_mmr(&*x.read().unwrap())).collect()
-        }
-
-        fn object_and_child(o : &object::Object) -> Vec<render::MatrixMeshRender>
-        {
-            let mut v = children_mmr(o);
-            if let Some(m) = object_to_mmr(o) {
-                v.push(m);
-            }
-            v
-        }
-
         let mut v = Vec::new();
         for (i,o) in self.data.mesh_render.iter().enumerate() {
             let owner = self.owners.mesh_render[i];
             let mut t = self.get_world_transform(world::EntityRef::new(0,owner));
             t.set_as_dirty();
             let m = t.get_or_compute_local_matrix();
-            //let mmr = render::MatrixMeshRender::new(matrix::Matrix4::identity(), o.clone());
             let mmr = render::MatrixMeshRender::new(m.clone(), o.clone());
             v.push(mmr);
-            
-
-            //v.append(&mut object_and_child(&*o.read().unwrap()));
         }
 
         v
@@ -690,37 +630,23 @@ impl SceneT for world::World {
 
         None
     }
-}
 
-pub trait DataT<S : SceneT> {
-    fn get_scene(&self, id : S::Id) -> Option<&S>;
-    fn get_scene_mut(&mut self, id : S::Id) -> Option<&mut S>;
-}
-
-impl<S:SceneT> DataT<S> for Data<S>
-{
-    fn get_scene(&self, id : S::Id) -> Option<&S>
+    fn find_object_with_id(&self, id : Self::Id) -> Option<Self::Object>
     {
-        for v in self.scenes.values() {
-            if v.to_id() == id {
-                return Some(v)
-            }
-        }
-
-        None
+        self.find_with_id(id).map(|x| world::Entity::from_ref(&x))
     }
 
-    fn get_scene_mut(&mut self, id : S::Id) -> Option<&mut S>
+    fn get_property_write_from_object(&mut self, o : Self::Object, name :&str) 
+        -> Option<(&mut PropertyWrite, String)>
     {
-        for v in self.scenes.values_mut() {
-            if v.to_id() == id {
-                return Some(v)
-            }
+        if name == "position" {
+            self.get_comp_mut::<transform::Transform>(&o.to_mut().unwrap()).map(|x| (x as &mut PropertyWrite, name.to_owned()))
         }
-
-        None
+        else {
+            println!("TODO");
+            None
+        }
     }
-
 }
 
 impl<S:SceneT> Data<S> {
@@ -731,6 +657,64 @@ impl<S:SceneT> Data<S> {
             scenes : HashMap::new(),
 
             id_count : 0usize
+        }
+    }
+
+    pub fn get_scene(&self, id : S::Id) -> Option<&S>
+    {
+        for v in self.scenes.values() {
+            if v.to_id() == id {
+                return Some(v)
+            }
+        }
+
+        None
+    }
+
+    pub fn get_scene_mut(&mut self, id : S::Id) -> Option<&mut S>
+    {
+        for v in self.scenes.values_mut() {
+            if v.to_id() == id {
+                return Some(v)
+            }
+        }
+
+        None
+    }
+
+    pub fn add_empty_scene(&mut self, name : String) -> &mut S
+    {
+        self.id_count +=1;
+        self.scenes.entry(name.clone()).or_insert(
+                S::new_empty(&name, self.id_count)
+            )
+    }
+
+    pub fn get_or_load_scene(&mut self, name : &str) -> &mut S
+    {
+        //todo
+        self.id_count +=1;
+        self.scenes.entry(String::from(name)).or_insert(
+            S::new_from_file(name, self.id_count))
+    }
+
+    pub fn get_or_load_any_scene(&mut self) -> &mut S
+    {
+        //TODO
+        self.id_count +=1;
+
+        if self.scenes.is_empty() {
+            let files = util::get_files_in_dir("world");
+            if files.is_empty() {
+                self.add_empty_scene(String::from("world/new.scene"))
+            }
+            else {
+                self.get_or_load_scene(files[0].to_str().unwrap())
+            }
+        }
+        else {
+            let first_key = self.scenes.keys().nth(0).unwrap().clone();
+            self.get_or_load_scene(first_key.as_str())
         }
     }
 
@@ -756,6 +740,91 @@ impl<S:SceneT> Data<S> {
 
         create_scene_name(newname)
     }
+
+    pub fn getP_copy(&mut self, id : S::Id) -> Option<Box<PropertyWrite>>
+    {
+        println!("TODO or erase {}, {}", file!(), line!());
+        None
+    }
+
+    pub fn get_property_write(
+        &mut self, 
+        scene_id : S::Id,
+        object_id : S::Id,
+        property : &str)
+        -> Option<(&mut PropertyWrite, String)>
+    {
+        for s in self.scenes.values_mut() {
+            if s.to_id() != scene_id {
+                //continue;
+            }
+
+            if property == "position" {
+                if let Some(ref o) = s.find_object_with_id(object_id) {
+            println!("TODO or erase {}, {}, {}", property, file!(), line!());
+                   //return s.get_comp_mut::<transform::Transform>(&o.to_mut()).map(|x| (x as &mut PropertyWrite,property.to_owned()));
+                   return s.get_property_write_from_object(o.clone(), property);
+                }
+            }
+
+        }
+
+        None
+    }
+
+    pub fn add_objects(
+        &mut self,
+        scene_id : S::Id,
+        parents : &[Option<S::Id>],
+        objects : &[S::Object])
+    {
+        if let Some(s) = self.get_scene_mut(scene_id) {
+            s.add_objects(parents, objects);
+        }
+    }
+
+    pub fn remove_objects(
+        &mut self,
+        scene_id : S::Id,
+        parents : &[Option<S::Id>],
+        objects : &[S::Object])
+    {
+        if let Some(s) = self.get_scene(scene_id) {
+            s.remove_objects(parents, objects);
+        }
+    }
+
+    pub fn set_camera(
+        &mut self, 
+        scene_id : S::Id,
+        camera : Option<S::Object>)
+    {
+        if let Some(s) = self.get_scene(scene_id) {
+            s.set_camera(camera);
+        }
+    }
+
+    pub fn get_property_user_copy(&self, id : S::Id) -> Option<Box<PropertyUser<S>>>
+    {
+        println!("TODO, change this function to include scene id too {}, {}", file!(), line!());
+        for s in self.scenes.values() {
+            if s.to_id() == id {
+                println!("TODO {}, {}", file!(), line!());
+                //return Some(box s.clone());
+            }
+
+            for o in s.get_objects() {
+                if o.to_id() == id {
+                println!("TODO {}, {}", file!(), line!());
+                    //return Some(box o.clone());
+                }
+            }
+
+        }
+
+        None
+    }
+
 }
 
 fn create_scene_name(name : String) -> String
@@ -775,133 +844,6 @@ fn create_scene_name(name : String) -> String
     }
 
     s
-}
-
-use ui::PropertyUser;
-/*
-impl Data<Rc<RefCell<scene::Scene>>>
-{
-    pub fn get_property_user_copy(&self, id : uuid::Uuid) -> Option<Box<PropertyUser>>
-    {
-        for s in self.scenes.values() {
-            if s.to_id() == id {
-                return Some(box s.clone());
-            }
-
-            for o in &s.borrow().objects {
-                if o.to_id() == id {
-                    return Some(box o.clone());
-                }
-            }
-
-        }
-
-        None
-    }
-}
-*/
-
-impl Data<world::World>
-{
-    pub fn add_empty_scene(&mut self, name : String) -> &mut world::World
-    {
-        self.id_count +=1;
-        self.scenes.entry(name.clone()).or_insert(
-                world::World::new(name, self.id_count)
-            )
-    }
-
-    pub fn get_or_load_scene(&mut self, name : &str) -> &mut world::World
-    {
-        //TODO
-        self.id_count +=1;
-        self.scenes.entry(String::from(name)).or_insert(
-            world::World::new_from_file(name, self.id_count))
-    }
-
-    pub fn get_or_load_any_scene(&mut self) -> &mut world::World
-    {
-        //TODO
-        self.id_count +=1;
-
-        if self.scenes.is_empty() {
-            let files = util::get_files_in_dir("world");
-            if files.is_empty() {
-                self.add_empty_scene(String::from("world/new.scene"))
-            }
-            else {
-                self.get_or_load_scene(files[0].to_str().unwrap())
-            }
-        }
-        else {
-            let first_key = self.scenes.keys().nth(0).unwrap().clone();
-            self.get_or_load_scene(first_key.as_str())
-        }
-    }
-
-    pub fn get_property_user_copy(&self, id : usize) -> Option<Box<PropertyUser>>
-    {
-        for s in self.scenes.values() {
-            if s.to_id() == id {
-                //return Some(box s.clone());
-            }
-
-            for o in s.get_objects() {
-                if o.to_id() == id {
-                    //return Some(box o.clone());
-                }
-            }
-
-        }
-
-        None
-    }
-}
-
-impl Data<Rc<RefCell<scene::Scene>>>
-{
-    pub fn add_empty_scene(&mut self, name : String) -> &mut Rc<RefCell<scene::Scene>>
-    {
-        self.scenes.entry(name.clone()).or_insert(
-            {
-                let ns = self.factory.create_scene(name.as_str());
-                Rc::new(RefCell::new(ns))
-            })
-    }
-
-    pub fn get_or_load_scene(&mut self, name : &str) -> &mut Rc<RefCell<scene::Scene>>
-    {
-        self.scenes.entry(String::from(name)).or_insert(
-            {
-                let mut ns = scene::Scene::new_from_file(name);
-
-                if let None = ns.camera {
-                    let mut cam = self.factory.create_camera();
-                    cam.pan(&vec::Vec3::new(-100f64,20f64,100f64));
-                    cam.lookat(vec::Vec3::new(0f64,5f64,0f64));
-                    ns.camera = Some(Rc::new(RefCell::new(cam)));
-                }
-
-                Rc::new(RefCell::new(ns))
-            })
-    }
-
-    pub fn get_or_load_any_scene(&mut self) -> &mut Rc<RefCell<scene::Scene>>  {
-        if self.scenes.is_empty() {
-            let files = util::get_files_in_dir("scene");
-            if files.is_empty() {
-                let s = create_scene_name(String::from("scene/new.scene"));
-                self.add_empty_scene(s)
-            }
-            else {
-                self.get_or_load_scene(files[0].to_str().unwrap())
-            }
-        }
-        else {
-            let first_key = self.scenes.keys().nth(0).unwrap().clone();
-            self.get_or_load_scene(first_key.as_str())
-        }
-    }
 }
 
 pub trait ToId<I : Clone> {
