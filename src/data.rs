@@ -15,6 +15,9 @@ use dormin::property::PropertyGet;
 use dormin::input;
 use dormin::matrix;
 use dormin::transform;
+use dormin::property::PropertyWrite;
+use dormin::resource::ResTT;
+use dormin::mesh;
 
 use context;
 use util;
@@ -25,11 +28,11 @@ use std::path::Path;
 use serde_json;
 use std::fs::File;
 use std::io::{Read,Write};
+use std::any::Any;
 
 static SCENE_SUFFIX: &str = ".scene";
 //static WORLD_SUFFIX: &str = ".world";
 
-pub type DataOld = Data<Rc<RefCell<scene::Scene>>>;
 
 pub struct Data<S:SceneT>
 {
@@ -39,10 +42,6 @@ pub struct Data<S:SceneT>
     id_count : usize,
 }
 
-use dormin::property::PropertyWrite;
-
-use dormin::resource::ResTT;
-use dormin::mesh;
 pub struct MeshTransform
 {
     pub mesh : ResTT<mesh::Mesh>,
@@ -66,7 +65,7 @@ impl MeshTransform
 
 pub trait SceneT : ToId<<Self as SceneT>::Id> + Clone + 'static + PropertyShow {
     type Id : Default + Eq + Clone + Hash + Copy;
-    type Object : ToId<Self::Id> + Clone + GetWorld<Self::Object> + GetComponent + PropertyGet;
+    type Object : ToId<Self::Id> + Clone + GetWorld<Self::Object> + PropertyGet;
     fn new_empty(name : &str, count : usize) -> Self;
     fn new_from_file(name : &str, count : usize) -> Self;
     fn init_for_play(&mut self, resource : &resource::ResourceGroup);
@@ -850,68 +849,6 @@ pub trait ToId<I : Clone> {
     fn to_id(&self) -> I;
 }
 
-pub trait ToId2 {
-    type Id;
-    fn to_id(&self) -> Self::Id;
-}
-
-pub trait GetComponent
-{
-    fn get_comp<C:Clone+'static>(&self, data : &GetDataT) -> Option<C>;
-}
-
-use std::any::Any;
-impl GetComponent for Arc<RwLock<object::Object>>
-{
-    fn get_comp<C:Clone+'static>(&self, data : &GetDataT) -> Option<C>
-    {
-        let o = self.read().unwrap();
-        if let Some(ref mr) = o.mesh_render {
-            if let Some(mmr) = (mr as &Any).downcast_ref::<C>() {
-                return Some(mmr.clone());
-            }
-        }
-
-        None
-    }
-}
-
-pub trait GetDataT{
-    fn get_data(&self, id : usize) -> Option<mesh_render::MeshRender>;
-}
-
-pub struct NoData;
-impl GetDataT for NoData {
-    fn get_data(&self, id : usize) -> Option<mesh_render::MeshRender>
-    {
-        None
-    }
-}
-
-
-//TODO remove this
-impl GetComponent for usize
-{
-    fn get_comp<C>(&self, data : &GetDataT) -> Option<C>
-    {
-        None
-    }
-}
-
-impl GetComponent for world::Entity
-{
-    fn get_comp<C:Clone+'static>(&self, data : &GetDataT) -> Option<C>
-    {
-        if let Some(ref mr) = data.get_data(self.id) {
-            if let Some(mmr) = (mr as &Any).downcast_ref::<C>() {
-                return Some(mmr.clone());
-            }
-        }
-        None
-    }
-}
-
-
 impl ToId<uuid::Uuid> for Arc<RwLock<object::Object>>
 {
     fn to_id(&self) -> uuid::Uuid
@@ -932,22 +869,6 @@ use dormin::world::{Graph};
 pub trait GetWorld<T> {
     fn get_world_transform(&self, graph : &Graph<T>) -> transform::Transform;
     fn get_transform(&self) -> transform::Transform;
-}
-
-//TODO remove
-impl<T> GetWorld<T> for usize
-{
-    fn get_world_transform(&self, graph : &Graph<T>) -> transform::Transform
-    {
-        //TODO
-        println!("todo should remove this {}, {}", file!(), line!() );
-        transform::Transform::default()
-    }
-
-    fn get_transform(&self) -> transform::Transform
-    {
-        transform::Transform::default()
-    }
 }
 
 impl<T> GetWorld<T> for dormin::world::Entity

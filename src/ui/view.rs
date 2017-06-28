@@ -21,7 +21,7 @@ use dormin::world::{NoGraph};
 use util;
 use context;
 use data;
-use data::{Data, SceneT,GetComponent,ToId, GetWorld};
+use data::{Data, SceneT,ToId, GetWorld};
 
 
 #[link(name = "joker")]

@@ -15,7 +15,7 @@ use data::SceneT;
 
 use dormin::world;
 use data;
-use data::{Data, ToId, GetComponent, GetWorld};
+use data::{Data, ToId, GetWorld};
 use dormin::component::mesh_render;
 
 use util;
@@ -374,13 +374,13 @@ impl Control
 
                     let mut obvec = Vec::new();
                     let mut has_changed = false;
+                    let scene = data.get_scene(s).unwrap();
                     for o in &data.get_scene(s).unwrap().get_objects_vec() {
 
                         let mm = &mut *self.resource.mesh_manager.borrow_mut();
-                        let t = o.get_world_transform(&world::NoGraph);
-                        if let Some(mr) = o.get_comp::<mesh_render::MeshRender>(&data::NoData) {
-                            if let Some(mesh) = mr.mesh.get_ref(mm) {
-                                let mt = intersection::MeshTransform::with_transform(mesh, &t);
+                        if let Some(mtt) = scene.get_object_mt(o.clone()) {
+                            if let Some(mesh) = mtt.mesh.get_ref(mm) {
+                                let mt = intersection::MeshTransform::with_pos_ori_scale(mesh, mtt.position, mtt.orientation, mtt.scale);
 
                         let b = intersection::is_mesh_transform_in_planes(planes.as_ref(), &mt);
                         if b {
