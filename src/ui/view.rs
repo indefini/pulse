@@ -21,7 +21,7 @@ use dormin::world::{NoGraph};
 use util;
 use context;
 use data;
-use data::{Data, SceneT,ToId, GetWorld};
+use data::{Data, SceneT,ToId};
 
 
 #[link(name = "joker")]
@@ -103,6 +103,7 @@ pub trait EditView<S:SceneT> : ui::Widget<S> {
 
     fn key_down(
         &mut self,
+        data : &Data<S>,
         context : &context::Context<S>,
         modifier : i32,
         keyname : &str,
@@ -418,6 +419,7 @@ impl<S:SceneT> EditView<S> for View
 
     fn key_down(
         &mut self,
+        data : &Data<S>,
         context : &context::Context<S>,
         modifier : i32,
         keyname : &str,
@@ -435,8 +437,9 @@ impl<S:SceneT> EditView<S> for View
                 return vec![ui::Event::CameraChange];
             },
             "f" => {
-                let objects : Vec<&GetWorld<S::Object>> = context.selected.iter().map(|x| x as &GetWorld<S::Object>).collect();
-                let center = util::objects_center(&objects);
+                let s = data.get_scene(context.scene.unwrap()).unwrap();
+                let pos : Vec<vec::Vec3> = context.selected.iter().map(|x| s.get_world_transform(x.clone()).position).collect();
+                let center = util::vec3_center(&pos);
                 let ori = self.camera.transform.orientation;
                 let pos = center + ori.rotate_vec3(&vec::Vec3::new(0f64,0f64,100f64));
                 self.camera.transform.position = pos;
@@ -741,7 +744,13 @@ pub extern fn key_down<S:SceneT>(
 
         {
             let v = &mut container.views[wcb.index];
-            v.key_down(&container.state.context, modifier, keyname_str.as_ref(), key_str.as_ref(), timestamp)
+            v.key_down(
+                &container.data,
+                &container.state.context,
+                modifier,
+                keyname_str.as_ref(),
+                key_str.as_ref(),
+                timestamp)
         }
     };
 

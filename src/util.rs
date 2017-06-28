@@ -4,7 +4,6 @@ use std::mem;
 use std::ffi::{CString, CStr};
 use std::str;
 use libc::{c_void, c_int, size_t, c_char};
-use data::GetWorld;
 use dormin::world;
 
 
@@ -27,18 +26,19 @@ pub fn objects_center2(objects : &[Arc<RwLock<object::Object>>]) -> vec::Vec3
     v
 }
 
-pub fn objects_center<T>(objects : &[&GetWorld<T>]) -> vec::Vec3
+pub fn vec3_center(pos : &[vec::Vec3]) -> vec::Vec3
 {
     let mut v = vec::Vec3::zero();
-    for o in objects
+    for p in pos
     {
-        v = v + o.get_world_transform(&world::NoGraph).position;
+        v = v + *p;
     }
 
-    v = v / objects.len() as f64;
+    v = v / pos.len() as f64;
 
     v
 }
+
 
 use std::path::{Path, PathBuf};
 pub fn get_files_in_dir(path : &str) -> Vec<PathBuf>

@@ -65,7 +65,7 @@ impl MeshTransform
 
 pub trait SceneT : ToId<<Self as SceneT>::Id> + Clone + 'static + PropertyShow {
     type Id : Default + Eq + Clone + Hash + Copy;
-    type Object : ToId<Self::Id> + Clone + GetWorld<Self::Object> + PropertyGet;
+    type Object : ToId<Self::Id> + Clone + PropertyGet;
     fn new_empty(name : &str, count : usize) -> Self;
     fn new_from_file(name : &str, count : usize) -> Self;
     fn init_for_play(&mut self, resource : &resource::ResourceGroup);
@@ -862,48 +862,6 @@ impl ToId<uuid::Uuid> for Rc<RefCell<scene::Scene>>
     fn to_id(&self) -> uuid::Uuid
     {
         self.borrow().id
-    }
-}
-
-use dormin::world::{Graph};
-pub trait GetWorld<T> {
-    fn get_world_transform(&self, graph : &Graph<T>) -> transform::Transform;
-    fn get_transform(&self) -> transform::Transform;
-}
-
-impl<T> GetWorld<T> for dormin::world::Entity
-{
-    fn get_world_transform(&self, graph : &world::Graph<T>) -> transform::Transform
-    {
-        //TODO
-        println!("todo remove this trait? {}, {}", file!(), line!() );
-        transform::Transform::default()
-    }
-
-    fn get_transform(&self) -> transform::Transform
-    {
-        println!("todo remove this trait? {}, {}", file!(), line!() );
-        transform::Transform::default()
-    }
-}
-
-impl<T> GetWorld<T> for Arc<RwLock<dormin::object::Object>> {
-    fn get_world_transform(&self, graph : &world::Graph<T>) -> transform::Transform
-    {
-        let o = self.read().unwrap();
-        transform::Transform::from_position_orientation_scale(
-            o.world_position(),
-            transform::Orientation::Quat(o.world_orientation()),
-            o.world_scale())
-    }
-
-    fn get_transform(&self) -> transform::Transform
-    {
-        let o = self.read().unwrap();
-        transform::Transform::from_position_orientation_scale(
-            o.position,
-            o.orientation,
-            o.scale)
     }
 }
 
