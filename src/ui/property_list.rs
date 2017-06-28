@@ -18,6 +18,7 @@ use ui::{ChangedFunc, RegisterChangeFunc, PropertyTreeFunc, PropertyValue, Prope
 PropertyShow, PropertyId, RefMut, Elm_Object_Item, ShouldUpdate, PropertyWidget};
 use ui;
 use operation;
+use data::SceneT;
 
 
 use util::Arw;
@@ -756,7 +757,7 @@ fn get_str<'a>(cstr : *const c_char) -> Option<&'a str>
     str::from_utf8(s).ok()
 }
 
-impl PropertyWidget for PropertyList
+impl<Scene:SceneT> PropertyWidget for PropertyList<Scene>
 {
     fn add_simple_item(&self, field : &str, item : *const PropertyValue)
     {
@@ -882,13 +883,13 @@ impl PropertyWidget for PropertyList
         unsafe { property_expand(widget_entry); }
     }
 
-    fn get_current_id(&self) -> Option<ui::def::Id>
+    fn get_current_id(&self) -> Option<Scene::Id>
     {
         println!("TODO {}, {}", file!(), line!());
         None
     }
 
-    fn set_current_id(&self, p : &PropertyUser, id : ui::def::Id, title : &str)
+    fn set_current_id(&self, p : &PropertyUser, id : Scene::Id, title : &str)
     {
         println!("TODO {}, {}", file!(), line!());
     }

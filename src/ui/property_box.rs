@@ -13,6 +13,7 @@ use uuid::Uuid;
 use ui::{Window, ButtonCallback, ChangedFunc, RegisterChangeFunc, 
     PropertyTreeFunc, PropertyConfig, PropertyValue, PropertyUser, PropertyShow, PropertyWidget,PropertyChange, NodeChildren, PropertyNode};
 use ui;
+use data::SceneT;
 
 #[repr(C)]
 pub struct JkPropertyBox;
@@ -60,21 +61,21 @@ extern {
         len : c_int);
 }
 
-pub struct PropertyBox
+pub struct PropertyBox<Scene:SceneT>
 {
     pub name : String,
     pub jk_property : *const JkPropertyBox,
     pub id : uuid::Uuid,
-    current_id : Cell<Option<ui::def::Id>>,
+    current_id : Cell<Option<Scene::Id>>,
     nodes : RefCell<NodeChildren>,
 }
 
 
-impl PropertyBox
+impl<Scene:SceneT> PropertyBox<Scene>
 {
     pub fn new(
-        panel : &ui::WidgetPanel<PropertyBox>,
-        ) -> PropertyBox
+        panel : &ui::WidgetPanel<PropertyBox<Scene>>,
+        ) -> PropertyBox<Scene>
     {
         PropertyBox {
             name : String::from("property_box_name"),
@@ -90,7 +91,7 @@ impl PropertyBox
     pub fn set_prop(
         &self,
         p : &PropertyUser,
-        pid : ui::def::Id,
+        pid : Scene::Id,
         title : &str)
     {
         self.current_id.set(Some(pid));
@@ -226,7 +227,7 @@ impl PropertyBox
 }
 
 
-impl PropertyWidget for PropertyBox
+impl<Scene:SceneT> PropertyWidget for PropertyBox<Scene>
 {
     fn add_simple_item(&self, path : &str, item : *const PropertyValue)
     {
@@ -322,12 +323,12 @@ impl PropertyWidget for PropertyBox
 
     }
 
-    fn get_current_id(&self) -> Option<ui::def::Id>
+    fn get_current_id(&self) -> Option<Scene::Id>
     {
         self.current_id.get()
     }
 
-    fn set_current_id(&self, p : &PropertyUser, id : ui::def::Id, title : &str)
+    fn set_current_id(&self, p : &PropertyUser, id : Scene::Id, title : &str)
     {
         self.current_id.set(Some(id.clone()));
         self._set_prop(p.as_show(), title);
@@ -345,7 +346,7 @@ impl PropertyWidget for PropertyBox
 
 }
 
-impl ui::Widget for PropertyBox
+impl<Scene:SceneT> ui::Widget for PropertyBox<Scene>
 {
     fn get_id(&self) -> Uuid
     {

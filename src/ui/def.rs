@@ -15,6 +15,7 @@ use std::io::{Read,Write};
 use std::ffi::{CString,CStr};
 use uuid::Uuid;
 
+use dormin;
 use dormin::{vec, scene, object, component, render, resource};
 use ui::{Tree,PropertyUser,View,EditView,Command,Action,
 PropertyWidget,PropertyBox, PropertyId};
@@ -243,7 +244,7 @@ pub extern fn init_cb(data: *const c_void) -> () {
     unsafe { jk_monitor_add(file_changed, Box::into_raw(box container_arw.clone()) as *const c_void, path.as_ptr()); }
 }
 
-fn create_views(container : &mut WidgetContainer, views_config : &[ViewConfig]) -> Vec<Box<EditView<Scene>>>
+fn create_views<Scene:SceneT>(container : &mut WidgetContainer<Scene>, views_config : &[ViewConfig]) -> Vec<Box<EditView<Scene>>>
 {
     let mut views = Vec::with_capacity(views_config.len());
 
@@ -633,10 +634,13 @@ pub extern fn exit_cb(data: *const c_void) -> ()
 
 pub trait Widget
 {
+    //TODO chris uncomment this if it is used.
+    /*
     fn handle_change(&self, change : operation::Change<Id>)
     {
         println!("please implement me");
     }
+    */
 
     fn set_visible(&mut self, b : bool)
     {
@@ -839,15 +843,14 @@ pub type Scene = Rc<RefCell<scene::Scene>>;
 pub type Object = Arc<RwLock<object::Object>>;
 pub type Id = uuid::Uuid;
 */
-//*
-use dormin;
+/*
 pub type Scene = dormin::world::World;
 pub type Object = dormin::world::Entity;//usize;
 pub type Id = usize;
-//*/
+*/
 
 
-pub struct WidgetContainer
+pub struct WidgetContainer<Scene : SceneT>
 {
     pub tree : Option<Box<Tree<Scene>>>,
     pub property : Box<WidgetPanel<PropertyBox>>,
@@ -860,7 +863,7 @@ pub struct WidgetContainer
 
     pub list : Box<ListWidget>,
     pub name : String,
-    pub visible_prop : HashMap<Id, Weak<Widget>>,
+    pub visible_prop : HashMap<Scene::Id, Weak<Widget>>,
     pub anim : Option<*const Ecore_Animator>,
 
     pub data : Box<Data<Scene>>,
@@ -868,9 +871,9 @@ pub struct WidgetContainer
     pub state : State<Scene>
 }
 
-impl WidgetContainer
+impl<Scene:SceneT> WidgetContainer<Scene>
 {
-    pub fn new() -> WidgetContainer
+    pub fn new() -> WidgetContainer<Scene>
     {
         WidgetContainer {
             tree : None,
@@ -893,7 +896,7 @@ impl WidgetContainer
         }
     }
 
-    pub fn handle_change(&mut self, change : &operation::Change<Id>, widget_origin: uuid::Uuid)
+    pub fn handle_change(&mut self, change : &operation::Change<Scene::Id>, widget_origin: uuid::Uuid)
     {
         //if *change == operation::Change::None {
         if let operation::Change::None = *change {
@@ -1171,7 +1174,7 @@ impl WidgetContainer
         //self.state.op_mgr.redo(self.data)
     }
 
-    pub fn handle_event(&mut self, event : Event<Object>, widget_origin: uuid::Uuid)
+    pub fn handle_event(&mut self, event : Event<Scene::Object>, widget_origin: uuid::Uuid)
     {
         match event {
             Event::SelectObject(ob) => {
@@ -1315,7 +1318,7 @@ impl WidgetContainer
         }
     }
 
-    fn can_create_gameview(&mut self) -> Option<Id>
+    fn can_create_gameview(&mut self) -> Option<Scene::Id>
     {
         if self.gameview.is_some() {
             return None;
@@ -1391,7 +1394,7 @@ impl WidgetContainer
         }
     }
 
-    pub fn handle_change_new_id(&self, widget_id : Uuid, pid : Id, name : &str)
+    pub fn handle_change_new_id(&self, widget_id : Uuid, pid : Scene::Id, name : &str)
     {
         if let Some(ppp) = self.data.get_property_user_copy(pid) {
             if let Some(w) = self.visible_prop.get(&pid) {
@@ -1461,7 +1464,7 @@ impl WidgetContainer
     }
 
     //fn get_selected_object(&self) -> Option<Arc<RwLock<object::Object>>>
-    fn get_selected_object(&self) -> Option<Object>
+    fn get_selected_object(&self) -> Option<Scene::Object>
     {
         self.state.get_selected_object()
     }
@@ -1469,17 +1472,17 @@ impl WidgetContainer
 
 // TODO remove/rework
 //OLD : Send to c with mem::transmute(box data)  and free in c
-pub struct WidgetCbData
+pub struct WidgetCbData<Scene:SceneT>
 {
-    pub container : Arw<WidgetContainer>,
+    pub container : Arw<WidgetContainer<Scene>>,
     pub widget : *const c_void,
     pub object : Option<*const Evas_Object>,
     pub widget2 : Option<Rc<PropertyWidget>>,
     pub index : usize
 }
 
-impl Clone for WidgetCbData {
-    fn clone(&self) -> WidgetCbData
+impl<Scene:SceneT> Clone for WidgetCbData<Scene> {
+    fn clone(&self) -> WidgetCbData<Scene>
     {
         WidgetCbData {
             container : self.container.clone(),
@@ -1491,8 +1494,8 @@ impl Clone for WidgetCbData {
     }
 }
 
-impl WidgetCbData {
-    pub fn with_ptr(c : &Arw<WidgetContainer>, widget : *const c_void) -> WidgetCbData
+impl<Scene:SceneT> WidgetCbData<Scene> {
+    pub fn with_ptr(c : &Arw<WidgetContainer<Scene>>, widget : *const c_void) -> WidgetCbData<Scene>
     {
         println!("TODO free me");
         WidgetCbData {
@@ -1803,9 +1806,9 @@ extern fn gv_close_cb(data : *mut c_void) {
 }
 
 
-fn create_gameview_window(
-    container : Arw<ui::WidgetContainer>,
-    scene_id : Id,
+fn create_gameview_window<Scene:SceneT>(
+    container : Arw<ui::WidgetContainer<Scene>>,
+    scene_id : Scene::Id,
     config : &WidgetConfig
     ) -> Box<ui::gameview::GameViewTrait<Scene>>
 {
@@ -1842,7 +1845,7 @@ fn create_gameview_window(
 
 }
 
-fn check_mesh(name : &str, wc : &WidgetContainer, id : Id)
+fn check_mesh<Scene:SceneT>(name : &str, wc : &WidgetContainer<Scene>, id : Scene::Id)
 {
     println!("TODO remove this check_mesh {}, {}", file!(), line!());
     /*
