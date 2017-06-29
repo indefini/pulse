@@ -1,5 +1,4 @@
 use std::sync::{RwLock, Arc};
-use std::collections::{HashMap};
 use libc::{c_char, c_void, c_int, c_float};
 use std::{str,mem,ptr,ffi};
 use std::rc::{Rc,Weak};
@@ -967,7 +966,6 @@ impl PropertyId<usize> for usize
         return *self
     }
 }
-
 
 
 pub fn add_node(

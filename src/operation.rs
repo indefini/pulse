@@ -7,7 +7,7 @@ use data::{Data, ToId, SceneT};
 
 use dragger;
 
-trait OperationTrait
+pub trait OperationTrait
 {
     type Scene : SceneT;
     type Id;
@@ -32,7 +32,6 @@ pub enum OperationData<Scene : SceneT>
     //ToSome,
     //Function(fn(Vec<Object>, Box<Any>), Box<Any>),
 }
-
 
 pub struct Operation<S: SceneT>
 {
@@ -268,12 +267,9 @@ impl<S:SceneT> Operation<S>
 }
 
 impl<S:SceneT> OperationTrait for Operation<S>
-//impl OperationTrait for Operation<ui::def::Scene>
 {
-    //type Id=ui::def::Id;
     type Id=S::Id;
     type Scene=S;
-    //fn apply(&self) -> Change
     fn apply(&self, rec : &mut Data<S>) -> Change<Self::Id>
     {
         match self.change {
@@ -295,9 +291,7 @@ impl<S:SceneT> OperationTrait for Operation<S>
                 let s = join_string(&self.name);
                 let mut ids = Vec::new();
                 for o in &self.objects {
-                    //if let Some(mut p) = rec.getP_copy(o.to_id()) {
                     if let Some((p, news)) = rec.get_property_write(o.to_id(),o.to_id(),s.as_ref()) {
-                        //p.add_item(s.as_ref(), i, &String::from("empty"));
                         p.add_item(news.as_ref(), i, &String::from("empty"));
                     }
                     ids.push(o.to_id());
@@ -344,11 +338,9 @@ impl<S:SceneT> OperationTrait for Operation<S>
                 for o in &self.objects {
                     //println!("please take the object with id '{:?}', and set the property '{}' to value {:?}",o.to_id(), sp, new[i]);
                     println!("please take the object, and set the property '{}' to value {:?}", sp, new[i]);
-                    //if let Some(mut p) = rec.getP_copy(o.to_id()) {
                     if let Some((p, news)) = rec.get_property_write(o.to_id(),o.to_id(),sp.as_ref()) {
                     println!("yes it is good");
                         p.test_set_property_hier(
-                            //sp.as_str(),
                             news.as_str(),
                             &*new[i]);
                     }
@@ -385,7 +377,6 @@ impl<S:SceneT> OperationTrait for Operation<S>
         Change::None
     }
 
-    //fn undo(&self) -> Change
     fn undo(&self, rec : &mut Data<S>) -> Change<Self::Id>
     {
         match self.change {
@@ -436,7 +427,6 @@ impl<S:SceneT> OperationTrait for Operation<S>
                     }
                     ids.push(o.to_id());
                 }
-                //return Change::Objects(s, ids);
                 return Change::VecAdd(ids, s, i);
             },
             OperationData::Vector(ref old,_) => {
@@ -452,11 +442,8 @@ impl<S:SceneT> OperationTrait for Operation<S>
                 };
                 let mut ids = Vec::new();
                 for o in &self.objects {
-                    //let mut ob = o.write().unwrap();
-                    //if let Some(mut p) = rec.getP_copy(o.to_id()) {
                     if let Some((p, news)) = rec.get_property_write(o.to_id(),o.to_id(),sp.as_ref()) {
                         p.test_set_property_hier(
-                            //sp.as_str(),
                             news.as_str(),
                             &*old[i]);
                     }
@@ -498,10 +485,8 @@ impl<T: Any + Clone> AnyClone for T {}
 
 pub struct OperationManager<S:SceneT>
 {
-    //pub undo : Vec<Operation>,
-    //pub redo : Vec<Operation>,
-    pub undo : Vec<Box<OperationTrait<Id=S::Id,Scene=S>+'static>>,
-    pub redo : Vec<Box<OperationTrait<Id=S::Id,Scene=S>+'static>>,
+    undo : Vec<Box<OperationTrait<Id=S::Id,Scene=S>+'static>>,
+    redo : Vec<Box<OperationTrait<Id=S::Id,Scene=S>+'static>>,
     phantom : PhantomData<S>
 }
 
