@@ -1,11 +1,8 @@
 use std::sync::{RwLock, Arc, Mutex};
 use std::fs;
-use std::mem;
 use std::ffi::{CString, CStr};
 use std::str;
 use libc::{c_void, c_int, size_t, c_char};
-use dormin::world;
-
 
 use dormin::vec;
 use dormin::object;
