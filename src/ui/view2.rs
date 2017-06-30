@@ -16,7 +16,7 @@ use dormin::input;
 use dormin::scene;
 use dormin::render;
 use dormin::world;
-use data::{Data, DataT, SceneT};
+use data::{Data, SceneT};
 
 /*
 pub trait RenderT<S> {
@@ -130,7 +130,7 @@ pub struct View2<R, S : SceneT>
 impl<R:'static, S:SceneT+'static> View2<R,S> where View2<R,S> : ViewT<S> {
     pub fn new(
         win : *const ui::Evas_Object,
-        d : *const DataT<S>,
+        d : *const Data<S>,
         config : ui::WidgetConfig,
         r : R,
         id : S::Id
@@ -258,9 +258,9 @@ pub extern fn gv_resize_cb<S:SceneT>(v : *const c_void, w : c_int, h : c_int) {
     }
 }
 
-pub extern fn gv_close_cb(data : *mut c_void) {
+pub extern fn gv_close_cb<S:SceneT>(data : *mut c_void) {
     //let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(data)};
-    let container : Box<Arw<ui::WidgetContainer>> = unsafe {mem::transmute(data)};
+    let container : Box<Arw<ui::WidgetContainer<S>>> = unsafe {mem::transmute(data)};
     let container = &mut *container.write().unwrap();
     if let Some(ref mut gv) = container.gameview {
         gv.set_visible(false);
@@ -317,6 +317,7 @@ impl data::ToId<usize> for SceneS {
 }
 */
 
+/*
 pub struct Dispatcher
 {
     scenes : Vec<Rc<RefCell<scene::Scene>>>
@@ -345,14 +346,15 @@ impl DataT<Rc<RefCell<scene::Scene>>> for Dispatcher {
         None
     }
 }
+*/
 
 struct GlViewData<Scene:SceneT> {
-    dis : *const DataT<Scene>,
+    dis : *const Data<Scene>,
     view : *mut ViewT<Scene>,
 }
 
 impl<S:SceneT> GlViewData<S> {
-    fn new(d : *const DataT<S>, view : *mut ViewT<S>) -> GlViewData<S>
+    fn new(d : *const Data<S>, view : *mut ViewT<S>) -> GlViewData<S>
     {
         GlViewData {
             dis : d,
@@ -361,7 +363,7 @@ impl<S:SceneT> GlViewData<S> {
     }
 }
 
-impl<R,S:SceneT> ui::Widget for View2<R,S> {
+impl<R,S:SceneT> ui::Widget<S> for View2<R,S> {
 
     fn set_visible(&mut self, b : bool)
     {

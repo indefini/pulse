@@ -21,7 +21,7 @@ use dormin::world::{NoGraph};
 use util;
 use context;
 use data;
-use data::{Data, DataT,SceneT,GetComponent,ToId, GetWorld};
+use data::{Data, SceneT,ToId};
 
 
 #[link(name = "joker")]
@@ -36,14 +36,14 @@ extern {
 }
 
 //TODO check if all functions belong here
-pub trait EditView<S:SceneT> : ui::Widget {
+pub trait EditView<S:SceneT> : ui::Widget<S> {
     //fn play(&mut self);
     //fn get_scene_id(&self) -> Option<S::Id>;
 
     fn init(
         &mut self,
         win : *const ui::Window,
-        wcb : ui::WidgetCbData
+        wcb : ui::WidgetCbData<S>
         );
 
     //TODO clean camera functions
@@ -103,6 +103,7 @@ pub trait EditView<S:SceneT> : ui::Widget {
 
     fn key_down(
         &mut self,
+        data : &Data<S>,
         context : &context::Context<S>,
         modifier : i32,
         keyname : &str,
@@ -194,7 +195,7 @@ impl<S:SceneT> EditView<S> for View
     fn init(
         &mut self,
         win : *const ui::Window,
-        wcb : ui::WidgetCbData
+        wcb : ui::WidgetCbData<S>
         ) {
 
         self.init_(win, wcb);
@@ -418,6 +419,7 @@ impl<S:SceneT> EditView<S> for View
 
     fn key_down(
         &mut self,
+        data : &Data<S>,
         context : &context::Context<S>,
         modifier : i32,
         keyname : &str,
@@ -435,8 +437,9 @@ impl<S:SceneT> EditView<S> for View
                 return vec![ui::Event::CameraChange];
             },
             "f" => {
-                let objects : Vec<&GetWorld<S::Object>> = context.selected.iter().map(|x| x as &GetWorld<S::Object>).collect();
-                let center = util::objects_center(&objects);
+                let s = data.get_scene(context.scene.unwrap()).unwrap();
+                let pos : Vec<vec::Vec3> = context.selected.iter().map(|x| s.get_world_transform(x.clone()).position).collect();
+                let center = util::vec3_center(&pos);
                 let ori = self.camera.transform.orientation;
                 let pos = center + ori.rotate_vec3(&vec::Vec3::new(0f64,0f64,100f64));
                 self.camera.transform.position = pos;
@@ -451,7 +454,7 @@ impl<S:SceneT> EditView<S> for View
     }
 }
 
-impl ui::Widget for View {
+impl<S:SceneT> ui::Widget<S> for View {
     fn set_visible(&mut self, b : bool)
     {
         self.config.visible = b;
@@ -505,10 +508,10 @@ impl View
         }
     }
 
-    pub fn init_(
+    pub fn init_<S:SceneT>(
         &mut self,
         win : *const ui::Window,
-        wcb : ui::WidgetCbData
+        wcb : ui::WidgetCbData<S>
         ) {
 
         self.window = Some(win);
@@ -518,25 +521,25 @@ impl View
             ui::window_callback_set(
                 win,
                 Box::into_raw(box wcb.clone()) as *const c_void,
-                mouse_down,
-                mouse_up,
-                mouse_move,
-                mouse_wheel,
-                key_down
+                mouse_down::<S>,
+                mouse_up::<S>,
+                mouse_move::<S>,
+                mouse_wheel::<S>,
+                key_down::<S>
                 );
 
             //TODO clean Box::into_raw data
             ui::tmp_func(
                 win,
                 Box::into_raw(box wcb) as *const c_void,
-                init_cb,
-                draw_cb,
-                resize_cb);
+                init_cb::<S>,
+                draw_cb::<S>,
+                resize_cb::<S>);
         }
     } 
 }
 
-pub extern fn mouse_down(
+pub extern fn mouse_down<S:SceneT>(
     data : *const c_void,
     modifier : c_int,
     button : c_int,
@@ -545,8 +548,8 @@ pub extern fn mouse_down(
     timestamp : c_int
     )
 {
-    let wcb : & ui::WidgetCbData = unsafe {&* (data as *const ui::WidgetCbData)};
-    let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
+    let wcb : & ui::WidgetCbData<S> = unsafe {&* (data as *const ui::WidgetCbData<S>)};
+    let container : &mut ui::WidgetContainer<S> = &mut *wcb.container.write().unwrap();
 
     let op_list =
         container.views[wcb.index].mouse_down(
@@ -582,7 +585,7 @@ pub extern fn mouse_down(
     }
 }
 
-pub extern fn mouse_up(
+pub extern fn mouse_up<S:SceneT>(
     data : *const c_void,
     modifier : c_int,
     button : c_int,
@@ -591,8 +594,8 @@ pub extern fn mouse_up(
     timestamp : c_int
     )
 {
-    let wcb : & ui::WidgetCbData = unsafe {&* (data as *const ui::WidgetCbData)};
-    let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
+    let wcb : & ui::WidgetCbData<S> = unsafe {&* (data as *const ui::WidgetCbData<S>)};
+    let container : &mut ui::WidgetContainer<S> = &mut *wcb.container.write().unwrap();
 
     let event =
         container.views[wcb.index].mouse_up(&*container.data, &*container.state.context, button, x, y, timestamp);
@@ -602,7 +605,7 @@ pub extern fn mouse_up(
     container.handle_event(event, id);
 }
 
-pub extern fn mouse_move(
+pub extern fn mouse_move<S:SceneT>(
     data : *const c_void,
     modifiers_flag : c_int,
     button : c_int,
@@ -613,8 +616,8 @@ pub extern fn mouse_move(
     timestamp : c_int
     )
 {
-    let wcb : & ui::WidgetCbData = unsafe {&* (data as *const ui::WidgetCbData)};
-    let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
+    let wcb : & ui::WidgetCbData<S> = unsafe {&* (data as *const ui::WidgetCbData<S>)};
+    let container : &mut ui::WidgetContainer<S> = &mut *wcb.container.write().unwrap();
 
     let events =
         container.views[wcb.index].mouse_move(
@@ -635,7 +638,7 @@ pub extern fn mouse_move(
     }
 }
 
-pub extern fn mouse_wheel(
+pub extern fn mouse_wheel<S:SceneT>(
     data : *const c_void,
     modifiers_flag: c_int,
     direction : c_int,
@@ -645,14 +648,14 @@ pub extern fn mouse_wheel(
     timestamp : c_int
     )
 {
-    let wcb : & ui::WidgetCbData = unsafe {&* (data as *const ui::WidgetCbData)};
+    let wcb : & ui::WidgetCbData<S> = unsafe {&* (data as *const ui::WidgetCbData<S>)};
     let view : &mut EditView<_> = &mut *wcb.container.write().unwrap().views[wcb.index];
     view.mouse_wheel(modifiers_flag, direction, z, x, y, timestamp);
 
     view.request_update();
 }
 
-pub extern fn key_down(
+pub extern fn key_down<S:SceneT>(
     data : *const c_void,
     modifier : c_int,
     keyname : *const c_char,
@@ -661,8 +664,8 @@ pub extern fn key_down(
     timestamp : c_int
     )
 {
-    let wcb : & ui::WidgetCbData = unsafe {&* (data as *const ui::WidgetCbData)};
-    let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
+    let wcb : & ui::WidgetCbData<S> = unsafe {&* (data as *const ui::WidgetCbData<S>)};
+    let container : &mut ui::WidgetContainer<S> = &mut *wcb.container.write().unwrap();
 
     let event = {
         let key_str = {
@@ -697,11 +700,11 @@ pub extern fn key_down(
 
                     let scene_actions : &[(&str, extern fn(*const c_void, *const c_char))]
                     = &[
-                    ("add empty", ui::command::add_empty),
-                    ("remove selected22", ui::command::remove_selected2),
-                    ("set camera2", ui::command::set_camera2),
-                    ("add component", ui::command::add_component),
-                    ("copy selected", ui::command::copy_selected),
+                    ("add empty", ui::command::add_empty::<S>),
+                    ("remove selected22", ui::command::remove_selected2::<S>),
+                    ("set camera2", ui::command::set_camera2::<S>),
+                    ("add component", ui::command::add_component::<S>),
+                    ("copy selected", ui::command::copy_selected::<S>),
                     ];
 
                     for a in scene_actions {
@@ -741,7 +744,13 @@ pub extern fn key_down(
 
         {
             let v = &mut container.views[wcb.index];
-            v.key_down(&container.state.context, modifier, keyname_str.as_ref(), key_str.as_ref(), timestamp)
+            v.key_down(
+                &container.data,
+                &container.state.context,
+                modifier,
+                keyname_str.as_ref(),
+                key_str.as_ref(),
+                timestamp)
         }
     };
 
@@ -755,18 +764,18 @@ pub extern fn key_down(
     }
 }
 
-pub extern fn init_cb(data : *const c_void) -> () {
-    let wcb : & ui::WidgetCbData = unsafe {&* (data as *const ui::WidgetCbData)};
-    let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
+pub extern fn init_cb<S:SceneT>(data : *const c_void) -> () {
+    let wcb : & ui::WidgetCbData<S> = unsafe {&* (data as *const ui::WidgetCbData<S>)};
+    let container : &mut ui::WidgetContainer<S> = &mut *wcb.container.write().unwrap();
     let view = &mut container.views[wcb.index];
 
     return view.init_render();
 }
 
-pub extern fn request_update_again(data : *const c_void) -> bool
+pub extern fn request_update_again<S:SceneT>(data : *const c_void) -> bool
 {
-    let wcb : &ui::WidgetCbData = unsafe {&* (data as *const ui::WidgetCbData)};
-    let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
+    let wcb : &ui::WidgetCbData<S> = unsafe {&* (data as *const ui::WidgetCbData<S>)};
+    let container : &mut ui::WidgetContainer<S> = &mut *wcb.container.write().unwrap();
     let view = &mut container.views[wcb.index];
 
     if !view.is_loading_resource() {
@@ -777,23 +786,23 @@ pub extern fn request_update_again(data : *const c_void) -> bool
 }
 
 
-pub extern fn draw_cb(data : *const c_void) -> ()
+pub extern fn draw_cb<S:SceneT>(data : *const c_void) -> ()
 {
-    let wcb : &ui::WidgetCbData = unsafe {&* (data as *const ui::WidgetCbData)};
-    let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
+    let wcb : &ui::WidgetCbData<S> = unsafe {&* (data as *const ui::WidgetCbData<S>)};
+    let container : &mut ui::WidgetContainer<S> = &mut *wcb.container.write().unwrap();
 
     let draw_not_done = container.views[wcb.index].draw(&*container.data, &*container.state.context);
 
     if draw_not_done {
         unsafe {
-            ui::ecore_animator_add(request_update_again, data);
+            ui::ecore_animator_add(request_update_again::<S>, data);
         }
     }
 }
 
-pub extern fn resize_cb(data : *const c_void, w : c_int, h : c_int) -> () {
-    let wcb : & ui::WidgetCbData = unsafe {&* (data as *const ui::WidgetCbData)};
-    let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
+pub extern fn resize_cb<S:SceneT>(data : *const c_void, w : c_int, h : c_int) -> () {
+    let wcb : & ui::WidgetCbData<S> = unsafe {&* (data as *const ui::WidgetCbData<S>)};
+    let container : &mut ui::WidgetContainer<S> = &mut *wcb.container.write().unwrap();
     let view = &mut container.views[wcb.index];
 
     return view.resize(w, h);

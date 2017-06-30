@@ -1,9 +1,8 @@
 use std::sync::{RwLock, Arc};
-use std::collections::{HashMap};
 use libc::{c_char, c_void, c_int, c_float};
 use std::{str,mem,ptr,ffi};
 use std::rc::{Rc,Weak};
-use std::cell::{Cell, RefCell, BorrowState};
+use std::cell::{Cell, RefCell};
 use std::any::{Any};
 use std::ffi::{CStr,CString};
 use uuid;
@@ -24,6 +23,7 @@ use dormin::component::CompData;
 use dormin::armature;
 use dormin::transform::Orientation;
 use dormin::world;
+use data::SceneT;
 
 #[repr(C)]
 pub struct JkPropertyCb;
@@ -889,8 +889,8 @@ Option<&PropertyShow>
     }
 }
 
-pub extern fn vec_add(
-    data : *const ui::WidgetCbData,
+pub extern fn vec_add<S:SceneT+'static>(
+    data : *const c_void, //ui::WidgetCbData<S>,
     property : *const c_void,
     old : *const c_void,
     new : *const c_void,
@@ -904,16 +904,16 @@ pub extern fn vec_add(
         panic!("VEC ADD :: cannot upgrade rc, node");
     };
 
-    let wcb : & ui::WidgetCbData = unsafe {mem::transmute(data)};
+    let wcb : & ui::WidgetCbData<S> = unsafe {mem::transmute(data)};
     //let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
-    let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
+    let container : &mut ui::WidgetContainer<S> = &mut *wcb.container.write().unwrap();
 
     let change = container.state.request_operation_vec_add(node.clone(), &mut *container.data);
     container.handle_change(&change, uuid::Uuid::nil());//p.id);
 }
 
-pub extern fn vec_del(
-    data : *const ui::WidgetCbData,
+pub extern fn vec_del<S:SceneT>(
+    data : *const c_void, //ui::WidgetCbData<S>,
     property : *const c_void,
     old : *const c_void,
     new : *const c_void,
@@ -927,9 +927,9 @@ pub extern fn vec_del(
         panic!("problem with node");
     };
 
-    let wcb : & ui::WidgetCbData = unsafe {mem::transmute(data)};
+    let wcb : & ui::WidgetCbData<S> = unsafe {mem::transmute(data)};
     //let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
-    let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
+    let container : &mut ui::WidgetContainer<S> = &mut *wcb.container.write().unwrap();
 
     let change = container.state.request_operation_vec_del(node, &mut *container.data);
     container.handle_change(&change, uuid::Uuid::nil());
@@ -966,7 +966,6 @@ impl PropertyId<usize> for usize
         return *self
     }
 }
-
 
 
 pub fn add_node(

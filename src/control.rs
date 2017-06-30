@@ -15,7 +15,7 @@ use data::SceneT;
 
 use dormin::world;
 use data;
-use data::{Data, DataT, ToId, GetComponent, GetWorld};
+use data::{Data, ToId};
 use dormin::component::mesh_render;
 
 use util;
@@ -239,6 +239,7 @@ impl Control
 
     fn rotate_camera<S:SceneT>(
         &mut self,
+        data : &Data<S>,
         camera : &mut CameraView,
         context : &context::Context<S>,
         x : f64,
@@ -271,8 +272,11 @@ impl Control
         };
 
         if !context.selected.is_empty() {
-            let yo : Vec<&GetWorld<S::Object>> = context.selected.iter().map(|x| x as &GetWorld<S::Object>).collect();
-            let center = util::objects_center(&yo);
+            let scene = data.get_scene(context.scene.unwrap()).unwrap();
+            //let yo : Vec<&GetWorld<S::Object>> = context.selected.iter().map(|x| x as &GetWorld<S::Object>).collect();
+            let yo : Vec<vec::Vec3> = context.selected.iter().map(
+                |x| scene.get_world_transform(x.clone()).position).collect();
+            let center = util::vec3_center(&yo);
             camera.set_center(&center);
         }
 
@@ -318,7 +322,7 @@ impl Control
                         camera.pan(&t);
                     }
                     else {
-                        self.rotate_camera(camera, context, x, y);
+                        self.rotate_camera(data, camera, context, x, y);
                         //let camera = self.camera.borrow();
                         println!("remove from update and move here");
                         //self.dragger.borrow_mut().set_orienation(&*camera);
@@ -374,13 +378,13 @@ impl Control
 
                     let mut obvec = Vec::new();
                     let mut has_changed = false;
+                    let scene = data.get_scene(s).unwrap();
                     for o in &data.get_scene(s).unwrap().get_objects_vec() {
 
                         let mm = &mut *self.resource.mesh_manager.borrow_mut();
-                        let t = o.get_world_transform(&world::NoGraph);
-                        if let Some(mr) = o.get_comp::<mesh_render::MeshRender>(&data::NoData) {
-                            if let Some(mesh) = mr.mesh.get_ref(mm) {
-                                let mt = intersection::MeshTransform::with_transform(mesh, &t);
+                        if let Some(mtt) = scene.get_object_mt(o.clone()) {
+                            if let Some(mesh) = mtt.mesh.get_ref(mm) {
+                                let mt = intersection::MeshTransform::with_pos_ori_scale(mesh, mtt.position, mtt.orientation, mtt.scale);
 
                         let b = intersection::is_mesh_transform_in_planes(planes.as_ref(), &mt);
                         if b {

@@ -3,7 +3,6 @@ use std::mem;
 use std::sync::{RwLock, Arc};
 use std::ptr;
 use std::rc::{Rc,Weak};
-use std::cell::{RefCell};
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
 use std::any::{Any};//, AnyRefExt};
@@ -17,7 +16,7 @@ use uuid::Uuid;
 
 use dormin::{vec, scene, object, component, render, resource};
 use ui::{Tree,PropertyUser,View,EditView,Command,Action,
-PropertyWidget,PropertyBox, PropertyId};
+PropertyWidget,PropertyWidgetGen, PropertyBox, PropertyId};
 use ui;
 use operation;
 
@@ -25,11 +24,10 @@ use uuid;
 use dragger;
 use util;
 use util::Arw;
-use data::Data;
 use data::ToId;
 
 use state::State;
-use data::{DataT, SceneT};
+use data::{Data, SceneT};
 use ui::gameview::GameViewTrait;
 
 #[repr(C)]
@@ -223,13 +221,15 @@ fn elm_object_text_set(
     unsafe { elm_object_part_text_set(obj, ptr::null(), text); }
 }
 
-pub extern fn init_cb(data: *const c_void) -> () {
-    let app_data : &AppCbData = unsafe { &*(data as *const AppCbData) };
+pub extern fn init_cb<S:SceneT>(data: *const c_void) -> () 
+    where ui::view2::View2<render::GameRender,S> : ui::view2::ViewT<S>
+{
+    let app_data : &AppCbData<S> = unsafe { &*(data as *const AppCbData<S>) };
     let container_arw = app_data.container.clone();
 
     let wc = WindowConfig::load();
 
-    let mut views = create_views(container_arw.clone(), &wc.views);
+    let mut views = create_views(&mut*container_arw.write().unwrap(), &wc.views);
     init_views(container_arw.clone(), &wc, &mut views);
 
     {
@@ -240,15 +240,15 @@ pub extern fn init_cb(data: *const c_void) -> () {
     init_gameview(container_arw.clone(), &wc.gameview.clone().unwrap_or_default());
 
     let path = CString::new("shader".as_bytes()).unwrap();
-    unsafe { jk_monitor_add(file_changed, Box::into_raw(box container_arw.clone()) as *const c_void, path.as_ptr()); }
+    unsafe { jk_monitor_add(file_changed::<S>, Box::into_raw(box container_arw.clone()) as *const c_void, path.as_ptr()); }
 }
 
-fn create_views(container_arw : Arw<WidgetContainer>, views_config : &[ViewConfig]) -> Vec<Box<EditView<Scene2>>>
+fn create_views<Scene:SceneT>(container : &mut WidgetContainer<Scene>, views_config : &[ViewConfig]) -> Vec<Box<EditView<Scene>>>
 {
     let mut views = Vec::with_capacity(views_config.len());
 
     for v in views_config {
-        let container = &mut *container_arw.write().unwrap();
+        //let container = &mut *container_arw.write().unwrap();
         let render = box render::Render::new(&container.data.factory, container.resource.clone());
 
         let view = box View::new(
@@ -258,7 +258,7 @@ fn create_views(container_arw : Arw<WidgetContainer>, views_config : &[ViewConfi
             v.window.h,
             v.camera.clone());
 
-        views.push(view as Box<EditView<Scene2>>);
+        views.push(view as Box<EditView<Scene>>);
         let scene = if let Some(ref scene) = v.scene {
             container.data.get_or_load_scene(scene.as_str())
         }
@@ -272,7 +272,7 @@ fn create_views(container_arw : Arw<WidgetContainer>, views_config : &[ViewConfi
     views
 }
 
-fn init_views<S:SceneT>(container_arw : Arw<WidgetContainer>, wc : &WindowConfig, views : &mut [Box<EditView<S>>])
+fn init_views<S:SceneT>(container_arw : Arw<WidgetContainer<S>>, wc : &WindowConfig, views : &mut [Box<EditView<S>>])
 {
     for (i,v) in views.iter_mut().enumerate() {
         let v : &mut Box<EditView<S>> = v;
@@ -284,7 +284,7 @@ fn init_views<S:SceneT>(container_arw : Arw<WidgetContainer>, wc : &WindowConfig
 
         //TODO remove from here?
         init_property(&container_arw, win, &pc);
-        init_tree(&container_arw, win, &tc);
+        init_tree::<S>(&container_arw, win, &tc);
         init_action(&container_arw, win, v.get_id());
 
         {
@@ -301,7 +301,7 @@ fn init_views<S:SceneT>(container_arw : Arw<WidgetContainer>, wc : &WindowConfig
 
 }
 
-fn init_property(container : &Arw<WidgetContainer>, win : *const Window, pc : &WidgetPanelConfig)
+fn init_property<S:SceneT+'static>(container : &Arw<WidgetContainer<S>>, win : *const Window, pc : &WidgetPanelConfig)
 {
     let container_arw = container.clone();
     let container = &mut *container.write().unwrap();
@@ -316,23 +316,23 @@ fn init_property(container : &Arw<WidgetContainer>, win : *const Window, pc : &W
         ui::property::jk_property_cb_register(
             ui::property_box::property_box_cb_get(p.jk_property),
             Box::into_raw(box pd) as *const c_void,
-            ui::property_list::changed_set_float,
-            ui::property_list::changed_set_string,
-            ui::property_list::changed_set_enum,
-            ui::property_list::register_change_string,
-            ui::property_list::register_change_float,
-            ui::property_list::register_change_enum,
-            ui::property_list::register_change_option,
+            ui::property_list::changed_set_float::<S>,
+            ui::property_list::changed_set_string::<S>,
+            ui::property_list::changed_set_enum::<S>,
+            ui::property_list::register_change_string::<S>,
+            ui::property_list::register_change_float::<S>,
+            ui::property_list::register_change_enum::<S>,
+            ui::property_list::register_change_option::<S>,
             ui::property_list::expand,
             ui::property_list::contract,
-            ui::property::vec_add,
-            ui::property::vec_del);
+            ui::property::vec_add::<S>,
+            ui::property::vec_del::<S>);
     }
 
     container.property.widget = Some(p);
 }
 
-fn init_tree(container : &Arw<WidgetContainer>, win : *const Window, tree_config : &WidgetConfig)
+fn init_tree<Scene:SceneT>(container : &Arw<WidgetContainer<Scene>>, win : *const Window, tree_config : &WidgetConfig)
 {
     let container_arw = container.clone();
     let container = &mut *container.write().unwrap();
@@ -344,14 +344,14 @@ fn init_tree(container : &Arw<WidgetContainer>, win : *const Window, tree_config
         ui::tree::tree_register_cb(
             t.jk_tree,
             Box::into_raw(box tsd) as *const c_void,
-            ui::tree::name_get,
-            ui::tree::item_selected,
-            ui::tree::can_expand,
-            ui::tree::expand,
-            ui::tree::selected,
-            ui::tree::unselected,
+            ui::tree::name_get::<Scene>,
+            ui::tree::item_selected::<Scene>,
+            ui::tree::can_expand::<Scene>,
+            ui::tree::expand::<Scene>,
+            ui::tree::selected::<Scene>,
+            ui::tree::unselected::<Scene>,
             //TODO remove panel_move
-            ui::tree::panel_move,
+            ui::tree::panel_move::<Scene>,
             );
     }
 
@@ -368,7 +368,7 @@ fn init_tree(container : &Arw<WidgetContainer>, win : *const Window, tree_config
     container.tree = Some(t);
 }
 
-fn init_action(container : &Arw<WidgetContainer>, win : *const Window, view_id : Uuid)
+fn init_action<S:SceneT>(container : &Arw<WidgetContainer<S>>, win : *const Window, view_id : Uuid)
 {
     let container_arw = container.clone();
     let container = &mut *container.write().unwrap();
@@ -381,8 +381,8 @@ fn init_action(container : &Arw<WidgetContainer>, win : *const Window, view_id :
     let ad = ui::WidgetCbData::with_ptr(&container_arw, unsafe { mem::transmute(&*a)});
 
 
-    a.add_button("new scene", ui::action::scene_new, ad.clone());
-    a.add_button("add empty", ui::action::add_empty, ad.clone());
+    a.add_button("new scene", ui::action::scene_new::<S>, ad.clone());
+    a.add_button("add empty", ui::action::add_empty::<S>, ad.clone());
     {
     a.add_button_closure("add empty closure", move || {
         println!("add button from closure!!!!!!!!!!!!, it's awesome !!!!!!!");
@@ -392,20 +392,20 @@ fn init_action(container : &Arw<WidgetContainer>, win : *const Window, view_id :
     }
     a.add_button(
         "open game view",
-        ui::action::open_game_view,
+        ui::action::open_game_view::<S>,
         ad.clone());
     a.add_button(
         "pause",
-        ui::action::pause_scene,
+        ui::action::pause_scene::<S>,
         ad.clone());
     a.add_button(
         "play",
-        ui::action::play_scene,
+        ui::action::play_scene::<S>,
         ad.clone());
 
     a.add_button(
         "compile_test",
-        ui::action::compile_test,
+        ui::action::compile_test::<S>,
         ad.clone());
 
     let name = match container.state.context.scene {
@@ -417,9 +417,9 @@ fn init_action(container : &Arw<WidgetContainer>, win : *const Window, view_id :
         }
     };
 
-    menu.add_button(">", ui::action::scene_list, ad.clone());
-    menu.add_entry(String::from("scene"),&name, ui::action::scene_rename, ad.clone());
-    menu.add_button("+", ui::action::scene_new, ad.clone());
+    menu.add_button(">", ui::action::scene_list::<S>, ad.clone());
+    menu.add_entry(String::from("scene"),&name, ui::action::scene_rename::<S>, ad.clone());
+    menu.add_button("+", ui::action::scene_new::<S>, ad.clone());
 
     container.action = Some(a);
     container.command = Some(command);
@@ -428,7 +428,8 @@ fn init_action(container : &Arw<WidgetContainer>, win : *const Window, view_id :
     //container.list.create(w);
 }
 
-fn init_gameview(container_arw : Arw<WidgetContainer>, gameview_config : &WidgetConfig)
+fn init_gameview<S:SceneT>(container_arw : Arw<WidgetContainer<S>>, gameview_config : &WidgetConfig)
+    where ui::view2::View2<render::GameRender,S> : ui::view2::ViewT<S>
 {
     let op_scene = {
         let container = &mut *container_arw.write().unwrap();
@@ -521,7 +522,7 @@ pub struct WindowConfig
 
 impl WindowConfig {
 
-    fn new(c : &WidgetContainer) ->  WindowConfig
+    fn new<S:SceneT>(c : &WidgetContainer<S>) ->  WindowConfig
     {
         let mut wc = WindowConfig {
             views : Vec::new(),
@@ -616,9 +617,9 @@ impl WindowConfig {
 
 }
 
-pub extern fn exit_cb(data: *const c_void) -> ()
+pub extern fn exit_cb<S:SceneT>(data: *const c_void) -> ()
 {
-    let app_data : &AppCbData = { let d = data as *const AppCbData; unsafe {&*d}};
+    let app_data : &AppCbData<S> = { let d = data as *const AppCbData<S>; unsafe {&*d}};
     let container = &mut *app_data.container.write().unwrap();
 
     if let Some(s) = container.state.context.scene {
@@ -631,19 +632,23 @@ pub extern fn exit_cb(data: *const c_void) -> ()
     wc.save();
 }
 
-pub trait Widget
+pub trait Widget<Scene>
 {
+    //TODO chris uncomment this if it is used.
+    /*
     fn handle_change(&self, change : operation::Change<Id>)
     {
         println!("please implement me");
     }
+    */
 
     fn set_visible(&mut self, b : bool)
     {
         println!("please implement me");
     }
 
-    fn handle_change_prop(&self, prop_user : &PropertyUser , name : &str)
+    //TODO chris uncomment this if it is used.
+    fn handle_change_prop(&self, prop_user : &PropertyUser<Scene> , name : &str)
     {
         println!("implement handle_change_prop 7777777777777777");
     }
@@ -745,6 +750,8 @@ extern fn panel_move(
     config.h = h;
 }
 
+//TODO chris remove this core sutff?
+/*
 //#[derive(Clone)]
 pub struct Core
 {
@@ -760,6 +767,7 @@ impl Core {
         }
     }
 }
+*/
 
 pub struct ListWidget
 {
@@ -776,7 +784,7 @@ impl ListWidget
         self.object = Some(unsafe { jk_list_wdg_new2(win, name) });
     }
 
-    pub fn set_fn(&self, cb : SelectCallback, data : ui::WidgetCbData)
+    pub fn set_fn<S:SceneT>(&self, cb : SelectCallback, data : ui::WidgetCbData<S>)
     {
 
         unsafe {
@@ -839,42 +847,37 @@ pub type Scene = Rc<RefCell<scene::Scene>>;
 pub type Object = Arc<RwLock<object::Object>>;
 pub type Id = uuid::Uuid;
 */
-//*
-use dormin;
+/*
 pub type Scene = dormin::world::World;
 pub type Object = dormin::world::Entity;//usize;
 pub type Id = usize;
-//*/
-
-pub type Scene2 = Scene;
-pub type Object2 = Object;
-pub type Id2 = Id;
+*/
 
 
-pub struct WidgetContainer
+pub struct WidgetContainer<Scene : SceneT>
 {
-    pub tree : Option<Box<Tree>>,
-    pub property : Box<WidgetPanel<PropertyBox>>,
+    pub tree : Option<Box<Tree<Scene>>>,
+    pub property : Box<WidgetPanel<PropertyBox<Scene>>>,
     pub command : Option<Box<Command>>,
     pub action : Option<Box<Action>>,
-    pub views : Vec<Box<EditView<Scene2>>>,
+    pub views : Vec<Box<EditView<Scene>>>,
     //pub views : Vec<Box<View>>,
-    pub gameview : Option<Box<GameViewTrait<Scene2>>>,
+    pub gameview : Option<Box<GameViewTrait<Scene>>>,
     pub menu : Option<Box<Action>>,
 
     pub list : Box<ListWidget>,
     pub name : String,
-    pub visible_prop : HashMap<Id, Weak<Widget>>,
+    pub visible_prop : HashMap<Scene::Id, Weak<Widget<Scene>>>,
     pub anim : Option<*const Ecore_Animator>,
 
-    pub data : Box<Data<Scene2>>,
+    pub data : Box<Data<Scene>>,
     pub resource : Rc<resource::ResourceGroup>,
-    pub state : State<Scene2>
+    pub state : State<Scene>
 }
 
-impl WidgetContainer
+impl<Scene:SceneT> WidgetContainer<Scene>
 {
-    pub fn new() -> WidgetContainer
+    pub fn new() -> WidgetContainer<Scene>
     {
         WidgetContainer {
             tree : None,
@@ -897,7 +900,7 @@ impl WidgetContainer
         }
     }
 
-    pub fn handle_change(&mut self, change : &operation::Change<Id2>, widget_origin: uuid::Uuid)
+    pub fn handle_change(&mut self, change : &operation::Change<Scene::Id>, widget_origin: uuid::Uuid)
     {
         //if *change == operation::Change::None {
         if let operation::Change::None = *change {
@@ -1079,7 +1082,7 @@ impl WidgetContainer
                     Some(s) => s,
                     None => return
                 };
-                    let objs = scene.find_objects_by_id(&mut obs.clone());
+                    let objs = scene.find_objects_with_id(&mut obs.clone());
                     let n : Vec<String> = objs.iter().map(|o| scene.get_object_name(o.clone())).collect();
                     let has_children : Vec<bool> = objs.iter().map(|o| !scene.get_children(o.clone()).is_empty()).collect();
                     (objs,n,has_children)
@@ -1175,7 +1178,7 @@ impl WidgetContainer
         //self.state.op_mgr.redo(self.data)
     }
 
-    pub fn handle_event(&mut self, event : Event<Object>, widget_origin: uuid::Uuid)
+    pub fn handle_event(&mut self, event : Event<Scene::Object>, widget_origin: uuid::Uuid)
     {
         match event {
             Event::SelectObject(ob) => {
@@ -1257,7 +1260,7 @@ impl WidgetContainer
                                 p.set_prop(&*ppp, oid, "object");
                             }
                                 self.visible_prop.insert(
-                                        oid, Rc::downgrade(p) as Weak<Widget>);
+                                        oid, Rc::downgrade(p) as Weak<Widget<Scene>>);
                             }
                         }
                         else {
@@ -1319,7 +1322,7 @@ impl WidgetContainer
         }
     }
 
-    fn can_create_gameview(&mut self) -> Option<Id>
+    fn can_create_gameview(&mut self) -> Option<Scene::Id>
     {
         if self.gameview.is_some() {
             return None;
@@ -1367,7 +1370,7 @@ impl WidgetContainer
         }
     }
 
-    pub fn handle_change_new(&self, widget_id : Uuid, p : &PropertyUser, name : &str)
+    pub fn handle_change_new(&self, widget_id : Uuid, p : &PropertyUser<Scene>, name : &str)
     {
         let pid = p.get_id();
 
@@ -1395,7 +1398,7 @@ impl WidgetContainer
         }
     }
 
-    pub fn handle_change_new_id(&self, widget_id : Uuid, pid : Id, name : &str)
+    pub fn handle_change_new_id(&self, widget_id : Uuid, pid : Scene::Id, name : &str)
     {
         if let Some(ppp) = self.data.get_property_user_copy(pid) {
             if let Some(w) = self.visible_prop.get(&pid) {
@@ -1437,7 +1440,7 @@ impl WidgetContainer
         }
     }
 
-    pub fn set_scene(&mut self, scene : Scene2)
+    pub fn set_scene(&mut self, scene : Scene)
     {
         if let Some(ref mut t) = self.tree {
             //TODO chris
@@ -1465,7 +1468,7 @@ impl WidgetContainer
     }
 
     //fn get_selected_object(&self) -> Option<Arc<RwLock<object::Object>>>
-    fn get_selected_object(&self) -> Option<Object>
+    fn get_selected_object(&self) -> Option<Scene::Object>
     {
         self.state.get_selected_object()
     }
@@ -1473,17 +1476,17 @@ impl WidgetContainer
 
 // TODO remove/rework
 //OLD : Send to c with mem::transmute(box data)  and free in c
-pub struct WidgetCbData
+pub struct WidgetCbData<Scene:SceneT>
 {
-    pub container : Arw<WidgetContainer>,
+    pub container : Arw<WidgetContainer<Scene>>,
     pub widget : *const c_void,
     pub object : Option<*const Evas_Object>,
     pub widget2 : Option<Rc<PropertyWidget>>,
     pub index : usize
 }
 
-impl Clone for WidgetCbData {
-    fn clone(&self) -> WidgetCbData
+impl<Scene:SceneT> Clone for WidgetCbData<Scene> {
+    fn clone(&self) -> WidgetCbData<Scene>
     {
         WidgetCbData {
             container : self.container.clone(),
@@ -1495,8 +1498,8 @@ impl Clone for WidgetCbData {
     }
 }
 
-impl WidgetCbData {
-    pub fn with_ptr(c : &Arw<WidgetContainer>, widget : *const c_void) -> WidgetCbData
+impl<Scene:SceneT> WidgetCbData<Scene> {
+    pub fn with_ptr(c : &Arw<WidgetContainer<Scene>>, widget : *const c_void) -> WidgetCbData<Scene>
     {
         println!("TODO free me");
         WidgetCbData {
@@ -1508,7 +1511,7 @@ impl WidgetCbData {
         }
     }
 
-    pub fn with_index(c : &Arw<WidgetContainer>, index : usize) -> WidgetCbData
+    pub fn with_index(c : &Arw<WidgetContainer<Scene>>, index : usize) -> WidgetCbData<Scene>
     {
         println!("TODO free me");
         WidgetCbData {
@@ -1520,7 +1523,7 @@ impl WidgetCbData {
         }
     }
 
-    pub fn new_with_widget(c : &Arw<WidgetContainer>, widget : Rc<PropertyWidget> ) -> WidgetCbData
+    pub fn new_with_widget(c : &Arw<WidgetContainer<Scene>>, widget : Rc<PropertyWidget> ) -> WidgetCbData<Scene>
     {
         println!("TODO free me");
         WidgetCbData {
@@ -1533,7 +1536,7 @@ impl WidgetCbData {
     }
 
 
-    pub fn new(c : &Arw<WidgetContainer>, widget : *const c_void) -> WidgetCbData
+    pub fn new(c : &Arw<WidgetContainer<Scene>>, widget : *const c_void) -> WidgetCbData<Scene>
     {
         println!("TODO free me");
         WidgetCbData {
@@ -1545,6 +1548,7 @@ impl WidgetCbData {
         }
     }
 
+    /*
     pub fn with_ptr_obj(c : &Arw<WidgetContainer>, widget : *const c_void, object : *const Evas_Object) -> WidgetCbData
     {
         println!("TODO free me");
@@ -1556,28 +1560,28 @@ impl WidgetCbData {
             index : 0usize,
         }
     }
+    */
 }
 
-pub struct AppCbData
+pub struct AppCbData<S:SceneT>
 {
-    pub container : Arw<WidgetContainer>
+    pub container : Arw<WidgetContainer<S>>
 }
 
-impl Clone for AppCbData {
-    fn clone(&self) -> AppCbData
-    {
-        AppCbData {
-            container : self.container.clone()
-        }
-    }
-}
-
-impl AppCbData {
-    pub fn new() -> AppCbData {
+impl<S:SceneT> AppCbData<S> {
+    pub fn new() -> AppCbData<S> {
         AppCbData {
             container : Arc::new(RwLock::new(WidgetContainer::new()))
         }
     }
+
+    /*
+    pub fn with_widget_container(wc : WidgetContainer) -> AppCbData {
+        AppCbData {
+            container : Arc::new(RwLock::new(wc))
+        }
+    }
+    */
 }
 
 
@@ -1609,7 +1613,7 @@ pub enum Event<Object>
     Empty
 }
 
-pub fn add_empty(container : &mut WidgetContainer, view_id : Uuid)
+pub fn add_empty<S:SceneT>(container : &mut WidgetContainer<S>, view_id : Uuid)
 {
     println!("add empty");
 
@@ -1629,13 +1633,7 @@ pub fn add_empty(container : &mut WidgetContainer, view_id : Uuid)
     };
 
     let vec = if let Some(s) = container.data.get_scene_mut(scene_id) {
-        let mut o = s.create_empty_object("new object");
-        {
-            if let Some(t) = o.data.get_one_mut::<dormin::transform::Transform>() {
-            //t.position = vec::Vec3::new(1f64,2f64,3f64);// position;
-            t.position = position;
-            }
-        }
+        let mut o = s.create_empty_object_at_position("new object", position);
 
         vec![o.clone()]
     }
@@ -1655,7 +1653,7 @@ pub fn add_empty(container : &mut WidgetContainer, view_id : Uuid)
     container.handle_event(ui::Event::ChangeSelected(vec), view_id);
 }
 
-pub fn scene_list(container : &Arw<WidgetContainer>, view_id : Uuid, obj : Option<*const Evas_Object>)
+pub fn scene_list<S:SceneT>(container : &Arw<WidgetContainer<S>>, view_id : Uuid, obj : Option<*const Evas_Object>)
 {
     let container_arw = container.clone();
     let container = &mut *container.write().unwrap();
@@ -1679,13 +1677,13 @@ pub fn scene_list(container : &Arw<WidgetContainer>, view_id : Uuid, obj : Optio
     //container.list.show_list(filesstring, x, y);
 
     let listwd = ui::WidgetCbData::new(&container_arw, unsafe { mem::transmute(&*container.list)});
-    container.list.set_fn(select_list, listwd);
+    container.list.set_fn(select_list::<S>, listwd);
 }
 
-pub extern fn select_list(data : *const c_void, name : *const c_char)
+pub extern fn select_list<S:SceneT>(data : *const c_void, name : *const c_char)
 {
-    let wcb : & ui::WidgetCbData = unsafe {mem::transmute(data)};
-    let container : &mut ui::WidgetContainer = &mut *wcb.container.write().unwrap();
+    let wcb : & ui::WidgetCbData<S> = unsafe {mem::transmute(data)};
+    let container : &mut ui::WidgetContainer<S> = &mut *wcb.container.write().unwrap();
 
     let s = unsafe {CStr::from_ptr(name)}.to_str().unwrap();
     println!("selection ..........{},  {}", container.name, s);
@@ -1694,6 +1692,7 @@ pub extern fn select_list(data : *const c_void, name : *const c_char)
 }
 
 //TODO remove?
+/*
 fn must_update(p : &ui::PropertyShow, path : &str) -> Vec<ui::ShouldUpdate>
 {
     let vs: Vec<&str> = path.split('/').collect();
@@ -1720,8 +1719,9 @@ fn must_update(p : &ui::PropertyShow, path : &str) -> Vec<ui::ShouldUpdate>
 
     r
 }
+*/
 
-pub fn scene_rename(container : &mut WidgetContainer, widget_id : Uuid, name : &str)
+pub fn scene_rename<S:SceneT>(container : &mut WidgetContainer<S>, widget_id : Uuid, name : &str)
 {
 
     let s = if let Some(s) = container.state.context.scene {
@@ -1751,26 +1751,26 @@ pub fn scene_rename(container : &mut WidgetContainer, widget_id : Uuid, name : &
     */
 }
 
-pub extern fn update_play_cb(container_data : *const c_void) -> bool
+pub extern fn update_play_cb<S:SceneT>(container_data : *const c_void) -> bool
 {
-    let container_arw = container_data as *const Arw<ui::WidgetContainer>;
+    let container_arw = container_data as *const Arw<ui::WidgetContainer<S>>;
     let container_ref = unsafe { &*container_arw };
     let container = &mut container_ref.write().unwrap();
     container.update_play()
 }
 
-pub extern fn file_changed(
+pub extern fn file_changed<S:SceneT>(
     data : *const c_void,
     path : *const c_char,
     event : i32)
 {
     let s = unsafe {CStr::from_ptr(path)}.to_str().unwrap();
-    let container_arw : &Arw<ui::WidgetContainer> = {
-        let c = data as *const Arw<ui::WidgetContainer>;
+    let container_arw : &Arw<ui::WidgetContainer<S>> = {
+        let c = data as *const Arw<ui::WidgetContainer<S>>;
         unsafe { &*c }
     };
 
-    let container : &mut ui::WidgetContainer = &mut *container_arw.write().unwrap();
+    let container : &mut ui::WidgetContainer<S> = &mut *container_arw.write().unwrap();
 
     let mut should_update_views = false;
     if s.ends_with(".frag") || s.ends_with(".vert") {
@@ -1800,9 +1800,9 @@ pub extern fn file_changed(
         container.update_all_views();
     }
 }
-extern fn gv_close_cb(data : *mut c_void) {
+extern fn gv_close_cb<S:SceneT>(data : *mut c_void) {
     //let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(data)};
-    let container : Box<Arw<ui::WidgetContainer>> = unsafe {mem::transmute(data)};
+    let container : Box<Arw<ui::WidgetContainer<S>>> = unsafe {mem::transmute(data)};
     let container = &mut *container.write().unwrap();
     if let Some(ref mut gv) = container.gameview {
         gv.set_visible(false);
@@ -1810,21 +1810,22 @@ extern fn gv_close_cb(data : *mut c_void) {
 }
 
 
-fn create_gameview_window(
-    container : Arw<ui::WidgetContainer>,
-    scene_id : Id,
+fn create_gameview_window<Scene:SceneT>(
+    container : Arw<ui::WidgetContainer<Scene>>,
+    scene_id : Scene::Id,
     config : &WidgetConfig
-    ) -> Box<ui::gameview::GameViewTrait<Scene>>
+    ) -> Box<ui::gameview::GameViewTrait<Scene>> 
+    where ui::view2::View2<render::GameRender,Scene> : ui::view2::ViewT<Scene>
 {
     let win = unsafe {
         ui::jk_window_new(
-            gv_close_cb,
+            gv_close_cb::<Scene>,
             mem::transmute( box container.clone()))
     };
 
     unsafe { evas_object_resize(win, config.w, config.h); }
 
-    let container : &mut ui::WidgetContainer = &mut *container.write().unwrap();
+    let container : &mut ui::WidgetContainer<Scene> = &mut *container.write().unwrap();
 
     let render = render::GameRender::new(container.resource.clone());
 
@@ -1840,7 +1841,7 @@ fn create_gameview_window(
         //*
     ui::view2::View2::new(
         win,
-        &*container.data as *const DataT<Scene>,
+        &*container.data as *const Data<Scene>,
         config.clone(),
         render,
         scene_id,
@@ -1849,7 +1850,7 @@ fn create_gameview_window(
 
 }
 
-fn check_mesh(name : &str, wc : &WidgetContainer, id : Id2)
+fn check_mesh<Scene:SceneT>(name : &str, wc : &WidgetContainer<Scene>, id : Scene::Id)
 {
     println!("TODO remove this check_mesh {}, {}", file!(), line!());
     /*

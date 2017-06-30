@@ -12,10 +12,10 @@ use dormin::render::{GameRender};
 use dormin::scene;
 use dormin::input;
 use ui::def::Widget;
-use data::{Data,DataT,SceneT};
+use data::{Data,SceneT};
 
 
-pub trait GameViewTrait<S:SceneT> : ui::Widget {
+pub trait GameViewTrait<S:SceneT> : ui::Widget<S> {
     fn play(&mut self);
     fn pause(&mut self);
     fn stop(&mut self);
@@ -27,7 +27,7 @@ pub trait GameViewTrait<S:SceneT> : ui::Widget {
     fn request_update(&self);
 }
 
-impl ui::Widget for GameView {
+impl<S> ui::Widget<S> for GameView {
  
     fn set_visible(&mut self, b : bool)
     {
@@ -164,7 +164,8 @@ impl GameView {
                 gv_key_down,
                 ) };
 
-        v.set_visible(config.visible);
+        println!("TODO uncomment not visible because of this {}, {}", file!(), line!());
+        //v.set_visible(config.visible);
 
         return v;
     }

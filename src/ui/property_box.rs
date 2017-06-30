@@ -5,14 +5,15 @@ use std::str;
 use std::mem;
 use std::ptr;
 use std::rc::{Rc,Weak};
-use std::cell::{Cell, RefCell, BorrowState};
+use std::cell::{Cell, RefCell};
 use std::ffi::{CStr,CString};
 use uuid;
 use uuid::Uuid;
 
 use ui::{Window, ButtonCallback, ChangedFunc, RegisterChangeFunc, 
-    PropertyTreeFunc, PropertyConfig, PropertyValue, PropertyUser, PropertyShow, PropertyWidget,PropertyChange, NodeChildren, PropertyNode};
+    PropertyTreeFunc, PropertyConfig, PropertyValue, PropertyUser, PropertyShow, PropertyWidget, PropertyWidgetGen, PropertyChange, NodeChildren, PropertyNode};
 use ui;
+use data::SceneT;
 
 #[repr(C)]
 pub struct JkPropertyBox;
@@ -60,21 +61,21 @@ extern {
         len : c_int);
 }
 
-pub struct PropertyBox
+pub struct PropertyBox<Scene:SceneT>
 {
     pub name : String,
     pub jk_property : *const JkPropertyBox,
     pub id : uuid::Uuid,
-    current_id : Cell<Option<ui::def::Id>>,
+    current_id : Cell<Option<Scene::Id>>,
     nodes : RefCell<NodeChildren>,
 }
 
 
-impl PropertyBox
+impl<Scene:SceneT> PropertyBox<Scene>
 {
     pub fn new(
-        panel : &ui::WidgetPanel<PropertyBox>,
-        ) -> PropertyBox
+        panel : &ui::WidgetPanel<PropertyBox<Scene>>,
+        ) -> PropertyBox<Scene>
     {
         PropertyBox {
             name : String::from("property_box_name"),
@@ -89,8 +90,8 @@ impl PropertyBox
 
     pub fn set_prop(
         &self,
-        p : &PropertyUser,
-        pid : ui::def::Id,
+        p : &PropertyUser<Scene>,
+        pid : Scene::Id,
         title : &str)
     {
         self.current_id.set(Some(pid));
@@ -226,7 +227,7 @@ impl PropertyBox
 }
 
 
-impl PropertyWidget for PropertyBox
+impl<Scene:SceneT> PropertyWidget for PropertyBox<Scene>
 {
     fn add_simple_item(&self, path : &str, item : *const PropertyValue)
     {
@@ -322,17 +323,6 @@ impl PropertyWidget for PropertyBox
 
     }
 
-    fn get_current_id(&self) -> Option<ui::def::Id>
-    {
-        self.current_id.get()
-    }
-
-    fn set_current_id(&self, p : &PropertyUser, id : ui::def::Id, title : &str)
-    {
-        self.current_id.set(Some(id.clone()));
-        self._set_prop(p.as_show(), title);
-    }
-
     fn get_property(&self, path : &str) -> Option<*const PropertyValue> 
     {
         if let Some(n) = self.get_node(path) {
@@ -345,14 +335,28 @@ impl PropertyWidget for PropertyBox
 
 }
 
-impl ui::Widget for PropertyBox
+impl<Scene:SceneT> PropertyWidgetGen<Scene> for PropertyBox<Scene>
+{
+    fn get_current_id(&self) -> Option<Scene::Id>
+    {
+        self.current_id.get()
+    }
+
+    fn set_current_id(&self, p : &PropertyShow, id : Scene::Id, title : &str)
+    {
+        self.current_id.set(Some(id.clone()));
+        self._set_prop(p, title);
+    }
+}
+
+impl<Scene:SceneT> ui::Widget<Scene> for PropertyBox<Scene>
 {
     fn get_id(&self) -> Uuid
     {
         self.id
     }
 
-    fn handle_change_prop(&self, prop_user : &PropertyUser, name : &str)
+    fn handle_change_prop(&self, prop_user : &PropertyUser<Scene>, name : &str)
     {
         self.update_object_property(prop_user.as_show(), name);
     }

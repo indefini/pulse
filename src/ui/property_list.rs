@@ -5,7 +5,7 @@ use std::str;
 use std::mem;
 use std::ptr;
 use std::rc::Rc;
-use std::cell::{Cell, RefCell, BorrowState};
+use std::cell::{Cell, RefCell};
 use std::rc::Weak;
 use std::any::{Any};//, AnyRefExt};
 use std::ffi::CString;
@@ -15,9 +15,10 @@ use uuid::Uuid;
 
 use ui::{Window, ButtonCallback};
 use ui::{ChangedFunc, RegisterChangeFunc, PropertyTreeFunc, PropertyValue, PropertyConfig, PropertyUser,
-PropertyShow, PropertyId, RefMut, Elm_Object_Item, ShouldUpdate, PropertyWidget};
+PropertyShow, PropertyId, RefMut, Elm_Object_Item, ShouldUpdate, PropertyWidget, PropertyWidgetGen};
 use ui;
 use operation;
+use data::SceneT;
 
 
 use util::Arw;
@@ -280,14 +281,14 @@ impl PropertyList
 
 }
 
-impl ui::Widget for PropertyList
+impl<S:SceneT> ui::Widget<S> for PropertyList
 {
     fn get_id(&self) -> Uuid
     {
         self.id
     }
 
-    fn handle_change_prop(&self, prop_user : &PropertyUser, name : &str)
+    fn handle_change_prop(&self, prop_user : &PropertyUser<S>, name : &str)
     {
         self.update_object_property(prop_user.as_show(), name);
     }
@@ -357,18 +358,20 @@ fn get_widget_data<'a>(widget_data : *const c_void) ->
 }
 */
 
-fn get_widget_data2<'a>(widget_data : *const ui::WidgetCbData) ->
-    (Rc<ui::PropertyWidget>, Arw<ui::WidgetContainer>)
+fn get_widget_data2<'a, S:SceneT+'static>(
+    widget_data : *const c_void, //ui::WidgetCbData<S>
+    ) ->
+    (Rc<ui::PropertyWidgetGen<S>>, Arw<ui::WidgetContainer<S>>)
 {
-    let wcb : &ui::WidgetCbData = unsafe { &*widget_data };
+    let wcb : &ui::WidgetCbData<S> = unsafe { &*(widget_data as *const ui::WidgetCbData<S>) };
     let container = wcb.container.read().unwrap();
     let property = container.property.widget.as_ref().unwrap().clone();
     (property, wcb.container.clone())
 }
 
 
-fn changed_set<T : Any+Clone+PartialEq>(
-    widget_data : *const ui::WidgetCbData,
+fn changed_set<T : Any+Clone+PartialEq, S:SceneT>(
+    widget_data : *const c_void,//ui::WidgetCbData<S>,
     property : *const c_void,
     old : Option<&T>,
     new : &T,
@@ -392,7 +395,7 @@ fn changed_set<T : Any+Clone+PartialEq>(
 
     println!("changed_set : {}", path);
 
-    let (p, container) = get_widget_data2(widget_data);
+    let (p, container) = get_widget_data2::<S>(widget_data);
     let container = &mut *container.write().unwrap();
 
     let change = match (old, action) {
@@ -438,8 +441,8 @@ fn changed_set<T : Any+Clone+PartialEq>(
     container.handle_change(&change, p.get_id());
 }
 
-fn changed_enum<T : Any+Clone+PartialEq>(
-    widget_data : *const ui::WidgetCbData,
+fn changed_enum<T : Any+Clone+PartialEq, S:SceneT>(
+    widget_data : *const c_void,//ui::WidgetCbData<S>,
     property : *const c_void,
     old : Option<&T>,
     new : &T,
@@ -455,7 +458,7 @@ fn changed_enum<T : Any+Clone+PartialEq>(
 
     let path = &node.borrow().get_path();
 
-    let (p, container) = get_widget_data2(widget_data);
+    let (p, container) = get_widget_data2::<S>(widget_data);
     let container = &mut *container.write().unwrap();
 
     let change = {
@@ -490,8 +493,8 @@ fn changed_enum<T : Any+Clone+PartialEq>(
     container.handle_change(&change, p.get_id());
 }
 
-fn changed_option(
-    widget_cb_data : *const ui::WidgetCbData,
+fn changed_option<S:SceneT>(
+    widget_cb_data : *const c_void, //ui::WidgetCbData<S>,
     property : *const c_void,
     old : &str,
     new : &str
@@ -588,19 +591,20 @@ pub extern fn expand(
 }
 
 
-pub extern fn changed_set_float(
-    app_data : *const ui::WidgetCbData,
+pub extern fn changed_set_float<S:SceneT>(
+//pub extern fn changed_set_float(
+    app_data : *const c_void, //ui::WidgetCbData<S>,
     property : *const c_void,
     data : *const c_void) {
 
     println!("changed_set_float : {:?}", property);
 
     let f : & f64 = unsafe {mem::transmute(data)};
-    changed_set(app_data, property, None, f, 0);
+    changed_set::<f64,S>(app_data, property, None, f, 0);
 }
 
-pub extern fn changed_set_string(
-    app_data : *const ui::WidgetCbData,
+pub extern fn changed_set_string<S:SceneT>(
+    app_data : *const c_void, //ui::WidgetCbData<S>,
     property : *const c_void,
     data : *const c_void) {
 
@@ -612,18 +616,18 @@ pub extern fn changed_set_string(
             return;
         }
     };
-    changed_set(app_data, property, None, &ss, 0);
+    changed_set::<String,S>(app_data, property, None, &ss, 0);
 }
 
-pub extern fn changed_set_enum(
-    app_data : *const ui::WidgetCbData,
+pub extern fn changed_set_enum<S:SceneT>(
+    app_data : *const c_void, //ui::WidgetCbData<S>,
     property : *const c_void,
     data : *const c_void) {
     println!("DOES NOT NO ANYTHING");
 }
 
-pub extern fn register_change_string(
-    app_data : *const ui::WidgetCbData,
+pub extern fn register_change_string<S:SceneT>(
+    app_data : *const c_void, //ui::WidgetCbData<S>,
     property : *const c_void,
     old : *const c_void,
     new : *const c_void,
@@ -651,15 +655,15 @@ pub extern fn register_change_string(
             }
         };
 
-        changed_set(app_data, property, Some(&sso), &ss, action);
+        changed_set::<String,S>(app_data, property, Some(&sso), &ss, action);
     }
     else {
-        changed_set(app_data, property, None, &ss, action);
+        changed_set::<String,S>(app_data, property, None, &ss, action);
     }
 }
 
-pub extern fn register_change_float(
-    app_data : *const ui::WidgetCbData,
+pub extern fn register_change_float<S:SceneT>(
+    app_data : *const c_void, //ui::WidgetCbData<S>,
     property : *const c_void,
     old : *const c_void,
     new : *const c_void,
@@ -670,15 +674,15 @@ pub extern fn register_change_float(
 
     if action == 1 && old != ptr::null() {
         let fold : & f64 = unsafe {mem::transmute(old)};
-        changed_set(app_data, property, Some(fold), fnew, action);
+        changed_set::<f64,S>(app_data, property, Some(fold), fnew, action);
     }
     else {
-        changed_set(app_data, property, None, fnew, action);
+        changed_set::<f64,S>(app_data, property, None, fnew, action);
     }
 }
 
-pub extern fn register_change_enum(
-    widget_cb_data : *const ui::WidgetCbData,
+pub extern fn register_change_enum<S:SceneT>(
+    widget_cb_data : *const c_void, //ui::WidgetCbData<S>,
     property : *const c_void,
     old : *const c_void,
     new : *const c_void,
@@ -706,15 +710,15 @@ pub extern fn register_change_enum(
                 return
             }
         };
-        changed_enum(widget_cb_data, property, Some(&sso), &ss);
+        changed_enum::<String,S>(widget_cb_data, property, Some(&sso), &ss);
     }
     else {
-        changed_enum(widget_cb_data, property, None, &ss);
+        changed_enum::<String,S>(widget_cb_data, property, None, &ss);
     }
 }
 
-pub extern fn register_change_option(
-    widget_cb_data : *const ui::WidgetCbData,
+pub extern fn register_change_option<S:SceneT>(
+    widget_cb_data : *const c_void, //ui::WidgetCbData<S>,
     property : *const c_void,
     old : *const c_void,
     new : *const c_void,
@@ -747,7 +751,7 @@ pub extern fn register_change_option(
         }
     };
 
-    changed_option(widget_cb_data, property, &sso, &ss);
+    changed_option::<S>(widget_cb_data, property, &sso, &ss);
 }
 
 fn get_str<'a>(cstr : *const c_char) -> Option<&'a str>
@@ -882,15 +886,18 @@ impl PropertyWidget for PropertyList
         unsafe { property_expand(widget_entry); }
     }
 
-    fn get_current_id(&self) -> Option<ui::def::Id>
+}
+
+impl<Scene:SceneT> PropertyWidgetGen<Scene> for PropertyList
+{
+    fn get_current_id(&self) -> Option<Scene::Id>
     {
         println!("TODO {}, {}", file!(), line!());
         None
     }
 
-    fn set_current_id(&self, p : &PropertyUser, id : ui::def::Id, title : &str)
+    fn set_current_id(&self, p : &PropertyShow, id : Scene::Id, title : &str)
     {
         println!("TODO {}, {}", file!(), line!());
     }
 }
-

@@ -8,7 +8,7 @@ use uuid::Uuid;
 use ui::Window;
 use ui::{PropertyUser};
 use ui;
-use data::{ToId, SceneT, DataT};
+use data::{ToId, SceneT, Data};
 
 #[repr(C)]
 pub struct Elm_Object_Item;
@@ -33,8 +33,8 @@ extern {
         expand : extern fn(tree: *const c_void, data : *const c_void, parent: *const Elm_Object_Item) -> (),
         //sel : extern fn(tree: *const TreeSelectData, data : *const c_void, parent: *const Elm_Object_Item) -> (),
         //unsel : extern fn(tree: *const TreeSelectData, data : *const c_void, parent: *const Elm_Object_Item) -> (),
-        sel : extern fn(tree: *const ui::WidgetCbData, data : *const c_void, parent: *const Elm_Object_Item) -> (),
-        unsel : extern fn(tree: *const ui::WidgetCbData, data : *const c_void, parent: *const Elm_Object_Item) -> (),
+        sel : extern fn(tree: *const c_void, data : *const c_void, parent: *const Elm_Object_Item) -> (),
+        unsel : extern fn(tree: *const c_void, data : *const c_void, parent: *const Elm_Object_Item) -> (),
         panel_move : ui::PanelGeomFunc
         );
 
@@ -56,16 +56,16 @@ extern {
     fn tree_clear(obj : *const JkTree);
 }
 
-struct ItemData
+struct ItemData<Scene : SceneT>
 {
-    object : ui::def::Object,
+    object : Scene::Object,
     name : String,
     has_children : bool
 }
 
-impl ItemData
+impl<Scene:SceneT> ItemData<Scene>
 {
-    fn new(o : ui::def::Object, name : String, has_children : bool) -> ItemData
+    fn new(o : Scene::Object, name : String, has_children : bool) -> ItemData<Scene>
     {
         ItemData {
             object : o,
@@ -75,25 +75,25 @@ impl ItemData
     }
 }
 
-pub struct Tree
+pub struct Tree<Scene : SceneT>
 {
     pub name : String,
     //TODO change the key
     //objects : HashMap<Arc<RwLock<object::Object>>, *const Elm_Object_Item >
     //objects : HashMap<String, *const Elm_Object_Item>,
-    objects : HashMap<ui::def::Id, *const Elm_Object_Item>,
+    objects : HashMap<Scene::Id, *const Elm_Object_Item>,
     pub jk_tree : *const JkTree,
     pub id : Uuid,
     pub config : ui::WidgetConfig,
-    scene : Option<ui::def::Id>
+    scene : Option<Scene::Id>
 }
 
-impl Tree
+impl<Scene: SceneT> Tree<Scene>
 {
     pub fn new(
         window : *const Window,
         config : &ui::WidgetConfig
-        ) -> Tree // Box<Tree>
+        ) -> Tree<Scene>
     {
         //let mut t = box Tree {
         let mut t = Tree {
@@ -111,7 +111,7 @@ impl Tree
         t
     }
 
-    pub fn set_scene(&mut self, scene : &ui::def::Scene)
+    pub fn set_scene(&mut self, scene : &Scene)
     {
         unsafe {tree_clear(self.jk_tree);}
         self.objects.clear();
@@ -126,13 +126,13 @@ impl Tree
         self.scene = Some(scene.to_id());
     }
 
-    fn _add_object(&mut self, parent : Option<ui::def::Id>, o : &ui::def::Object, name : String, has_children : bool)
+    fn _add_object(&mut self, parent : Option<Scene::Id>, o : &Scene::Object, name : String, has_children : bool)
     {
         let eoi = match parent {
             Some(ref p) =>  {
                 match self.objects.get(p) {
                     Some(item) => {
-                        let item_data = 
+                        let item_data : ItemData<Scene> = 
                             ItemData::new(o.clone(), name, has_children);
                         unsafe { 
                             tree_object_add(
@@ -149,7 +149,7 @@ impl Tree
 
             },
             None => {
-                let item_data = 
+                let item_data : ItemData<Scene> = 
                     ItemData::new(o.clone(), name, has_children);
                 unsafe {
                     tree_object_add(
@@ -168,8 +168,8 @@ impl Tree
 
     pub fn add_object(
         &mut self,
-        parent : Option<ui::def::Id>,
-        object : ui::def::Object,
+        parent : Option<Scene::Id>,
+        object : Scene::Object,
         name : String,
         has_children : bool
         )
@@ -183,18 +183,18 @@ impl Tree
 
     pub fn add_objects(
         &mut self,
-        parents : &[Option<ui::def::Id>],
-        objects : &[ui::def::Object],
+        parents : &[Option<Scene::Id>],
+        objects : &[Scene::Object],
         names : Vec<String>,
         has_children : &[bool],
         )
     {
         for (((o,p),n),child) in objects.iter().zip(parents.iter()).zip(names.into_iter()).zip(has_children.iter()) {
-            self.add_object(*p, o.clone(), n, *child);
+            self.add_object(p.clone(), o.clone(), n, *child);
         }
     }
 
-    pub fn remove_objects_by_id(&mut self, ids : Vec<ui::def::Id>)
+    pub fn remove_objects_by_id(&mut self, ids : Vec<Scene::Id>)
     {
         for id in &ids {
             let item = self.objects.remove(id);
@@ -204,13 +204,13 @@ impl Tree
         }
     }
 
-    pub fn select(&mut self, id: &ui::def::Id)
+    pub fn select(&mut self, id: &Scene::Id)
     {
         unsafe { tree_deselect_all(self.jk_tree); }
         self._select(id);
     }
 
-    pub fn select_objects(&mut self, ids: Vec<ui::def::Id>)
+    pub fn select_objects(&mut self, ids: Vec<Scene::Id>)
     {
         unsafe { tree_deselect_all(self.jk_tree); }
         for id in &ids {
@@ -218,7 +218,7 @@ impl Tree
         }
     }
 
-    fn _select(&mut self, id: &ui::def::Id)
+    fn _select(&mut self, id: &Scene::Id)
     {
         if let Some(item) = self.objects.get(id) {
             unsafe {tree_item_select(*item);}
@@ -226,7 +226,7 @@ impl Tree
     }
 
 
-    pub fn set_selected(&mut self, ids: LinkedList<ui::def::Id>)
+    pub fn set_selected(&mut self, ids: LinkedList<Scene::Id>)
     {
         unsafe { tree_deselect_all(self.jk_tree); }
 
@@ -242,7 +242,7 @@ impl Tree
         unsafe { tree_update(self.jk_tree); }
     }
 
-    pub fn update_object(&self, id: &ui::def::Id)
+    pub fn update_object(&self, id: &Scene::Id)
     {
         if let Some(item) = self.objects.get(id) {
             unsafe {tree_item_update(*item);}
@@ -268,41 +268,43 @@ impl Tree
     }
 }
 
-pub extern fn name_get(data : *const c_void) -> *const c_char
+pub extern fn name_get<Scene:SceneT>(data : *const c_void) -> *const c_char
 {
-    let item_data : &ItemData = unsafe {&* (data as *const ItemData)};
+    let item_data : &ItemData<Scene> = unsafe {&* (data as *const ItemData<Scene>)};
 
     //println!("name get {:?}", o);
     let cs = CString::new(item_data.name.as_bytes()).unwrap();
     cs.as_ptr()
 }
 
-pub extern fn item_selected(data : *const c_void) -> ()
+pub extern fn item_selected<Scene:SceneT>(data : *const c_void) -> ()
 {
-    let item_data : &ItemData = unsafe {&* (data as *const ItemData)};
+    let item_data : &ItemData<Scene> = unsafe {&* (data as *const ItemData<Scene>)};
     println!("item_selected callback ! {}, but this function does nothing for now ", item_data.name);
 }
 
-pub extern fn can_expand(data : *const c_void) -> bool
+pub extern fn can_expand<Scene:SceneT>(data : *const c_void) -> bool
 {
-    let item_data : &ItemData = unsafe {&* (data as *const ItemData)};
+    let item_data : &ItemData<Scene> = unsafe {&* (data as *const ItemData<Scene>)};
 
     println!("TODO can_expand, {}, {}", file!(), line!());
     item_data.has_children
 }
 
-pub extern fn expand(
+pub extern fn expand<Scene : SceneT>(
     widget_cb_data: *const c_void,
     data : *const c_void,
     parent : *const Elm_Object_Item) -> ()
 {
-    let item_data : &ItemData = unsafe {&* (data as *const ItemData)};
+    let item_data : &ItemData<Scene> = unsafe {&* (data as *const ItemData<Scene>)};
 
-    let wcb : & ui::WidgetCbData = unsafe {&*(widget_cb_data as *const ui::WidgetCbData)};
+    let wcb : & ui::WidgetCbData<Scene> = unsafe {&*(widget_cb_data as *const ui::WidgetCbData<Scene>)};
     let container = &mut *wcb.container.write().unwrap();
-    let t : &mut Tree = &mut *container.tree.as_mut().unwrap();
+    println!("TODO chris uncomment this");
+    /*
+    let t : &mut Box<Tree<Scene>> = container.tree.as_mut().unwrap();
 
-    let scene : &ui::def::Scene = if let Some(s_id) = t.scene {
+    let scene : &Scene = if let Some(s_id) = t.scene {
         if let Some(s) = container.data.get_scene(s_id) {
             s
         }
@@ -331,66 +333,75 @@ pub extern fn expand(
             t.objects.insert(cid, eoi);
         }
     }
+    */
 }
 
-pub extern fn selected(
-    widget_cb_data: *const ui::WidgetCbData,
+pub extern fn selected<Scene:SceneT>(
+    widget_cb_data: *const c_void, //ui::WidgetCbData<Scene>,
     data : *const c_void,
     parent : *const Elm_Object_Item) -> ()
 {
-    let wcb : & ui::WidgetCbData = unsafe {&*(widget_cb_data as *const ui::WidgetCbData)};
+    let wcb : & ui::WidgetCbData<Scene> = unsafe {&*(widget_cb_data as *const ui::WidgetCbData<Scene>)};
     let container = &mut *wcb.container.write().unwrap();
     let tree_id = container.tree.as_ref().unwrap().id;
 
-    let item_data : &ItemData = unsafe {&* (data as *const ItemData)};
+    let item_data : &ItemData<Scene> = unsafe {&* (data as *const ItemData<Scene>)};
 
     println!("selected callback, TODO do the following in widget container 'handle' ");
 
-    container.handle_event(ui::Event::SelectObject(item_data.object.clone()), tree_id);
+    println!("TODO chris");
+    //container.handle_event(ui::Event::SelectObject(item_data.object.clone()), tree_id);
 }
 
-pub extern fn unselected(
-    widget_cb_data: *const ui::WidgetCbData,
+pub extern fn unselected<Scene:SceneT>(
+    widget_cb_data: *const c_void,//ui::WidgetCbData<Scene>,
     data : *const c_void,
     parent : *const Elm_Object_Item) -> ()
 {
-    let wcb : & ui::WidgetCbData = unsafe {&*(widget_cb_data as *const ui::WidgetCbData)};
+    let wcb : & ui::WidgetCbData<Scene> = unsafe {&*(widget_cb_data as *const ui::WidgetCbData<Scene>)};
     let container = &mut *wcb.container.write().unwrap();
     let tree_id = container.tree.as_ref().unwrap().id;
 
-    let item_data : &ItemData = unsafe {&* (data as *const ItemData)};
+    let item_data : &ItemData<Scene> = unsafe {&* (data as *const ItemData<Scene>)};
 
     println!("TODO,unselect do the following in widget container 'handle'");
-    container.handle_event(ui::Event::UnselectObject(item_data.object.clone()), tree_id);
+    println!("TODO chris uncomment");
+    //container.handle_event(ui::Event::UnselectObject(item_data.object.clone()), tree_id);
 }
 
-impl ui::Widget for Tree
+impl<Scene:SceneT> ui::Widget<Scene> for Tree<Scene>
 {
     fn get_id(&self) -> Uuid
     {
         self.id
     }
 
-    fn handle_change_prop(&self, prop_user : &PropertyUser, name : &str)
+    //TODO chris uncomment
+    fn handle_change_prop(&self, prop_user : &PropertyUser<Scene>, name : &str)
     {
         if name == "name" {
-            self.update_object(&prop_user.get_id());
+            println!("TODO chris uncomment");
+            //self.update_object(&prop_user.get_id());
         }
     }
 }
 
-pub extern fn panel_move(
+pub extern fn panel_move<Scene:SceneT>(
     widget_cb_data : *const c_void,
     x : c_int, y : c_int, w : c_int, h : c_int)
 {
     println!("panel geom !!!!!!!!! {}, {}, {}, {}", x, y, w, h);
-    let wcb : & ui::WidgetCbData = unsafe {&*(widget_cb_data as *const ui::WidgetCbData)};
+    let wcb : & ui::WidgetCbData<Scene> = unsafe {&*(widget_cb_data as *const ui::WidgetCbData<Scene>)};
     let container = &mut *wcb.container.write().unwrap();
+    
+    println!("TODO chris uncomment");
+    /*
     let t : &mut Tree = &mut *container.tree.as_mut().unwrap();
 
     t.config.x = x;
     t.config.y = y;
     t.config.w = w;
     t.config.h = h;
+    */
 }
 

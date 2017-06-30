@@ -5,7 +5,8 @@ use std::collections::{HashMap,HashSet};
 use std::sync::{Arc,RwLock};
 use std::cell::RefCell;
 use std::rc::{Rc,Weak};
-use uuid;
+
+use data::SceneT;
 
 #[repr(C)]
 pub struct JkGlview;
@@ -78,12 +79,12 @@ pub mod gameview;
 
 
 pub type ChangedFunc = extern fn(
-    app : *const WidgetCbData,
+    app : *const c_void,
     property : *const c_void,
     data : *const c_void);
 
 pub type RegisterChangeFunc = extern fn(
-    app : *const WidgetCbData,
+    app : *const c_void,
     property : *const c_void,
     old : *const c_void,
     new : *const c_void,
@@ -126,14 +127,14 @@ impl PropertyConfig
 
 use dormin::property::{PropertyWrite, PropertyGet};
 
-pub trait PropertyUser : PropertyWrite + PropertyGet + PropertyShow + PropertyId<def::Id> {
+pub trait PropertyUser<Scene:SceneT> : PropertyWrite + PropertyGet + PropertyShow + PropertyId<Scene::Id> {
     fn as_show(&self) -> &PropertyShow;
     fn as_write(&self) -> &PropertyWrite;
-    fn as_id(&self) -> &PropertyId<def::Id>;
+    fn as_id(&self) -> &PropertyId<Scene::Id>;
     fn as_get(&self) -> &PropertyGet;
 }
 
-impl<T: PropertyWrite + PropertyGet + PropertyShow + PropertyId<def::Id> > PropertyUser for T {
+impl<Scene:SceneT,T: PropertyWrite + PropertyGet + PropertyShow + PropertyId<Scene::Id> > PropertyUser<Scene> for T {
 
     fn as_show(&self) -> &PropertyShow
     {
@@ -150,7 +151,7 @@ impl<T: PropertyWrite + PropertyGet + PropertyShow + PropertyId<def::Id> > Prope
         self
     }
 
-    fn as_id(&self) -> &PropertyId<def::Id>
+    fn as_id(&self) -> &PropertyId<Scene::Id>
     {
         self
     }
@@ -292,7 +293,7 @@ pub enum ShouldUpdate
     Mesh
 }
 
-pub trait PropertyWidget : Widget {
+pub trait PropertyWidget {
 
     fn add_simple_item(&self, field : &str, item : *const PropertyValue);
     fn add_option(&self, field : &str, is_some : bool) -> *const PropertyValue;
@@ -305,14 +306,16 @@ pub trait PropertyWidget : Widget {
     fn update_vec(&self, widget_entry : *const PropertyValue, len : usize);
     fn update_enum(&self, path : &str, widget_entry : *const PropertyValue, value : &str);
 
-    fn get_current_id(&self) -> Option<def::Id>;
-    fn set_current_id(&self, p : &PropertyUser, id : def::Id, title : &str);
-
     fn get_property(&self, path : &str) -> Option<*const PropertyValue> 
     {
         println!("PropertyWidget, 'get_property' not implemented no return None");
         None
     }
+}
+
+pub trait PropertyWidgetGen<Scene : SceneT> : PropertyWidget + Widget<Scene> {
+    fn get_current_id(&self) -> Option<Scene::Id>;
+    fn set_current_id(&self, p : &PropertyShow, id : Scene::Id, title : &str);
 }
 
 pub enum NodeChildren
