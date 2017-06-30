@@ -5,7 +5,7 @@ use std::str;
 use std::mem;
 use std::ptr;
 use std::rc::{Rc,Weak};
-use std::cell::{Cell, RefCell, BorrowState};
+use std::cell::{Cell, RefCell};
 use std::ffi::{CStr,CString};
 use uuid;
 use uuid::Uuid;

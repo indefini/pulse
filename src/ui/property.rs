@@ -2,7 +2,7 @@ use std::sync::{RwLock, Arc};
 use libc::{c_char, c_void, c_int, c_float};
 use std::{str,mem,ptr,ffi};
 use std::rc::{Rc,Weak};
-use std::cell::{Cell, RefCell, BorrowState};
+use std::cell::{Cell, RefCell};
 use std::any::{Any};
 use std::ffi::{CStr,CString};
 use uuid;

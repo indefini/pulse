@@ -4,7 +4,7 @@ use libc::{c_char, c_void, c_int};
 use std::mem;
 use std::collections::{LinkedList};//,Deque};
 use std::ptr;
-use std::cell::{RefCell, BorrowState};
+use std::cell::{RefCell};
 use std::rc::Weak;
 use std::rc::Rc;
 use uuid::Uuid;

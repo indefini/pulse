@@ -5,7 +5,7 @@ use std::str;
 use std::mem;
 use std::ptr;
 use std::rc::Rc;
-use std::cell::{Cell, RefCell, BorrowState};
+use std::cell::{Cell, RefCell};
 use std::rc::Weak;
 use std::any::{Any};//, AnyRefExt};
 use std::ffi::CString;
