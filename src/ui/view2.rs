@@ -15,7 +15,6 @@ use util::Arw;
 use dormin::input;
 use dormin::scene;
 use dormin::render;
-use dormin::world;
 use data::{Data, SceneT};
 
 /*
@@ -78,53 +77,19 @@ impl ViewT<Rc<RefCell<scene::Scene>>> for View2<render::GameRender,Rc<RefCell<sc
     }
 }
 
-impl ViewT<world::World> for View2<render::GameRender,world::World> {
-
-    fn draw(&mut self, scene : &world::World) -> bool
-    {
-        //TODO
-        println!("TODO view2 draw {}, {}", file!(), line!());
-        false
-    }
-
-    fn init(&mut self) {
-        println!("TODO {}, {}", file!(), line!());
-        self.render.init();
-    }
-
-    fn resize(&mut self, w : c_int, h : c_int)
-    {
-        self.config.w = w;
-        self.config.h = h;
-        self.render.resize(w, h);
-    }
-
-    fn get_scene_id(&self) -> usize
-    {
-        self.scene_id
-    }
-
-    fn handle_key(&mut self, keycode : u8)
-    {
-        self.input.add_key(keycode);
-    }
-
-}
-
-
 pub struct View2<R, S : SceneT>
 {
     window : *const ui::Evas_Object,
     glview : *const ui::JkGlview,
     id : uuid::Uuid,
 
-    scene_id : S::Id,
-    render : R,
+    pub scene_id : S::Id,
+    pub render : R,
 
     pub config : ui::WidgetConfig,
     pub state : i32,
     pub loading_resource : Arc<Mutex<usize>>,
-    input : input::Input,
+    pub input : input::Input,
 }
 
 impl<R:'static, S:SceneT+'static> View2<R,S> where View2<R,S> : ViewT<S> {

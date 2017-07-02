@@ -17,7 +17,6 @@ use dormin::material;
 use dormin::{camera2};
 use control::Control;
 use dormin::component::mesh_render;
-use dormin::world::{NoGraph};
 use util;
 use context;
 use data;

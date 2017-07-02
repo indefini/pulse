@@ -22,7 +22,6 @@ use dormin::component;
 use dormin::component::CompData;
 use dormin::armature;
 use dormin::transform::Orientation;
-use dormin::world;
 use data::SceneT;
 
 #[repr(C)]
@@ -720,16 +719,16 @@ impl ui::PropertyShow for Orientation {
 
 }
 
-
+#[macro_export]
 macro_rules! property_show_methods(
     ($my_type:ty, [ $($member:ident),* ]) => (
 
-            fn create_widget_itself(&self, field : &str) -> Option<*const PropertyValue>
+            fn create_widget_itself(&self, field : &str) -> Option<*const $crate::ui::PropertyValue>
             {
-                Some(add_node(field))
+                Some($crate::ui::property::add_node(field))
             }
 
-            fn create_widget_inside(&self, path : &str, widget : &PropertyWidget)
+            fn create_widget_inside(&self, path : &str, widget : &$crate::ui::PropertyWidget)
             {
                 $(
                     let s = if path != "" {
@@ -746,17 +745,17 @@ macro_rules! property_show_methods(
                  )*
             }
 
-            fn get_property(&self, field : &str) -> Option<&PropertyShow>
+            fn get_property(&self, field : &str) -> Option<&$crate::ui::PropertyShow>
             {
                 match field {
                 $(
-                    stringify!($member) => Some(&self.$member as &PropertyShow),
+                    stringify!($member) => Some(&self.$member as &$crate::ui::PropertyShow),
                  )*
                     _ => None
                 }
             }
 
-            fn update_property(&self, widget : &PropertyWidget, all_path: &str, path : Vec<String>)
+            fn update_property(&self, widget : &$crate::ui::PropertyWidget, all_path: &str, path : Vec<String>)
             {
                 let mut pp = String::from(all_path);
                 if !path.is_empty() && path[0] == "*" {
@@ -780,7 +779,7 @@ macro_rules! property_show_methods(
                 }
             }
 
-            fn update_property_new(&self, widget : &PropertyWidget, all_path: &str, path : Vec<String>, change : PropertyChange)
+            fn update_property_new(&self, widget : &$crate::ui::PropertyWidget, all_path: &str, path : Vec<String>, change : $crate::ui::PropertyChange)
             {
                 let mut pp = String::from(all_path);
                 if !path.is_empty() && path[0] == "*" {
@@ -811,13 +810,15 @@ macro_rules! property_show_methods(
     )
 );
 
+#[macro_export]
+#[macro_use]
 macro_rules! property_show_impl(
     ($my_type:ty, $e:tt) => (
-        impl PropertyShow for $my_type {
+        impl $crate::ui::PropertyShow for $my_type {
             property_show_methods!($my_type, $e);
         });
     ($my_type:ty, $e:tt, $up:expr) => (
-        impl PropertyShow for $my_type {
+        impl $crate::ui::PropertyShow for $my_type {
             property_show_methods!($my_type, $e);
 
             fn to_update(&self) -> ShouldUpdate
@@ -827,7 +828,7 @@ macro_rules! property_show_impl(
         }
         );
     ($my_type:ty, $gen:tt, $e:tt, $up:expr) => (
-        impl<$gen> PropertyShow for $my_type {
+        impl<$gen> $crate::ui::PropertyShow for $my_type {
             property_show_methods!($my_type, $e);
 
             fn to_update(&self) -> ShouldUpdate
@@ -854,8 +855,6 @@ property_show_impl!(armature::ArmaturePath,[name]);
 property_show_impl!(scene::Scene,[name,camera]);
 property_show_impl!(camera::Camera,[data]);
 property_show_impl!(camera::CameraData,[far,near]);
-
-property_show_impl!(world::World,[]);
 
 pub fn make_vec_from_str(s : &str) -> Vec<String>
 {
@@ -948,22 +947,6 @@ impl PropertyId<uuid::Uuid> for scene::Scene
     fn get_id(&self) -> uuid::Uuid
     {
         return self.id
-    }
-}
-
-impl PropertyId<usize> for world::World
-{
-    fn get_id(&self) -> usize
-    {
-        return 0usize
-    }
-}
-
-impl PropertyId<usize> for usize
-{
-    fn get_id(&self) -> usize
-    {
-        return *self
     }
 }
 

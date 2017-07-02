@@ -13,7 +13,6 @@ use ui;
 use ui::view::CameraView;
 use data::SceneT;
 
-use dormin::world;
 use data;
 use data::{Data, ToId};
 use dormin::component::mesh_render;
