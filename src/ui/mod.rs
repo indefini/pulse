@@ -1,5 +1,3 @@
-//use object::Object;
-//use scene::Scene;
 use libc::{c_char, c_void, c_int, c_float};
 use std::collections::{HashMap,HashSet};
 use std::sync::{Arc,RwLock};
@@ -56,12 +54,8 @@ pub use self::def::{
 pub use self::tree::{Tree};
 pub use self::action::{Action,Position};
 pub use self::command::{Command};
-//pub use self::property::{Property,PropertyConfig,ChangedFunc,RefMut,PropertyUser};
 pub use self::property_list::{PropertyList,JkPropertyList};
 pub use self::property_box::{PropertyBox,JkPropertyBox};
-//pub use self::property::{PropertyShow};
-//pub use self::property::{JkPropertyList};
-//pub use self::property::{add_node, make_vec_from_str,find_property_show,JkPropertyCb};
 pub use self::property::{make_vec_from_str,find_property_show,JkPropertyCb};
 
 pub use self::view::{View, EditView};
@@ -76,8 +70,6 @@ pub mod property_list;
 pub mod view;
 pub mod view2;
 pub mod gameview;
-//pub mod dragger;
-
 
 pub type ChangedFunc = extern fn(
     app : *const c_void,
