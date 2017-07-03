@@ -198,7 +198,7 @@ impl Control
         }
         */
 
-        println!("TODO change get_objects_vec with get_mesh_transforms?, {}, {}", file!(), line!());
+        println!("TODO change get_objects_vec with get_mesh_transforms?, {}, {}, {}", scene.get_objects_vec().len(), file!(), line!());
 
         for o in &scene.get_objects_vec() {
             let mm = &mut *self.resource.mesh_manager.borrow_mut();

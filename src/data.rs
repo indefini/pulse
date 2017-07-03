@@ -432,6 +432,21 @@ impl SceneT for Rc<RefCell<scene::Scene>> {
         None
     }
 
+    fn get_object_mt(&self, o : Self::Object) -> Option<MeshTransform>
+    {
+        let ob = o.read().unwrap();
+        ob.mesh_render.as_ref().map(
+            |x| MeshTransform::with_transform(x.mesh.clone(), &ob.make_world_transform()))
+    }
+
+    fn get_object_mmr(&self, o : Self::Object) -> Option<render::MatrixMeshRender>
+    {
+        let ob = o.read().unwrap();
+        ob.mesh_render.as_ref().map(
+            |x| render::MatrixMeshRender::new(ob.get_world_matrix(),x.clone()))
+    }
+
+
 }
 
 impl<S:SceneT> Data<S> {
@@ -489,9 +504,9 @@ impl<S:SceneT> Data<S> {
         self.id_count +=1;
 
         if self.scenes.is_empty() {
-            let files = util::get_files_in_dir("world");
+            let files = util::get_files_in_dir("scene");
             if files.is_empty() {
-                self.add_empty_scene(String::from("world/new.scene"))
+                self.add_empty_scene(String::from("scene/new.scene"))
             }
             else {
                 self.get_or_load_scene(files[0].to_str().unwrap())
