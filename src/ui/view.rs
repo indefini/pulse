@@ -19,8 +19,7 @@ use control::Control;
 use dormin::component::mesh_render;
 use util;
 use context;
-use data;
-use data::{Data, SceneT,ToId};
+use data::{Data, SceneT};
 
 
 #[link(name = "joker")]
@@ -321,12 +320,8 @@ impl<S:SceneT> EditView<S> for View
                 uuid::Uuid::new_v4(),
                 &self.camera.transform,
                 &self.camera.property),
-            //&obs,
-                &[],
                 &obs,
             &cams,
-            //sel,
-                &[],
                 &sel,
             &self.control.dragger.get_mmr(),
             &finish,

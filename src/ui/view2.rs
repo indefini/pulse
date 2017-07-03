@@ -8,9 +8,6 @@ use std::ptr;
 use uuid;
 
 use ui;
-use ui::def::Widget;
-use dormin::resource;
-use dormin::camera;
 use util::Arw;
 use dormin::input;
 use dormin::scene;
@@ -41,18 +38,19 @@ impl ViewT<Rc<RefCell<scene::Scene>>> for View2<render::GameRender,Rc<RefCell<sc
 
     fn draw(&mut self, scene : &Rc<RefCell<scene::Scene>>) -> bool
     {
-        let scene = scene.borrow();
-        if let Some(ref camera) = scene.camera {
+        let cam_id_mat = if let Some(ref camera) = scene.borrow().camera {
             let mut camera = camera.borrow_mut();
             camera.set_resolution(self.config.w,self.config.h);
-            self.render.draw(
-                &render::CameraIdMat::from_camera(&camera),
-                &scene.objects,
-                self.loading_resource.clone())
+            render::CameraIdMat::from_camera(&camera)
         }
         else {
-            false
-        }
+            return false;
+        };
+
+        self.render.draw(
+            &cam_id_mat,
+            &scene.get_mmr(),
+            self.loading_resource.clone())
     }
 
     fn init(&mut self) {

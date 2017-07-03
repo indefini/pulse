@@ -180,17 +180,20 @@ impl GameView {
 
         if let Some(scene) = s
         {
-            let scene = scene.borrow();
-            if let Some(ref camera) = scene.camera {
-                let camera = camera.borrow();
-                self.render.draw(
-                    &render::CameraIdMat::from_camera(&camera),
-                    &scene.objects,
-                    self.loading_resource.clone())
+            let cam_id_mat = if let Some(ref camera) = scene.borrow().camera {
+                let mut camera = camera.borrow_mut();
+                camera.set_resolution(self.config.w,self.config.h);
+                render::CameraIdMat::from_camera(&camera)
             }
             else {
-                false
-            }
+                return false;
+            };
+
+            self.render.draw(
+                &cam_id_mat,
+                &scene.get_mmr(),
+                self.loading_resource.clone())
+
         }
         else {
             false
