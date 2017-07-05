@@ -183,7 +183,7 @@ impl GameView {
             let cam_id_mat = if let Some(ref camera) = scene.borrow().camera {
                 let mut camera = camera.borrow_mut();
                 camera.set_resolution(self.config.w,self.config.h);
-                render::CameraIdMat::from_camera(&camera)
+                camera.to_cam_id_mat()
             }
             else {
                 return false;

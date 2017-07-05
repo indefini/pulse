@@ -248,8 +248,7 @@ fn create_views<Scene:SceneT>(container : &mut WidgetContainer<Scene>, views_con
     let mut views = Vec::with_capacity(views_config.len());
 
     for v in views_config {
-        //let container = &mut *container_arw.write().unwrap();
-        let render = box render::Render::new(&container.data.factory, container.resource.clone());
+        let render = box render::Render::new(container.resource.clone());
 
         let view = box View::new(
             container.resource.clone(),
