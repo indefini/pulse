@@ -8,8 +8,8 @@ use std::hash::Hash;
 use uuid;
 
 use dormin;
-use dormin::{vec, resource, scene, factory, object};
-use dormin::component::mesh_render;
+use dormin::{vec, resource, scene, object};
+use dormin::mesh_render;
 use dormin::render;
 use dormin::property::PropertyGet;
 use dormin::input;
@@ -36,7 +36,6 @@ static SCENE_SUFFIX: &str = ".scene";
 
 pub struct Data<S:SceneT>
 {
-    pub factory : factory::Factory,
     pub scenes : HashMap<String, S>,
 
     id_count : usize,
@@ -453,7 +452,6 @@ impl<S:SceneT> Data<S> {
 
     pub fn new() -> Data<S> {
         Data {
-            factory : factory::Factory::new(),
             scenes : HashMap::new(),
 
             id_count : 0usize

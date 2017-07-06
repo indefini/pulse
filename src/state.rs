@@ -2,7 +2,7 @@ use std::rc::{Rc};
 use std::cell::{RefCell};
 use std::any::Any;
 
-use dormin::{vec, transform, component};
+use dormin::{vec, transform, mesh_render, component};
 use dormin::property::PropertyGet;
 
 use context;
@@ -438,7 +438,7 @@ impl<S:SceneT+'static> State<S> {
         };
 
         let cp = if component_name == "MeshRender" {
-            box component::CompData::MeshRender(component::mesh_render::MeshRender::with_names_only("model/skeletonmesh.mesh", "material/simple.mat"))
+            box component::CompData::MeshRender(mesh_render::MeshRender::with_names_only("model/skeletonmesh.mesh", "material/simple.mat"))
         }
         else {
             return operation::Change::None;

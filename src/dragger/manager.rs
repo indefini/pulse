@@ -4,7 +4,7 @@ use dormin::resource;
 use dormin::shader;
 use dormin::material;
 use dormin::transform;
-use dormin::component::mesh_render;
+use dormin::mesh_render;
 use dormin::geometry;
 use dormin::intersection;
 use dormin::matrix;

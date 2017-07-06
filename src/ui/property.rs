@@ -18,6 +18,7 @@ use control::WidgetUpdate;
 use dormin::vec;
 use dormin::transform;
 use dormin::resource;
+use dormin::mesh_render;
 use dormin::component;
 use dormin::component::CompData;
 use dormin::armature;
@@ -845,7 +846,7 @@ property_show_impl!(transform::Transform,[position,orientation]);
 property_show_impl!(object::Object,
                      [name,position,orientation,scale,comp_data,comp_lua]);
 
-property_show_impl!(component::mesh_render::MeshRender,[mesh,material], ShouldUpdate::Mesh);
+property_show_impl!(mesh_render::MeshRender,[mesh,material], ShouldUpdate::Mesh);
 property_show_impl!(resource::ResTT<T>,T,[name], ShouldUpdate::Mesh);
 property_show_impl!(component::player::Player,[speed]);
 property_show_impl!(component::player::Enemy,[name]);

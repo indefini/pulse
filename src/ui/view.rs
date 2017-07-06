@@ -16,7 +16,7 @@ use dormin::vec;
 use dormin::material;
 use dormin::{camera2};
 use control::Control;
-use dormin::component::mesh_render;
+use dormin::mesh_render;
 use util;
 use context;
 use data::{Data, SceneT};
@@ -124,6 +124,9 @@ pub struct CameraView
     pub origin : vec::Vec3,
     pub local_offset : vec::Vec3,
     pub center : vec::Vec3,
+
+    #[serde(default)]
+    id : uuid::Uuid
 }
 
 impl CameraView
@@ -161,6 +164,20 @@ impl CameraView
         let def = q.rotate_vec3_around(&self.origin, &self.center);
         let doff = q.rotate_vec3(&self.local_offset);
         self.transform.position = def + doff;
+    }
+
+    pub fn to_cam_id_mat(&self) -> render::CameraIdMat
+    {
+        let local = self.transform.get_computed_local_matrix();
+        let per = self.property.get_perspective();
+        let cam_mat_inv = local.get_inverse();
+        let matrix = &per * &cam_mat_inv;
+
+        render::CameraIdMat {
+            id : self.id,
+            orientation : self.transform.orientation,
+            matrix : matrix
+        }
     }
 
 }
@@ -316,13 +333,10 @@ impl<S:SceneT> EditView<S> for View
         self.camera.transform.set_as_dirty();
         self.camera.transform.compute_local_matrix();
         let not_loaded = self.render.draw(
-            &render::CameraIdMat::from_transform_camera2(
-                uuid::Uuid::new_v4(),
-                &self.camera.transform,
-                &self.camera.property),
-                &obs,
+            &self.camera.to_cam_id_mat(),
+            &obs,
             &cams,
-                &sel,
+            &sel,
             &self.control.dragger.get_mmr(),
             &finish,
             self.loading_resource.clone());

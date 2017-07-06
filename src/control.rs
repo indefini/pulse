@@ -15,7 +15,7 @@ use data::SceneT;
 
 use data;
 use data::{Data, ToId};
-use dormin::component::mesh_render;
+use dormin::mesh_render;
 
 use util;
 
