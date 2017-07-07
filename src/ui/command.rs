@@ -12,8 +12,6 @@ use std::ffi::CString;
 use std::ffi::CStr;
 use std::str;
 
-use dormin::scene;
-use dormin::object;
 use ui::Window;
 use ui;
 use ui::Widget;

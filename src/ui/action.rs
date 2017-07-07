@@ -10,7 +10,7 @@ use std::rc::Rc;
 use uuid::Uuid;
 use std::ffi::{CString, CStr};
 
-use dormin::{camera, object, scene};
+use dormin::{camera};
 use ui::Window;
 use ui::{ButtonCallback,EntryCallback};
 use ui;

@@ -2,7 +2,7 @@ use std::rc::{Rc};
 use std::cell::{RefCell};
 use std::any::Any;
 
-use dormin::{vec, transform, mesh_render, component};
+use dormin::{vec, transform, mesh_render};
 use dormin::property::PropertyGet;
 
 use context;
@@ -429,6 +429,8 @@ impl<S:SceneT+'static> State<S> {
         rec : &mut Data<S>
         ) -> operation::Change<S::Id>
     {
+        println!("TODO add component {} {}", file!(), line!());
+        /*
         let o = if let Some(o) = self.context.selected.get(0) {
             o.clone()
         }
@@ -451,6 +453,8 @@ impl<S:SceneT+'static> State<S> {
             operation::OperationData::AddComponent(o.clone(), cp),
             rec
             )
+            */
+        operation::Change::None
     }
 
     pub fn set_scene_camera(

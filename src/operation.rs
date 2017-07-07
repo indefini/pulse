@@ -2,7 +2,6 @@ use std::any::{Any};//, AnyRefExt};
 use std::marker::PhantomData;
 
 use dormin::property;
-use dormin::component::CompData;
 use data::{Data, ToId, SceneT};
 
 use dragger;
@@ -23,8 +22,8 @@ pub enum OperationData<Scene : SceneT>
     SceneAddObjects(Scene::Id, Vec<Option<Scene::Id>>, Vec<Scene::Object>), //scene, parent, objects
     SceneRemoveObjects(Scene::Id, Vec<Option<Scene::Id>>, Vec<Scene::Object>),
     SetSceneCamera(Scene::Id, Option<Scene::Object>, Option<Scene::Object>),
-    //AddComponent(uuid::Uuid, uuid::Uuid) //object id, component id?
-    AddComponent(Scene::Object, Box<CompData>),
+    //TODO
+    //AddComponent(Scene::Object, Box<CompData>),
     OldNewVec(Vec<Box<Any>>, Box<Any>),
 
     //To check
@@ -362,16 +361,18 @@ impl<S:SceneT> OperationTrait for Operation<S>
                 rec.set_camera(s.clone(), new.clone());
                 return Change::Scene(s.clone());
             },
+                /*
             OperationData::AddComponent(ref o, ref compo)  => {
                 //TODO
                 println!("TODO add component is not working of course, {}, {}", file!(), line!());
-                /*
-                let mut ob = o.write().unwrap();
-                ob.add_comp_data(compo.clone());
-                return Change::ComponentChanged(ob.id.clone(), compo.get_kind_string());
-                */
+                //let mut ob = o.write().unwrap();
+                //ob.add_comp_data(compo.clone());
+                //return Change::ComponentChanged(ob.id.clone(), compo.get_kind_string());
             },
-            _ => {}
+                */
+            _ => {
+                unimplemented!();
+            }
         }
 
         Change::None
@@ -466,13 +467,17 @@ impl<S:SceneT> OperationTrait for Operation<S>
                 rec.set_camera(s.clone(), old.clone());
                 return Change::Scene(s.clone());
             },
+            /*
             OperationData::AddComponent(ref o, ref compo)  => {
                 println!("TODO add component is not working of course, {}, {}", file!(), line!());
                 //let mut ob = o.write().unwrap();
                 //ob.remove_comp_data(compo.clone());
                 //return Change::ComponentChanged(ob.id.clone(), compo.get_kind_string());
             },
-            _ => {}
+            */
+            _ => {
+                unimplemented!();
+            }
         }
 
         Change::None

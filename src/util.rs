@@ -5,23 +5,9 @@ use std::str;
 use libc::{c_void, c_int, size_t, c_char};
 
 use dormin::vec;
-use dormin::object;
 
 pub type Arw<T> = Arc<RwLock<T>>;
 pub type Mx<T> = Arc<Mutex<T>>;
-
-pub fn objects_center2(objects : &[Arc<RwLock<object::Object>>]) -> vec::Vec3
-{
-    let mut v = vec::Vec3::zero();
-    for o in objects
-    {
-        v = v + o.read().unwrap().world_position();
-    }
-
-    v = v / objects.len() as f64;
-
-    v
-}
 
 pub fn vec3_center(pos : &[vec::Vec3]) -> vec::Vec3
 {

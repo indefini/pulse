@@ -8,7 +8,7 @@ use std::hash::Hash;
 use uuid;
 
 use dormin;
-use dormin::{vec, resource, scene, object};
+use dormin::{vec, resource};
 use dormin::mesh_render;
 use dormin::render;
 use dormin::property::PropertyGet;
@@ -208,243 +208,6 @@ pub trait SceneT : ToId<<Self as SceneT>::Id> + Clone + 'static + PropertyShow {
 
     fn get_property_write_from_object(&mut self, o : Self::Object, name :&str) 
         -> Option<(&mut PropertyWrite, String)>;
-
-}
-
-impl SceneT for Rc<RefCell<scene::Scene>> {
-    type Id = uuid::Uuid;
-    type Object = Arc<RwLock<object::Object>>;
-
-    fn new_empty(name : &str, count : usize) -> Self
-    {
-        let s = scene::Scene::new(name, uuid::Uuid::new_v4(), dormin::camera::Camera::new());
-        Rc::new(RefCell::new(s))
-    }
-    
-    fn new_from_file(name : &str, count : usize) -> Self
-    {
-        let s = scene::Scene::new_from_file(name);
-        /*
-                if let None = s.camera {
-                    let mut cam = self.factory.create_camera();
-                    cam.pan(&vec::Vec3::new(-100f64,20f64,100f64));
-                    cam.lookat(vec::Vec3::new(0f64,5f64,0f64));
-                    ns.camera = Some(Rc::new(RefCell::new(cam)));
-                }
-                */
-
-        Rc::new(RefCell::new(s))
-    }
-
-    fn update(&mut self, dt : f64, input : &input::Input, res :&resource::ResourceGroup)
-    {
-        self.borrow_mut().update(dt, input, res);
-    }
-
-    fn init_for_play(&mut self, resource : &resource::ResourceGroup)
-    {
-        self.borrow().init_components(resource);
-    }
-
-    fn get_objects(&self) -> &[Self::Object]
-    {
-        &[]//&self.borrow().objects
-    }
-
-    fn get_objects_vec(&self) -> Vec<Self::Object>
-    {
-        self.borrow().objects.clone()
-    }
-
-    fn find_objects_with_id(&self, ids : &mut Vec<Self::Id>) -> Vec<Self::Object> {
-        self.borrow().find_objects_by_id(ids)
-    }
-
-    fn find_object_with_id(&self, id : Self::Id) -> Option<Self::Object>
-    {
-        self.borrow().find_object_with_id(&id)
-    }
-
-    fn get_name(&self) -> String
-    {
-        self.borrow().name.clone()
-    }
-
-    fn set_name(&mut self, s : String)
-    {
-        self.borrow_mut().name = s;
-    }
-
-    fn save(&self)
-    {
-        self.borrow().save();
-    }
-
-    fn get_cameras_vec(&self) -> Vec<matrix::Matrix4>
-    {
-        //self.borrow().cameras.iter().map(|x| x.borrow().object.read().unwrap().get_world_matrix()).collect()
-        let mut cams = Vec::new();
-        for c in &self.borrow().cameras {
-            let cam = c.borrow();
-            cams.push(cam.object.read().unwrap().get_world_matrix());
-        }
-
-        cams
-    }
-
-    fn get_camera_obj(&self) -> Option<Self::Object>
-    {
-        self.borrow().camera.as_ref().map(|x| x.borrow().object.clone())
-    }
-
-    fn get_mmr(&self) -> Vec<render::MatrixMeshRender>
-    {
-        fn object_to_mmr(o : &object::Object) -> Option<render::MatrixMeshRender>
-        {
-            o.mesh_render.as_ref().map(|x| render::MatrixMeshRender::new(o.get_world_matrix().clone(), x.clone()))
-        }
-
-        fn children_mmr(o : &object::Object) -> Vec<render::MatrixMeshRender>
-        {
-            o.children.iter().filter_map(|x| object_to_mmr(&*x.read().unwrap())).collect()
-        }
-
-        fn object_and_child(o : &object::Object) -> Vec<render::MatrixMeshRender>
-        {
-            let mut v = children_mmr(o);
-            if let Some(m) = object_to_mmr(o) {
-                v.push(m);
-            }
-            v
-        }
-
-        let mut v = Vec::new();
-        for o in self.borrow().objects.iter() {
-            v.append(&mut object_and_child(&*o.read().unwrap()));
-        }
-
-        v
-    }
-
-    fn add_objects(&mut self, parents : &[Option<Self::Id>], obs : &[Self::Object])
-    {
-        self.borrow_mut().add_objects(parents, obs);
-    }
-
-    fn remove_objects(&self, parents : &[Option<Self::Id>], obs : &[Self::Object])
-    {
-        self.borrow_mut().remove_objects(parents, obs);
-    }
-
-    fn set_camera(&self, ob : Option<Self::Object>)
-    {
-        let sc = self.borrow();
-        if let Some(ref c) = sc.camera {
-            if let Some(o) = ob {
-                println!("I set thhe camera !!!!!!!");
-                c.borrow_mut().object_id = Some(o.read().unwrap().id.clone());
-                c.borrow_mut().object = o;
-            }
-            else {
-                println!("dame 10");
-                c.borrow_mut().object_id = None;
-            }
-        }
-    }
-
-    fn get_parent(&self, o : Self::Object) -> Option<Self::Object>
-    {
-        o.read().unwrap().parent.clone()
-    }
-
-    fn get_children(&self, o : Self::Object) -> Vec<Self::Object>
-    {
-        o.read().unwrap().children.clone()
-    }
-
-    fn set_position(&mut self, o : Self::Object, v : vec::Vec3)
-    {
-        o.write().unwrap().position = v;
-    }
-
-    fn set_scale(&self, o : Self::Object, v : vec::Vec3)
-    {
-        o.write().unwrap().scale = v;
-    }
-
-    fn set_orientation(&self, o : Self::Object, ori : transform::Orientation)
-    {
-        o.write().unwrap().orientation = ori;
-    }
-
-    fn get_position(&self, o : Self::Object) -> vec::Vec3
-    {
-        o.write().unwrap().position
-    }
-
-    fn get_scale(&self, o : Self::Object) -> vec::Vec3
-    {
-        o.write().unwrap().scale
-    }
-
-    fn get_orientation(&self, o : Self::Object) -> transform::Orientation
-    {
-        o.write().unwrap().orientation
-    }
-
-    fn get_transform(&self, o: Self::Object) -> transform::Transform
-    {
-        o.read().unwrap().make_transform()
-    }
-    fn get_world_transform(&self, o: Self::Object) -> transform::Transform
-    {
-        o.read().unwrap().make_world_transform()
-    }
-
-    fn get_object_name(&self, o : Self::Object) -> String
-    {
-        o.read().unwrap().name.clone()
-    }
-
-    fn get_comp_data_value<T:Any+Clone>(&self, o : Self::Object) -> Option<T>
-    {
-        o.read().unwrap().get_comp_data_value()
-    }
-
-    fn create_empty_object(&mut self, name : &str) -> Self::Object
-    {
-       Arc::new(RwLock::new(object::Object::new(name)))
-    }
-
-    fn create_empty_object_at_position(&mut self, name : &str, v : vec::Vec3) -> Self::Object
-    {
-       let mut o = object::Object::new(name);
-       o.position = v;
-       Arc::new(RwLock::new(o))
-    }
-
-    fn get_property_write_from_object(&mut self, o : Self::Object, name :&str) 
-        -> Option<(&mut PropertyWrite, String)>
-    {
-        println!("TODO {}, {}", file!(), line!());
-        //Some((&mut o.clone(), name.to_owned()))
-        None
-    }
-
-    fn get_object_mt(&self, o : Self::Object) -> Option<MeshTransform>
-    {
-        let ob = o.read().unwrap();
-        ob.mesh_render.as_ref().map(
-            |x| MeshTransform::with_transform(x.mesh.clone(), &ob.make_world_transform()))
-    }
-
-    fn get_object_mmr(&self, o : Self::Object) -> Option<render::MatrixMeshRender>
-    {
-        let ob = o.read().unwrap();
-        ob.mesh_render.as_ref().map(
-            |x| render::MatrixMeshRender::new(ob.get_world_matrix(),x.clone()))
-    }
-
 
 }
 
@@ -648,19 +411,203 @@ pub trait ToId<I : Clone> {
     fn to_id(&self) -> I;
 }
 
-impl ToId<uuid::Uuid> for Arc<RwLock<object::Object>>
+impl<I:Clone, T: ToId<I>> ToId<I> for Rc<RefCell<T>>
 {
-    fn to_id(&self) -> uuid::Uuid
+    fn to_id(&self) -> I
     {
-        self.read().unwrap().id
+        self.borrow().to_id()
+    }
+
+}
+
+impl<I:Clone, T: ToId<I>> ToId<I> for Arc<RwLock<T>>
+{
+    fn to_id(&self) -> I
+    {
+        self.read().unwrap().to_id()
     }
 }
 
-impl ToId<uuid::Uuid> for Rc<RefCell<scene::Scene>>
-{
-    fn to_id(&self) -> uuid::Uuid
+
+//impl ToId<uuid::Uuid> for Arc<RwLock<Object>>
+
+impl<S:SceneT> SceneT for Rc<RefCell<S>> {
+    type Id = S::Id;
+    type Object = S::Object;
+
+    fn new_empty(name : &str, count : usize) -> Self
     {
-        self.borrow().id
+        let s = S::new_empty(name, count);
+        Rc::new(RefCell::new(s))
     }
+    
+    fn new_from_file(name : &str, count : usize) -> Self
+    {
+        let s = S::new_from_file(name, count);
+        Rc::new(RefCell::new(s))
+    }
+
+    fn update(&mut self, dt : f64, input : &input::Input, res :&resource::ResourceGroup)
+    {
+        self.borrow_mut().update(dt, input, res);
+    }
+
+    fn init_for_play(&mut self, resource : &resource::ResourceGroup)
+    {
+        self.borrow_mut().init_for_play(resource);
+    }
+
+    fn get_objects(&self) -> &[Self::Object]
+    {
+        &[]//&self.borrow().objects
+    }
+
+    fn get_objects_vec(&self) -> Vec<Self::Object>
+    {
+        self.borrow().get_objects_vec()
+    }
+
+    fn find_objects_with_id(&self, ids : &mut Vec<Self::Id>) -> Vec<Self::Object> {
+        self.borrow().find_objects_with_id(ids)
+    }
+
+    fn find_object_with_id(&self, id : Self::Id) -> Option<Self::Object>
+    {
+        self.borrow().find_object_with_id(id)
+    }
+
+    fn get_name(&self) -> String
+    {
+        self.borrow().get_name()
+    }
+
+    fn set_name(&mut self, s : String)
+    {
+        self.borrow_mut().set_name(s);
+    }
+
+    fn save(&self)
+    {
+        self.borrow().save();
+    }
+
+    fn get_cameras_vec(&self) -> Vec<matrix::Matrix4>
+    {
+        self.borrow().get_cameras_vec()
+    }
+
+    fn get_camera_obj(&self) -> Option<Self::Object>
+    {
+        self.borrow().get_camera_obj()
+    }
+
+    fn get_mmr(&self) -> Vec<render::MatrixMeshRender>
+    {
+        self.borrow().get_mmr()
+    }
+
+    fn add_objects(&mut self, parents : &[Option<Self::Id>], obs : &[Self::Object])
+    {
+        self.borrow_mut().add_objects(parents, obs);
+    }
+
+    fn remove_objects(&self, parents : &[Option<Self::Id>], obs : &[Self::Object])
+    {
+        self.borrow_mut().remove_objects(parents, obs);
+    }
+
+    fn set_camera(&self, ob : Option<Self::Object>)
+    {
+        self.borrow().set_camera(ob)
+    }
+
+    fn get_parent(&self, o : Self::Object) -> Option<Self::Object>
+    {
+        self.borrow().get_parent(o)
+    }
+
+    fn get_children(&self, o : Self::Object) -> Vec<Self::Object>
+    {
+        self.borrow().get_children(o)
+    }
+
+    fn set_position(&mut self, o : Self::Object, v : vec::Vec3)
+    {
+        self.borrow_mut().set_position(o, v);
+    }
+
+    fn set_scale(&self, o : Self::Object, v : vec::Vec3)
+    {
+        self.borrow_mut().set_scale(o, v);
+    }
+
+    fn set_orientation(&self, o : Self::Object, ori : transform::Orientation)
+    {
+        self.borrow_mut().set_orientation(o, ori);
+    }
+
+    fn get_position(&self, o : Self::Object) -> vec::Vec3
+    {
+        self.borrow().get_position(o)
+    }
+
+    fn get_scale(&self, o : Self::Object) -> vec::Vec3
+    {
+        self.borrow().get_scale(o)
+    }
+
+    fn get_orientation(&self, o : Self::Object) -> transform::Orientation
+    {
+        self.borrow().get_orientation(o)
+    }
+
+    fn get_transform(&self, o: Self::Object) -> transform::Transform
+    {
+        self.borrow().get_transform(o)
+    }
+    fn get_world_transform(&self, o: Self::Object) -> transform::Transform
+    {
+        self.borrow().get_world_transform(o)
+    }
+
+    fn get_object_name(&self, o : Self::Object) -> String
+    {
+        self.borrow().get_object_name(o)
+    }
+
+    fn get_comp_data_value<T:Any+Clone>(&self, o : Self::Object) -> Option<T>
+    {
+        self.borrow().get_comp_data_value(o)
+    }
+
+    fn create_empty_object(&mut self, name : &str) -> Self::Object
+    {
+        self.borrow_mut().create_empty_object(name)
+    }
+
+    fn create_empty_object_at_position(&mut self, name : &str, v : vec::Vec3) -> Self::Object
+    {
+        self.borrow_mut().create_empty_object_at_position(name, v)
+    }
+
+    fn get_property_write_from_object(&mut self, o : Self::Object, name :&str) 
+        -> Option<(&mut PropertyWrite, String)>
+    {
+        println!("TODO {}, {}", file!(), line!());
+        //Some((&mut o.clone(), name.to_owned()))
+        None
+    }
+
+    fn get_object_mt(&self, o : Self::Object) -> Option<MeshTransform>
+    {
+        self.borrow().get_object_mt(o)
+    }
+
+    fn get_object_mmr(&self, o : Self::Object) -> Option<render::MatrixMeshRender>
+    {
+        self.borrow().get_object_mmr(o)
+    }
+
+
 }
 

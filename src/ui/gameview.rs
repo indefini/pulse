@@ -9,7 +9,6 @@ use uuid;
 use ui;
 use dormin::render;
 use dormin::render::{GameRender};
-use dormin::scene;
 use dormin::input;
 use ui::def::Widget;
 use data::{Data,SceneT};
@@ -53,64 +52,19 @@ impl<S> ui::Widget<S> for GameView {
     }
 }
 
-impl GameViewTrait<Rc<RefCell<scene::Scene>>> for GameView {
-
-    fn play(&mut self)
-    {
-        self.state = 1;
-    }
-
-    fn pause(&mut self)
-    {
-        self.state = 0;
-    }
-
-    fn stop(&mut self)
-    {
-        println!("TODO gameview stop");
-    }
-
-    fn get_scene_id(&self) -> uuid::Uuid
-    {
-        self.scene
-    }
-
-    fn update(&mut self) -> bool {
-        self.clear_input();
-        if self.state == 1 {
-            self.request_update();
-            true
-        }
-        else {
-            false
-        }
-    }
-
-    fn get_input(&self) -> &input::Input
-    {
-        &self.input
-    }
-
-    fn request_update(&self)
-    {
-        unsafe { ui::jk_glview_request_update(self.glview); }
-    }
-}
-
-type Scene = Rc<RefCell<scene::Scene>>;
-
 pub struct GameView
 {
     window : *const ui::Evas_Object,
-    glview : *const ui::JkGlview,
+    pub glview : *const ui::JkGlview,
     render : Box<GameRender>,
     pub scene : uuid::Uuid,
     name : String,
     pub state : i32,
-    input : input::Input,
+    pub input : input::Input,
     pub config : ui::WidgetConfig,
     pub loading_resource : Arc<Mutex<usize>>,
-    data : *const Box<Data<Scene>>,
+    //data : *const Box<Data<Scene>>,
+    data : *const c_void
 }
 
 
@@ -119,7 +73,8 @@ impl GameView {
     pub fn new(
         win : *const ui::Evas_Object,
         scene : uuid::Uuid,
-        data : *const Box<Data<Scene>>,
+        //data : *const Box<Data<Scene>>,
+        data : *const c_void,
         render : Box<GameRender>,
         config : ui::WidgetConfig
         ) -> Box<GameView>
@@ -172,6 +127,9 @@ impl GameView {
  
     fn draw(&mut self) -> bool
     {
+        println!("TODO remove this? {}, {}", file!(), line!());
+        false
+        /*
         let id = self.get_scene_id();
         //let s = unsafe { (&*self.data).get_scene(id) };
         //let data : & Box<DataT<Scene>> = self.data as &Box<DataT<Scene>>;
@@ -199,6 +157,7 @@ impl GameView {
             false
         }
         //self.render.draw(&self.scene.borrow().objects, self.loading_resource.clone())
+        */
     }
 
     fn init(&mut self) {
@@ -235,7 +194,8 @@ pub extern fn request_update_again_gv(data : *const c_void) -> bool
 
     if let Ok(lr) = gv.loading_resource.try_lock() {
         if *lr == 0 {
-            gv.request_update();
+            println!("TODO commented for compile, {}, {}", file!(), line!());
+            //gv.request_update();
             return false;
         }
     }

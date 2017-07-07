@@ -7,9 +7,7 @@ use std::any::{Any};
 use std::ffi::{CStr,CString};
 use uuid;
 
-use dormin::scene;
 use dormin::camera;
-use dormin::object;
 use ui::{Window, ButtonCallback};
 use ui::{ChangedFunc, RegisterChangeFunc, PropertyTreeFunc, PropertyValue, PropertyConfig, PropertyUser,
 PropertyShow, PropertyId, RefMut, Elm_Object_Item, ShouldUpdate, PropertyWidget, PropertyList, JkPropertyList, PropertyChange};
@@ -19,8 +17,6 @@ use dormin::vec;
 use dormin::transform;
 use dormin::resource;
 use dormin::mesh_render;
-use dormin::component;
-use dormin::component::CompData;
 use dormin::armature;
 use dormin::transform::Orientation;
 use data::SceneT;
@@ -455,159 +451,6 @@ impl<T:PropertyShow> PropertyShow for Vec<T>
     }
 }
 
-impl PropertyShow for CompData
-{
-    fn create_widget_itself(&self, field : &str) -> Option<*const PropertyValue>
-    {
-        let type_value = self.get_kind_string();
-        let types = CompData::get_all_kind();
-        Some(add_enum(field, types.as_str(), type_value.as_str()))
-    }
-
-    fn create_widget_inside(&self, path : &str, widget : &PropertyWidget)
-    {
-
-        let ps : &PropertyShow = match *self {
-            CompData::Player(ref p) => {
-                p
-            },
-            CompData::ArmaturePath(ref p) => {
-                p
-            },
-            CompData::MeshRender(ref p) => {
-                p
-            },
-            _ => { println!("not yet implemented"); return; }
-        };
-
-        ps.create_widget_inside(path, widget);
-    }
-
-
-    fn update_widget(&self, pv : *const PropertyValue) {
-        match *self {
-            CompData::Player(ref p) => {
-                p.update_widget(pv);
-            },
-            CompData::ArmaturePath(ref p) => {
-                p.update_widget(pv);
-            },
-            CompData::MeshRender(ref p) => {
-                p.update_widget(pv);
-            },
-            _ => {println!("not yet implemented");}
-        }
-    }
-
-    fn update_property(&self, widget : &PropertyWidget, all_path: &str, path : Vec<String>)
-    {
-        if path.is_empty() {
-            if let Some(pv) = widget.get_property(all_path) {
-                self.update_widget(pv);
-
-                let type_value = self.get_kind_string();
-                widget.update_enum(all_path, pv, type_value.as_str());
-                self.create_widget_inside(all_path, widget);
-            }
-            return;
-        }
-
-        let ppp : &PropertyShow = match *self {
-            CompData::Player(ref p) => {
-                p
-            },
-            CompData::ArmaturePath(ref p) => {
-                p
-            },
-            CompData::MeshRender(ref p) => {
-                p
-            },
-            _ => {println!("not yet implemented"); return;}
-        };
-
-        ppp.update_property(widget, all_path, path);
-    }
-
-    fn update_property_new(&self, widget : &PropertyWidget, all_path: &str, path : Vec<String>, change : PropertyChange)
-    {
-        if path.is_empty() {
-            if let Some(pv) = widget.get_property(all_path) {
-                self.update_widget(pv);
-
-                let type_value = self.get_kind_string();
-                widget.update_enum(all_path, pv, type_value.as_str());
-                self.create_widget_inside(all_path, widget);
-            }
-            return;
-        }
-
-        let ppp : &PropertyShow = match *self {
-            CompData::Player(ref p) => {
-                p
-            },
-            CompData::ArmaturePath(ref p) => {
-                p
-            },
-            CompData::MeshRender(ref p) => {
-                p
-            },
-            _ => {println!("not yet implemented"); return;}
-        };
-
-        ppp.update_property_new(widget, all_path, path, change);
-    }
-
-
-
-    fn get_property(&self, field : &str) -> Option<&PropertyShow>
-    {
-        if field != self.get_kind_string() {
-            return None;
-        }
-
-        match *self {
-            CompData::Player(ref p) => {
-                Some(p)
-            },
-            CompData::ArmaturePath(ref p) => {
-                Some(p)
-            },
-            CompData::MeshRender(ref p) => {
-                Some(p)
-            },
-            _ => {
-                println!("not yet implemented");
-                None
-            }
-        }
-    }
-
-    fn is_node(&self) -> bool
-    {
-        true
-    }
-
-    fn to_update(&self) -> ShouldUpdate
-    {
-        match *self {
-            CompData::Player(ref p) => {
-                p.to_update()
-            },
-            CompData::ArmaturePath(ref p) => {
-                p.to_update()
-            },
-            CompData::MeshRender(ref p) => {
-                p.to_update()
-            },
-            _ => {
-                println!("not yet implemented");
-                ShouldUpdate::Nothing
-            }
-        }
-    }
-
-}
-
 impl ui::PropertyShow for Orientation {
 
     fn create_widget_itself(&self, field : &str) -> Option<*const PropertyValue>
@@ -843,19 +686,11 @@ macro_rules! property_show_impl(
 property_show_impl!(vec::Vec3,[x,y,z]);
 property_show_impl!(vec::Quat,[x,y,z,w]);
 property_show_impl!(transform::Transform,[position,orientation]);
-property_show_impl!(object::Object,
-                     [name,position,orientation,scale,comp_data,comp_lua]);
 
 property_show_impl!(mesh_render::MeshRender,[mesh,material], ShouldUpdate::Mesh);
 property_show_impl!(resource::ResTT<T>,T,[name], ShouldUpdate::Mesh);
-property_show_impl!(component::player::Player,[speed]);
-property_show_impl!(component::player::Enemy,[name]);
-property_show_impl!(component::player::Collider,[name]);
 property_show_impl!(armature::ArmaturePath,[name]);
 
-property_show_impl!(scene::Scene,[name,camera]);
-property_show_impl!(camera::Camera,[data]);
-property_show_impl!(camera::CameraData,[far,near]);
 
 pub fn make_vec_from_str(s : &str) -> Vec<String>
 {
@@ -934,23 +769,6 @@ pub extern fn vec_del<S:SceneT>(
     let change = container.state.request_operation_vec_del(node, &mut *container.data);
     container.handle_change(&change, uuid::Uuid::nil());
 }
-
-impl PropertyId<uuid::Uuid> for object::Object
-{
-    fn get_id(&self) -> uuid::Uuid
-    {
-        return self.id
-    }
-}
-
-impl PropertyId<uuid::Uuid> for scene::Scene
-{
-    fn get_id(&self) -> uuid::Uuid
-    {
-        return self.id
-    }
-}
-
 
 pub fn add_node(
     name : &str

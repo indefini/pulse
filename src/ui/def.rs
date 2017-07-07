@@ -14,7 +14,7 @@ use std::io::{Read,Write};
 use std::ffi::{CString,CStr};
 use uuid::Uuid;
 
-use dormin::{vec, scene, object, component, render, resource};
+use dormin::{vec, render, resource};
 use ui::{Tree,PropertyUser,View,EditView,Command,Action,
 PropertyWidget,PropertyWidgetGen, PropertyBox, PropertyId};
 use ui;

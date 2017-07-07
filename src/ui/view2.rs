@@ -10,7 +10,6 @@ use uuid;
 use ui;
 use util::Arw;
 use dormin::input;
-use dormin::scene;
 use dormin::render;
 use data::{Data, SceneT};
 
@@ -32,47 +31,6 @@ pub trait ViewT<Scene:SceneT> {
     fn resize(&mut self, w : c_int, h : c_int);
     fn get_scene_id(&self) -> Scene::Id;
     fn handle_key(&mut self, key : u8) ;
-}
-
-impl ViewT<Rc<RefCell<scene::Scene>>> for View2<render::GameRender,Rc<RefCell<scene::Scene>>> {
-
-    fn draw(&mut self, scene : &Rc<RefCell<scene::Scene>>) -> bool
-    {
-        let cam_id_mat = if let Some(ref camera) = scene.borrow().camera {
-            let mut camera = camera.borrow_mut();
-            camera.set_resolution(self.config.w,self.config.h);
-            camera.to_cam_id_mat()
-        }
-        else {
-            return false;
-        };
-
-        self.render.draw(
-            &cam_id_mat,
-            &scene.get_mmr(),
-            self.loading_resource.clone())
-    }
-
-    fn init(&mut self) {
-        self.render.init();
-    }
-
-    fn resize(&mut self, w : c_int, h : c_int)
-    {
-        self.config.w = w;
-        self.config.h = h;
-        self.render.resize(w, h);
-    }
-
-    fn get_scene_id(&self) -> uuid::Uuid
-    {
-        self.scene_id
-    }
-
-    fn handle_key(&mut self, keycode : u8)
-    {
-        self.input.add_key(keycode);
-    }
 }
 
 pub struct View2<R, S : SceneT>
