@@ -5,11 +5,8 @@ use std::collections::HashMap;
 use std::fs;
 use std::hash::Hash;
 
-use uuid;
 
-use dormin;
 use dormin::{vec, resource};
-use dormin::mesh_render;
 use dormin::render;
 use dormin::property::PropertyGet;
 use dormin::input;
@@ -24,10 +21,6 @@ use util;
 use ui::PropertyUser;
 use ui::PropertyShow;
 
-use std::path::Path;
-use serde_json;
-use std::fs::File;
-use std::io::{Read,Write};
 use std::any::Any;
 
 static SCENE_SUFFIX: &str = ".scene";
@@ -126,7 +119,7 @@ pub trait SceneT : ToId<<Self as SceneT>::Id> + Clone + 'static + PropertyShow {
         println!("TODO, {}, {}", file!(), line!());
     }
 
-    fn remove_objects(&self, parents : &[Option<Self::Id>], obs : &[Self::Object])
+    fn remove_objects(&mut self, parents : &[Option<Self::Id>], obs : &[Self::Object])
     {
         println!("TODO, {}, {}", file!(), line!());
     }
@@ -208,6 +201,12 @@ pub trait SceneT : ToId<<Self as SceneT>::Id> + Clone + 'static + PropertyShow {
 
     fn get_property_write_from_object(&mut self, o : Self::Object, name :&str) 
         -> Option<(&mut PropertyWrite, String)>;
+    
+    fn get_property_write_from_object_copy(&mut self, o : Self::Object, name :&str) 
+        -> Option<(Box<PropertyWrite>, String)>
+        {
+            unimplemented!()
+        }
 
 }
 
@@ -302,9 +301,22 @@ impl<S:SceneT> Data<S> {
         create_scene_name(newname)
     }
 
-    pub fn getP_copy(&mut self, id : S::Id) -> Option<Box<PropertyWrite>>
+    pub fn get_property_write_copy(&mut self, object_id : S::Id, property : &str) 
+        -> Option<(Box<PropertyWrite>, String)>
     {
         println!("TODO or erase {}, {}", file!(), line!());
+        for s in self.scenes.values_mut() {
+            /*
+            if s.to_id() != scene_id {
+                //continue;
+            }
+            */
+
+            if let Some(ref o) = s.find_object_with_id(object_id) {
+                return s.get_property_write_from_object_copy(o.clone(), property);
+            }
+
+        }
         None
     }
 
@@ -320,12 +332,8 @@ impl<S:SceneT> Data<S> {
                 //continue;
             }
 
-            if property == "position" {
-                if let Some(ref o) = s.find_object_with_id(object_id) {
-            println!("TODO or erase {}, {}, {}", property, file!(), line!());
-                   //return s.get_comp_mut::<transform::Transform>(&o.to_mut()).map(|x| (x as &mut PropertyWrite,property.to_owned()));
-                   return s.get_property_write_from_object(o.clone(), property);
-                }
+            if let Some(ref o) = s.find_object_with_id(object_id) {
+                return s.get_property_write_from_object(o.clone(), property);
             }
 
         }
@@ -350,7 +358,7 @@ impl<S:SceneT> Data<S> {
         parents : &[Option<S::Id>],
         objects : &[S::Object])
     {
-        if let Some(s) = self.get_scene(scene_id) {
+        if let Some(s) = self.get_scene_mut(scene_id) {
             s.remove_objects(parents, objects);
         }
     }
@@ -511,7 +519,7 @@ impl<S:SceneT> SceneT for Rc<RefCell<S>> {
         self.borrow_mut().add_objects(parents, obs);
     }
 
-    fn remove_objects(&self, parents : &[Option<Self::Id>], obs : &[Self::Object])
+    fn remove_objects(&mut self, parents : &[Option<Self::Id>], obs : &[Self::Object])
     {
         self.borrow_mut().remove_objects(parents, obs);
     }
@@ -593,10 +601,10 @@ impl<S:SceneT> SceneT for Rc<RefCell<S>> {
     fn get_property_write_from_object(&mut self, o : Self::Object, name :&str) 
         -> Option<(&mut PropertyWrite, String)>
     {
-        println!("TODO {}, {}", file!(), line!());
-        //Some((&mut o.clone(), name.to_owned()))
-        None
+        //self.borrow_mut().get_property_write_from_object(o, name)
+        unimplemented!()
     }
+
 
     fn get_object_mt(&self, o : Self::Object) -> Option<MeshTransform>
     {

@@ -2,7 +2,7 @@ use std::rc::{Rc};
 use std::cell::{RefCell};
 use std::any::Any;
 
-use dormin::{vec, transform, mesh_render};
+use dormin::{vec, transform};
 use dormin::property::PropertyGet;
 
 use context;

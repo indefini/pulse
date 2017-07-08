@@ -98,8 +98,8 @@ impl<S:SceneT> OperationTrait for OldNew<S>
     {
         println!("NEW TEST operation set property hier {:?}", self.name);
 
-        if let Some(ref mut p) = rec.getP_copy(self.object_id.clone()) {
-            p.test_set_property_hier(self.name.as_ref(), &*self.new);
+        if let Some((mut p, s)) = rec.get_property_write_copy(self.object_id.clone(), &self.name) {
+            p.test_set_property_hier(s.as_ref(), &*self.new);
         }
 
         Change::PropertyId(self.object_id.clone(), self.name.clone())
@@ -107,8 +107,8 @@ impl<S:SceneT> OperationTrait for OldNew<S>
 
     fn undo(&self, rec : &mut Data<S>) -> Change<Self::Id>
     {
-        if let Some(ref mut p) = rec.getP_copy(self.object_id.clone()) {
-            p.test_set_property_hier(self.name.as_ref(), &*self.old);
+        if let Some((mut p, s)) = rec.get_property_write_copy(self.object_id.clone(), &self.name) {
+            p.test_set_property_hier(s.as_ref(), &*self.old);
         }
 
         Change::PropertyId(self.object_id.clone(), self.name.clone())
@@ -144,8 +144,8 @@ impl<S:SceneT> OperationTrait for ToNone<S>
     fn apply(&self, rec : &mut Data<S>) -> Change<Self::Id>
     {
         println!("TO NONE operation set property hier {:?}", self.name);
-        if let Some(ref mut p) = rec.getP_copy(self.object_id.clone()) {
-            p.set_property_hier(self.name.as_ref(), property::WriteValue::None);
+        if let Some((mut p, s)) = rec.get_property_write_copy(self.object_id.clone(), &self.name) {
+            p.set_property_hier(s.as_ref(), property::WriteValue::None);
         }
 
         Change::PropertyId(self.object_id.clone(), self.name.clone())
@@ -153,8 +153,8 @@ impl<S:SceneT> OperationTrait for ToNone<S>
 
     fn undo(&self, rec : &mut Data<S>) -> Change<Self::Id>
     {
-        if let Some(ref mut p) = rec.getP_copy(self.object_id.clone()) {
-            p.test_set_property_hier(self.name.as_ref(), &*self.old);
+        if let Some((mut p, s)) = rec.get_property_write_copy(self.object_id.clone(), &self.name) {
+            p.test_set_property_hier(s.as_ref(), &*self.old);
         }
 
         Change::PropertyId(self.object_id.clone(), self.name.clone())
@@ -187,8 +187,8 @@ impl<S:SceneT> OperationTrait for ToSome<S>
     fn apply(&self, rec : &mut Data<S>) -> Change<Self::Id>
     {
         println!("TO Some operation set property hier {:?}", self.name);
-        if let Some(ref mut p) = rec.getP_copy(self.object_id.clone()) {
-            p.set_property_hier(self.name.as_ref(), property::WriteValue::Some);
+        if let Some((mut p, s)) = rec.get_property_write_copy(self.object_id.clone(), &self.name) {
+            p.set_property_hier(s.as_ref(), property::WriteValue::Some);
         }
 
         Change::PropertyId(self.object_id.clone(), self.name.clone())
@@ -196,8 +196,8 @@ impl<S:SceneT> OperationTrait for ToSome<S>
 
     fn undo(&self, rec : &mut Data<S>) -> Change<Self::Id>
     {
-        if let Some(ref mut p) = rec.getP_copy(self.object_id.clone()) {
-            p.set_property_hier(self.name.as_ref(), property::WriteValue::None);
+        if let Some((mut p, s)) = rec.get_property_write_copy(self.object_id.clone(), &self.name) {
+            p.set_property_hier(s.as_ref(), property::WriteValue::None);
         }
 
         Change::PropertyId(self.object_id.clone(), self.name.clone())
@@ -302,8 +302,9 @@ impl<S:SceneT> OperationTrait for Operation<S>
                 let s = join_string(&self.name);
                 let mut ids = Vec::new();
                 for o in &self.objects {
-                    if let Some(mut p) = rec.getP_copy(o.to_id()) {
-                        p.del_item(s.as_ref(), i);
+                    println!("TODO check this 's' and 'ss' variable");
+                    if let Some((mut p, ss)) = rec.get_property_write_copy(o.to_id(), &s) {
+                        p.del_item(ss.as_ref(), i);
                     }
                     ids.push(o.to_id().clone());
                 }
@@ -336,12 +337,20 @@ impl<S:SceneT> OperationTrait for Operation<S>
                 let mut ids = Vec::new();
                 for o in &self.objects {
                     //println!("please take the object with id '{:?}', and set the property '{}' to value {:?}",o.to_id(), sp, new[i]);
-                    println!("please take the object, and set the property '{}' to value {:?}", sp, new[i]);
+                    //println!("please take the object, and set the property '{}' to value {:?}", sp, new[i]);
                     if let Some((p, news)) = rec.get_property_write(o.to_id(),o.to_id(),sp.as_ref()) {
-                    println!("yes it is good");
                         p.test_set_property_hier(
                             news.as_str(),
                             &*new[i]);
+                    }
+
+                    if let Some((mut p, news)) = rec.get_property_write_copy(o.to_id(),sp.as_ref()) {
+                        p.test_set_property_hier(
+                            news.as_str(),
+                            &*new[i]);
+                    }
+                    else {
+                        println!("ERR : !!! could not find property : {} !!!",sp);
                     }
                     i = i +1;
                     ids.push(o.to_id());
@@ -410,8 +419,8 @@ impl<S:SceneT> OperationTrait for Operation<S>
                 let s = join_string(&self.name);
                 let mut ids = Vec::new();
                 for o in &self.objects {
-                    if let Some(mut p) = rec.getP_copy(o.to_id()) {
-                        p.del_item(s.as_ref(), i);
+                    if let Some((mut p, ss)) = rec.get_property_write_copy(o.to_id(), &s) {
+                        p.del_item(ss.as_ref(), i);
                     }
                     ids.push(o.to_id());
                 }
@@ -422,9 +431,8 @@ impl<S:SceneT> OperationTrait for Operation<S>
                 let s = join_string(&self.name);
                 let mut ids = Vec::new();
                 for o in &self.objects {
-                    //let mut ob = o.write().unwrap();
-                    if let Some(mut p) = rec.getP_copy(o.to_id()) {
-                        p.add_item(s.as_ref(), i, &**value);
+                    if let Some((mut p, ss)) = rec.get_property_write_copy(o.to_id(), &s) {
+                        p.add_item(ss.as_ref(), i, &**value);
                     }
                     ids.push(o.to_id());
                 }
@@ -448,6 +456,14 @@ impl<S:SceneT> OperationTrait for Operation<S>
                             news.as_str(),
                             &*old[i]);
                     }
+
+                    if let Some((mut p, news)) = rec.get_property_write_copy(o.to_id(),sp.as_ref()) {
+                        p.test_set_property_hier(
+                            news.as_str(),
+                            &*old[i]);
+                    }
+
+
                     i = i +1;
                     ids.push(o.to_id());
                 }
