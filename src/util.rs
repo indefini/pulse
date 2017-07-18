@@ -26,7 +26,7 @@ pub fn vec3_center(pos : &[vec::Vec3]) -> vec::Vec3
 use std::path::{Path, PathBuf};
 pub fn get_files_in_dir(path : &str) -> Vec<PathBuf>
 {
-    let files = fs::read_dir(path).unwrap();
+    let files = fs::read_dir(path).expect(&format!("missing directory : '{}'", path));
     /*
     for file in files {
         println!("Name: {}", file.unwrap().path().display())

@@ -8,7 +8,6 @@ use dormin::mesh_render;
 use dormin::geometry;
 use dormin::intersection;
 use dormin::matrix;
-use dormin::camera;
 use dormin::camera2;
 use dormin::render::MatrixMeshRender;
 use uuid;
