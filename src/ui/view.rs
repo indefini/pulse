@@ -10,7 +10,7 @@ use dormin::transform;
 
 use ui;
 use dormin::render;
-use dormin::render::Render;
+use render::Render;
 use dormin::resource;
 use dormin::vec;
 use dormin::material;

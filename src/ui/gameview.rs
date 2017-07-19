@@ -8,7 +8,7 @@ use uuid;
 
 use ui;
 use dormin::render;
-use dormin::render::{GameRender};
+use render::{GameRender};
 use dormin::input;
 use ui::def::Widget;
 use data::{Data,SceneT};

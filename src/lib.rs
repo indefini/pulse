@@ -18,6 +18,7 @@ pub mod ui;
 pub mod dragger;
 pub mod control;
 pub mod util;
+pub mod render;
 
 #[cfg(test)]
 mod tests {
