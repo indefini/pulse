@@ -355,7 +355,17 @@ pub fn create_dragger(
 
 fn create_mat(color : vec::Vec4, name : &str) -> material::Material
 {
-    let mut mat = material::Material::new_from_file("material/dragger.mat");
+    //let mut mat = material::Material::new_from_file("material/dragger.mat");
+    let mut mat = material::Material::new("material/dragger.mat");
+    /*
+    let shader = shader::Shader::with_vert_frag(
+        "shader/dragger.sh".to_owned(),
+        SHADER_VERT.to_owned(),
+        SHADER_FRAG.to_owned());
+
+    mat.shader = Some(resource::ResTT::new_with_instance("shader/dragger.sh", shader));
+    */
+    mat.shader = Some(resource::ResTT::new("shader/dragger.sh"));
 
     mat.set_uniform_data(
         "color",
@@ -587,4 +597,35 @@ pub trait DraggerMouse
         mouse_end : vec::Vec2)
         -> Option<Operation>;
 }
+
+pub static SHADER_VERT : &'static str = r#"
+attribute vec3 position;
+uniform mat4 matrix;
+
+void main(void)
+{
+    float reciprScaleOnscreen = 0.05;
+
+    float w = (matrix * vec4(0,0,0,1)).w;
+    w *= reciprScaleOnscreen;
+
+    gl_Position = matrix * vec4(position.xyz * w , 1);
+
+  //gl_Position = matrix * vec4(position, 1.0);
+}
+
+"#;
+
+pub static SHADER_FRAG : &'static str = r#"
+#ifdef GL_ES
+precision highp float;
+#endif
+uniform vec4 color;
+
+void main (void)
+{
+  gl_FragColor = color;
+}
+
+"#;
 
