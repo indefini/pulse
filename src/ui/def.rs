@@ -879,6 +879,20 @@ impl<Scene:SceneT> WidgetContainer<Scene>
 {
     pub fn new() -> WidgetContainer<Scene>
     {
+        let resource_group = resource::ResourceGroup::new();
+        {
+            let mut sm = resource_group.shader_manager.borrow_mut();
+
+            use dormin::shader;
+            let shader = shader::Shader::with_vert_frag(
+                "shader/dragger.sh".to_owned(),
+                dragger::manager::SHADER_VERT.to_owned(),
+                dragger::manager::SHADER_FRAG.to_owned());
+
+            sm.add_resource("shader/dragger.sh", shader);
+
+        }
+
         WidgetContainer {
             tree : None,
             property : box WidgetPanel::new(WidgetPanelConfig::default(), None),
@@ -894,7 +908,8 @@ impl<Scene:SceneT> WidgetContainer<Scene>
             anim : None,
 
             data : box Data::new(),
-            resource : Rc::new(resource::ResourceGroup::new()),
+            //resource : Rc::new(resource::ResourceGroup::new()),
+            resource : Rc::new(resource_group),
             state : State::new()
 
         }
