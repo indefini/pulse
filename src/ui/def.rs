@@ -890,7 +890,13 @@ impl<Scene:SceneT> WidgetContainer<Scene>
                 dragger::manager::SHADER_FRAG.to_owned());
 
             sm.add_resource("shader/dragger.sh", shader);
+        }
+        {
+            let mut mm = resource_group.mesh_manager.borrow_mut();
 
+            let mut m = resource::ResTT::new("model/dragger_arrow.mesh");
+            m.origin = resource::Origin::AnyBox(box dragger::translate::MESH_ARROW);
+            mm.request_use_no_proc_new_from_res(&m);
         }
 
         WidgetContainer {

@@ -352,7 +352,6 @@ pub fn create_dragger(
     TransformMeshRender::new(Default::default(), mr)
 }
 
-
 fn create_mat(color : vec::Vec4, name : &str) -> material::Material
 {
     //let mut mat = material::Material::new_from_file("material/dragger.mat");
