@@ -897,6 +897,9 @@ impl<Scene:SceneT> WidgetContainer<Scene>
             let mut m = resource::ResTT::new("model/dragger_arrow.mesh");
             m.origin = resource::Origin::AnyBox(box dragger::translate::MESH_ARROW);
             mm.request_use_no_proc_new_from_res(&m);
+            let mut m = resource::ResTT::new("model/dragger_plane.mesh");
+            m.origin = resource::Origin::AnyBox(box dragger::translate::MESH_PLANE);
+            mm.request_use_no_proc_new_from_res(&m);
         }
 
         WidgetContainer {
