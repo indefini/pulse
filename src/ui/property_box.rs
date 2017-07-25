@@ -90,12 +90,12 @@ impl<Scene:SceneT> PropertyBox<Scene>
 
     pub fn set_prop(
         &self,
-        p : &PropertyUser<Scene>,
+        p : &PropertyShow,
         pid : Scene::Id,
         title : &str)
     {
         self.current_id.set(Some(pid));
-        self._set_prop(p.as_show(), title);
+        self._set_prop(p, title);
     }
 
     fn _set_prop(&self, p : &PropertyShow, title : &str)
@@ -356,9 +356,9 @@ impl<Scene:SceneT> ui::Widget<Scene> for PropertyBox<Scene>
         self.id
     }
 
-    fn handle_change_prop(&self, prop_user : &PropertyUser<Scene>, name : &str)
+    fn handle_change_prop(&self, prop_user : &PropertyShow, name : &str)
     {
-        self.update_object_property(prop_user.as_show(), name);
+        self.update_object_property(prop_user, name);
     }
 }
 

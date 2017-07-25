@@ -6,7 +6,7 @@ use std::ffi::CString;
 use uuid::Uuid;
 
 use ui::Window;
-use ui::{PropertyUser};
+use ui::{PropertyUser,PropertyShow};
 use ui;
 use data::{ToId, SceneT, Data};
 
@@ -377,7 +377,7 @@ impl<Scene:SceneT> ui::Widget<Scene> for Tree<Scene>
     }
 
     //TODO chris uncomment
-    fn handle_change_prop(&self, prop_user : &PropertyUser<Scene>, name : &str)
+    fn handle_change_prop(&self, prop_user : &PropertyShow, name : &str)
     {
         if name == "name" {
             println!("TODO chris uncomment");

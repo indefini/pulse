@@ -3,7 +3,7 @@ use std::cell::{RefCell};
 use std::any::Any;
 
 use dormin::{vec, transform};
-use dormin::property::PropertyGet;
+use dormin::property::{PropertyGet,PropertyWrite};
 
 use context;
 use operation;
@@ -311,7 +311,8 @@ impl<S:SceneT+'static> State<S> {
 
     pub fn request_direct_change_property(
         &mut self,
-        property : &mut ui::PropertyUser<S>,
+        //property : &mut ui::PropertyUser<S>,
+        property : &mut PropertyWrite,
         name : &str,
         new : &Any) -> operation::Change<S::Id>
     {

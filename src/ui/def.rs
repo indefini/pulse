@@ -16,7 +16,7 @@ use uuid::Uuid;
 
 use dormin::{vec, resource};
 use render;
-use ui::{Tree,PropertyUser,View,EditView,Command,Action,
+use ui::{Tree,PropertyUser, PropertyShow, View,EditView,Command,Action,
 PropertyWidget,PropertyWidgetGen, PropertyBox, PropertyId};
 use ui;
 use operation;
@@ -648,7 +648,7 @@ pub trait Widget<Scene>
     }
 
     //TODO chris uncomment this if it is used.
-    fn handle_change_prop(&self, prop_user : &PropertyUser<Scene> , name : &str)
+    fn handle_change_prop(&self, prop : &PropertyShow , name : &str)
     {
         println!("implement handle_change_prop 7777777777777777");
     }
@@ -966,8 +966,8 @@ impl<Scene:SceneT> WidgetContainer<Scene>
 
                 if let Some(ref p) = self.property.widget {
                     if widget_origin != p.id {
-                        if let Some(pu) = self.data.get_property_user_copy(o.to_id()) {
-                             p.update_object_property(&*pu.as_show(), name);
+                        if let Some(pu) = self.data.get_property_show_copy(o.to_id()) {
+                             p.update_object_property(&*pu, name);
                          }
                     }
                 }
@@ -997,8 +997,8 @@ impl<Scene:SceneT> WidgetContainer<Scene>
                             if let Some(ref mut p) = self.property.widget {
                                 if widget_origin != p.id {
                                     println!("hangle change, calling update objects");
-                                    if let Some(pu) = self.data.get_property_user_copy(*id) {
-                                        p.update_object_property(&*pu.as_show(), name);
+                                    if let Some(pu) = self.data.get_property_show_copy(*id) {
+                                        p.update_object_property(&*pu, name);
                                     }
                                 }
                             }
@@ -1021,8 +1021,8 @@ impl<Scene:SceneT> WidgetContainer<Scene>
                                     println!("update object property, this needs more info than just update the value, must indicate it is a vec change.
                                              so we dont remove and add all children again, and so the scroller doesnt make big jump");
                                     //p.update_object(&*ob, "");
-                                    if let Some(pu) = self.data.get_property_user_copy(*id) {
-                                    p.vec_add(pu.as_show(), name, index);
+                                    if let Some(pu) = self.data.get_property_show_copy(*id) {
+                                    p.vec_add(&*pu, name, index);
                                     }
                                 }
                             }
@@ -1043,8 +1043,8 @@ impl<Scene:SceneT> WidgetContainer<Scene>
                                 if widget_origin != p.id {
                                     println!("update object property, this needs more info than just update the value, must indicate it is a vec change.
                                              so we dont remove and add all children again, and so the scroller doesnt make big jump");
-                                    if let Some(pu) = self.data.get_property_user_copy(*id) {
-                                    p.vec_del(pu.as_show(), name, index);
+                                    if let Some(pu) = self.data.get_property_show_copy(*id) {
+                                    p.vec_del(&*pu, name, index);
                                     }
                                 }
                             }
@@ -1059,8 +1059,8 @@ impl<Scene:SceneT> WidgetContainer<Scene>
                     if id == o.to_id()  {
                         if let Some(ref mut p) = self.property.widget {
                             if widget_origin != p.id {
-                                if let Some(pu) = self.data.get_property_user_copy(id) {
-                                    p.update_object(pu.as_show(), "");
+                                if let Some(pu) = self.data.get_property_show_copy(id) {
+                                    p.update_object(&*pu, "");
                                 }
                             }
                         }
@@ -1280,9 +1280,12 @@ impl<Scene:SceneT> WidgetContainer<Scene>
                         if let Some(ref mut p) = self.property.widget {
                             if widget_origin != p.id {
                                 println!("STUFF");
-                                if let Some(ppp) = self.data.get_property_user_copy(oid) {
-                                p.set_prop(&*ppp, oid, "object");
-                            }
+                                if let Some(ppp) = self.data.get_property_show_copy(oid) {
+                                    p.set_prop(&*ppp, oid, "object");
+                                }
+                                else {
+                                    println!("could not find property user copy");
+                                }
                                 self.visible_prop.insert(
                                         oid, Rc::downgrade(p) as Weak<Widget<Scene>>);
                             }
@@ -1411,20 +1414,20 @@ impl<Scene:SceneT> WidgetContainer<Scene>
 
         println!("handle change new 22 ");
 
-                w.handle_change_prop(p, name);
+                w.handle_change_prop(p.as_show(), name);
             }
         }
 
         if name == "name" {
             if let Some(ref tree) = self.tree {
-                tree.handle_change_prop(p, name);
+                tree.handle_change_prop(p.as_show(), name);
             }
         }
     }
 
     pub fn handle_change_new_id(&self, widget_id : Uuid, pid : Scene::Id, name : &str)
     {
-        if let Some(ppp) = self.data.get_property_user_copy(pid) {
+        if let Some(ppp) = self.data.get_property_show_copy(pid) {
             if let Some(w) = self.visible_prop.get(&pid) {
 
                 if let Some(w) = w.upgrade() {

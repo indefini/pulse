@@ -288,9 +288,9 @@ impl<S:SceneT> ui::Widget<S> for PropertyList
         self.id
     }
 
-    fn handle_change_prop(&self, prop_user : &PropertyUser<S>, name : &str)
+    fn handle_change_prop(&self, prop_user : &PropertyShow, name : &str)
     {
-        self.update_object_property(prop_user.as_show(), name);
+        self.update_object_property(prop_user, name);
     }
 }
 
@@ -423,8 +423,9 @@ fn changed_set<T : Any+Clone+PartialEq, S:SceneT>(
         },
         _ => {
             if let Some(pid) = p.get_current_id() {
-                if let Some(mut ppp) = container.data.get_property_user_copy(pid) {
-                    container.state.request_direct_change_property(&mut *ppp,path,new)
+                //if let Some(mut ppp) = container.data.get_property_user_copy(pid) {
+                if let Some((mut ppp, newpath)) = container.data.get_property_write_copy(pid, path) {
+                    container.state.request_direct_change_property(&mut *ppp, &newpath,new)
                 }
                 else {
                     operation::Change::None

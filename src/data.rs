@@ -4,7 +4,7 @@ use std::sync::{Arc, RwLock};
 use std::collections::HashMap;
 use std::fs;
 use std::hash::Hash;
-
+use std::fmt::Debug;
 
 use dormin::{vec, resource};
 use dormin::render;
@@ -20,6 +20,7 @@ use context;
 use util;
 use ui::PropertyUser;
 use ui::PropertyShow;
+use ui::PropertyId;
 
 use std::any::Any;
 
@@ -56,8 +57,8 @@ impl MeshTransform
 }
 
 pub trait SceneT : ToId<<Self as SceneT>::Id> + Clone + 'static + PropertyShow {
-    type Id : Default + Eq + Clone + Hash + Copy;
-    type Object : ToId<Self::Id> + Clone + PropertyGet;
+    type Id : Default + Eq + Clone + Hash + Copy + Debug;
+    type Object : ToId<Self::Id> + Clone + PropertyGet; //TODO remove PropertyGet
     fn new_empty(name : &str, count : usize) -> Self;
     fn new_from_file(name : &str, count : usize) -> Self;
     fn init_for_play(&mut self, resource : &resource::ResourceGroup);
@@ -208,6 +209,11 @@ pub trait SceneT : ToId<<Self as SceneT>::Id> + Clone + 'static + PropertyShow {
             unimplemented!()
         }
 
+    fn get_property_show_from_object_copy(&self, o : Self::Object, name :&str) 
+        -> Option<(Box<PropertyShow>, String)>
+        {
+            unimplemented!()
+        }
 }
 
 impl<S:SceneT> Data<S> {
@@ -373,16 +379,20 @@ impl<S:SceneT> Data<S> {
         }
     }
 
+    /*
     pub fn get_property_user_copy(&self, id : S::Id) -> Option<Box<PropertyUser<S>>>
     {
-        println!("TODO, change this function to include scene id too {}, {}", file!(), line!());
+        println!("TODO, change this function to include scene id too, scenes : {}, {}, {}", self.scenes.len(), file!(), line!());
         for s in self.scenes.values() {
             if s.to_id() == id {
                 println!("TODO {}, {}", file!(), line!());
                 //return Some(box s.clone());
             }
 
+            println!("object len {}", s.get_objects().len());
+
             for o in s.get_objects() {
+                println!("Testing object {:?}, {:?}", id, o.to_id());
                 if o.to_id() == id {
                 println!("TODO {}, {}", file!(), line!());
                     //return Some(box o.clone());
@@ -393,6 +403,56 @@ impl<S:SceneT> Data<S> {
 
         None
     }
+    */
+
+    /*
+    pub fn get_property_show_copy(&self, id : S::Id) -> Option<Box<PropertyShow>>
+        //where S::Object : PropertyId<S::Id>
+    {
+        println!("TODO, change this function to include scene id too, scenes : {}, {}, {}", self.scenes.len(), file!(), line!());
+        for s in self.scenes.values() {
+            if s.to_id() == id {
+                println!("TODO {}, {}", file!(), line!());
+                //return Some(box s.clone());
+            }
+
+            println!("object len {}", s.get_objects().len());
+
+            for o in s.get_objects() {
+                println!("Testing object {:?}, {:?}", id, o.to_id());
+                if o.to_id() == id {
+                println!("TODO {}, {}", file!(), line!());
+                    return Some(box o.clone());
+                }
+            }
+
+        }
+
+        None
+    }
+    */
+
+    //pub fn get_property_show_copy(&mut self, object_id : S::Id, property : &str) 
+        //-> Option<(Box<PropertyShow>, String)>
+    pub fn get_property_show_copy(&self, object_id : S::Id) 
+        -> Option<Box<PropertyShow>>
+    {
+        println!("TODO or erase {}, {}", file!(), line!());
+        for s in self.scenes.values() {
+            /*
+            if s.to_id() != scene_id {
+                //continue;
+            }
+            */
+
+            if let Some(ref o) = s.find_object_with_id(object_id) {
+                return s.get_property_show_from_object_copy(o.clone(), "").map(|x| x.0);
+            }
+
+        }
+        None
+    }
+
 
 }
 
@@ -467,6 +527,7 @@ impl<S:SceneT> SceneT for Rc<RefCell<S>> {
 
     fn get_objects(&self) -> &[Self::Object]
     {
+        unimplemented!();
         &[]//&self.borrow().objects
     }
 
