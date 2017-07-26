@@ -427,7 +427,13 @@ fn changed_set<T : Any+Clone+PartialEq, S:SceneT>(
                 if let Some((mut ppp, newpath)) = container.data.get_property_write_copy(pid, path) {
                     container.state.request_direct_change_property(&mut *ppp, &newpath,new)
                 }
+                //TODO remove pid
+                else if let Some((mut ppp, newpath)) = container.data.get_property_write(pid ,pid, path) {
+                    println!("I found a property to write!!!!");
+                    container.state.request_direct_change_property(&mut *ppp, &newpath,new)
+                }
                 else {
+                    println!("Could not find the property to write!!!");
                     operation::Change::None
                 }
             }
