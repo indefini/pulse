@@ -4,6 +4,7 @@
 extern crate dormin;
 extern crate uuid;
 extern crate libc;
+extern crate backtrace;
 
 #[macro_use]
 extern crate serde_derive;

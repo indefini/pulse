@@ -311,6 +311,9 @@ impl<S:SceneT> Data<S> {
         -> Option<(Box<PropertyWrite>, String)>
     {
         println!("TODO or erase {}, {}", file!(), line!());
+        //use backtrace::Backtrace;
+        //let bt = Backtrace::new();
+        //println!("bbbbbb : {:?}", bt);
         for s in self.scenes.values_mut() {
             /*
             if s.to_id() != scene_id {

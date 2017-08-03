@@ -101,6 +101,10 @@ impl<S:SceneT> OperationTrait for OldNew<S>
         if let Some((mut p, s)) = rec.get_property_write_copy(self.object_id.clone(), &self.name) {
             p.test_set_property_hier(s.as_ref(), &*self.new);
         }
+        //TODO not object id but scene id
+        else if let Some((mut p, s)) = rec.get_property_write(self.object_id.clone(), self.object_id.clone(), &self.name) {
+            p.test_set_property_hier(s.as_ref(), &*self.new);
+        }
 
         Change::PropertyId(self.object_id.clone(), self.name.clone())
     }
@@ -109,6 +113,12 @@ impl<S:SceneT> OperationTrait for OldNew<S>
     {
         if let Some((mut p, s)) = rec.get_property_write_copy(self.object_id.clone(), &self.name) {
             p.test_set_property_hier(s.as_ref(), &*self.old);
+        }
+        else if let Some((mut p, s)) = rec.get_property_write(self.object_id.clone(), self.object_id.clone(), &self.name) {
+            p.test_set_property_hier(s.as_ref(), &*self.old);
+        }
+        else {
+            panic!("could not get the property write in undo oldnew");
         }
 
         Change::PropertyId(self.object_id.clone(), self.name.clone())
