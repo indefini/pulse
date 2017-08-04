@@ -270,9 +270,9 @@ impl<S:SceneT> EditView<S> for View
         true
     }
 
+    // return true if you need to draw again, false if drawing again is not necessary.
     fn draw(&mut self, data : &Data<S>, context : &context::Context<S>) -> bool
     {
-
         let (obs, cameras, scene) = match context.scene {
             Some(ref sid) => {
                 let s = data.get_scene(sid.clone()).unwrap();

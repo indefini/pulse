@@ -91,7 +91,7 @@ pub fn create_scale_draggers() -> DraggerGroup
     let red = vec::Vec4::new(1.0f64,0.247f64,0.188f64,0.5f64);
     let green = vec::Vec4::new(0.2117f64,0.949f64,0.4156f64,0.5f64);
     let blue = vec::Vec4::new(0f64,0.4745f64,1f64,0.5f64);
-    let mesh = "model/dragger_scale.mesh";
+    let mesh = MESH_SCALE_NAME;
     //let mesh_cube = "model/dragger_cube.mesh";
 
     let dragger_x = Dragger::new(
@@ -144,4 +144,7 @@ pub fn create_scale_draggers() -> DraggerGroup
     return group;
 }
 
+
+pub static MESH_SCALE_NAME: &'static str = "model/dragger_scale.mesh";
+pub static MESH_SCALE: &'static [u8] = include_bytes!("../../../avion/model/dragger_scale.mesh");
 

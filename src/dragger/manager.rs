@@ -123,10 +123,10 @@ impl DraggerManager
         let tr = create_dragger_translation_group();
         dm.draggers.push(tr);
 
-        let sc = create_scale_draggers();
+        let sc = create_rotation_draggers();
         dm.draggers.push(sc);
 
-        let sc = create_rotation_draggers();
+        let sc = create_scale_draggers();
         dm.draggers.push(sc);
 
         dm

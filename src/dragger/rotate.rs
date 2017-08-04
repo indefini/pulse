@@ -4,7 +4,6 @@ use dormin::resource;
 use dormin::transform;
 use dormin::geometry;
 use dormin::intersection;
-use dormin::camera;
 use dormin::camera2;
 
 use dragger::manager::{
@@ -101,8 +100,8 @@ pub fn create_rotation_draggers()
     let red = vec::Vec4::new(1.0f64,0.247f64,0.188f64,0.5f64);
     let green = vec::Vec4::new(0.2117f64,0.949f64,0.4156f64,0.5f64);
     let blue = vec::Vec4::new(0f64,0.4745f64,1f64,0.5f64);
-    let mesh = "model/dragger_rotate_quarter.mesh";
-    let collider = "model/dragger_rotate_collider_quarter.mesh";
+    let mesh = MESH_ROTATE_NAME;
+    let collider = MESH_ROTATE_COLLIDER_NAME;
     let collider_mesh : resource::ResTT<mesh::Mesh> = resource::ResTT::new(collider);
 
     let dragger_x = Dragger::new(
@@ -154,4 +153,10 @@ impl DraggerMouse for RotationOperation {
         return self.local_global(camera, mouse_start, mouse_end);
     }
 }
+
+pub static MESH_ROTATE_NAME: &'static str = "model/dragger_rotate_quarter.mesh";
+pub static MESH_ROTATE_COLLIDER_NAME: &'static str = "model/dragger_rotate_collider_quarter.mesh";
+
+pub static MESH_ROTATE: &'static [u8] = include_bytes!("../../../avion/model/dragger_rotate_quarter.mesh");
+pub static MESH_ROTATE_COLLIDER: &'static [u8] = include_bytes!("../../../avion/model/dragger_rotate_collider_quarter.mesh");
 

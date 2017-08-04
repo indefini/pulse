@@ -56,6 +56,7 @@ impl<S:SceneT+'static> State<S> {
 
         self.saved_scales = self.context.selected.iter().map(|o| scene.get_scale(o.clone())).collect();
         self.saved_oris = self.context.selected.iter().map(|o| scene.get_orientation(o.clone())).collect();
+        
     }
 
     pub fn make_operation(
@@ -227,7 +228,7 @@ impl<S:SceneT+'static> State<S> {
         data : &mut Data<S>,
         scale : vec::Vec3) -> operation::Change<S::Id>
     {
-        let s = data.get_scene(self.context.scene.as_ref().unwrap().clone()).unwrap();
+        let s = data.get_scene_mut(self.context.scene.as_ref().unwrap().clone()).unwrap();
         let sp = self.saved_scales.clone();
 
         for (i,o) in self.context.selected.iter().enumerate() {
@@ -242,7 +243,7 @@ impl<S:SceneT+'static> State<S> {
         data : &mut Data<S>,
         rotation : vec::Quat) -> operation::Change<S::Id>
     {
-        let s = data.get_scene(self.context.scene.as_ref().unwrap().clone()).unwrap();
+        let s = data.get_scene_mut(self.context.scene.as_ref().unwrap().clone()).unwrap();
         let so = self.saved_oris.clone();
 
         for (i,o) in self.context.selected.iter().enumerate() {

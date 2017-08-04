@@ -66,26 +66,22 @@ pub trait SceneT : ToId<<Self as SceneT>::Id> + Clone + 'static + PropertyShow {
     fn get_objects(&self) -> &[Self::Object];
     fn get_objects_vec(&self) -> Vec<Self::Object>
     {
-        println!("TODO {}, {}", file!(), line!());
-        Vec::new()
+        unimplemented!("TODO {}, {}", file!(), line!());
     }
 
     fn get_mmr(&self) -> Vec<render::MatrixMeshRender>
     {
-        println!("TODO {}, {}", file!(), line!());
-        Vec::new()
+        unimplemented!("TODO {}, {}", file!(), line!());
     }
 
     fn get_object_mmr(&self, o : Self::Object) -> Option<render::MatrixMeshRender>
     {
-        println!("TODO {}, {}", file!(), line!());
-        None
+        unimplemented!("TODO {}, {}", file!(), line!());
     }
 
     fn get_object_mt(&self, o : Self::Object) -> Option<MeshTransform>
     {
-        println!("TODO {}, {}", file!(), line!());
-        None
+        unimplemented!("TODO {}, {}", file!(), line!());
     }
 
     fn get_cameras_vec(&self) -> Vec<matrix::Matrix4>
@@ -96,18 +92,15 @@ pub trait SceneT : ToId<<Self as SceneT>::Id> + Clone + 'static + PropertyShow {
 
     fn get_camera_obj(&self) -> Option<Self::Object>
     {
-        println!("TODO, {}, {}", file!(), line!());
-        None
+        unimplemented!("TODO, {}, {}", file!(), line!());
     }
 
     fn find_objects_with_id(&self, ids : &mut Vec<Self::Id>) -> Vec<Self::Object> {
-        println!("TODO {}, {}", file!(), line!());
-        Vec::new()
+        unimplemented!("TODO {}, {}", file!(), line!());
     }
 
     fn find_object_with_id(&self, id : Self::Id) -> Option<Self::Object> {
-        println!("TODO {}, {}", file!(), line!());
-        None
+        unimplemented!("TODO {}, {}", file!(), line!());
     }
 
     fn get_name(&self) -> String;
@@ -144,35 +137,32 @@ pub trait SceneT : ToId<<Self as SceneT>::Id> + Clone + 'static + PropertyShow {
 
     fn set_position(&mut self, o : Self::Object, v : vec::Vec3)
     {
-        println!("TODO, {}, {}", file!(), line!());
+        panic!("TODO, {}, {}", file!(), line!());
     }
 
-    fn set_scale(&self, o : Self::Object, v : vec::Vec3)
+    fn set_scale(&mut self, o : Self::Object, v : vec::Vec3)
     {
-        println!("TODO, {}, {}", file!(), line!());
+        panic!("TODO, {}, {}", file!(), line!());
     }
 
-    fn set_orientation(&self, o : Self::Object, ori : transform::Orientation)
+    fn set_orientation(&mut self, o : Self::Object, ori : transform::Orientation)
     {
-        println!("TODO, {}, {}", file!(), line!());
+        panic!("TODO, {}, {}", file!(), line!());
     }
 
     fn get_position(&self, o : Self::Object) -> vec::Vec3
     {
-        println!("TODO, {}, {}", file!(), line!());
-        vec::Vec3::default()
+        panic!("TODO, {}, {}", file!(), line!());
     }
 
     fn get_scale(&self, o : Self::Object) -> vec::Vec3
     {
-        println!("TODO, {}, {}", file!(), line!());
-        vec::Vec3::default()
+        panic!("TODO, {}, {}", file!(), line!());
     }
 
     fn get_orientation(&self, o : Self::Object) -> transform::Orientation
     {
-        println!("TODO, {}, {}", file!(), line!());
-        transform::Orientation::default()
+        panic!("TODO, {}, {}", file!(), line!());
     }
 
     fn get_transform(&self, o: Self::Object) -> transform::Transform;
@@ -608,12 +598,12 @@ impl<S:SceneT> SceneT for Rc<RefCell<S>> {
         self.borrow_mut().set_position(o, v);
     }
 
-    fn set_scale(&self, o : Self::Object, v : vec::Vec3)
+    fn set_scale(&mut self, o : Self::Object, v : vec::Vec3)
     {
         self.borrow_mut().set_scale(o, v);
     }
 
-    fn set_orientation(&self, o : Self::Object, ori : transform::Orientation)
+    fn set_orientation(&mut self, o : Self::Object, ori : transform::Orientation)
     {
         self.borrow_mut().set_orientation(o, ori);
     }

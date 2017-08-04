@@ -894,11 +894,22 @@ impl<Scene:SceneT> WidgetContainer<Scene>
         {
             let mut mm = resource_group.mesh_manager.borrow_mut();
 
-            let mut m = resource::ResTT::new("model/dragger_arrow.mesh");
+            let mut m = resource::ResTT::new(dragger::translate::MESH_ARROW_NAME);
             m.origin = resource::Origin::AnyBox(box dragger::translate::MESH_ARROW);
             mm.request_use_no_proc_new_from_res(&m);
-            let mut m = resource::ResTT::new("model/dragger_plane.mesh");
+            let mut m = resource::ResTT::new(dragger::translate::MESH_PLANE_NAME);
             m.origin = resource::Origin::AnyBox(box dragger::translate::MESH_PLANE);
+            mm.request_use_no_proc_new_from_res(&m);
+
+            let mut m = resource::ResTT::new(dragger::rotate::MESH_ROTATE_NAME);
+            m.origin = resource::Origin::AnyBox(box dragger::rotate::MESH_ROTATE);
+            mm.request_use_no_proc_new_from_res(&m);
+            let mut m = resource::ResTT::new(dragger::rotate::MESH_ROTATE_COLLIDER_NAME);
+            m.origin = resource::Origin::AnyBox(box dragger::rotate::MESH_ROTATE_COLLIDER);
+            mm.request_use_no_proc_new_from_res(&m);
+
+            let mut m = resource::ResTT::new(dragger::scale::MESH_SCALE_NAME);
+            m.origin = resource::Origin::AnyBox(box dragger::scale::MESH_SCALE);
             mm.request_use_no_proc_new_from_res(&m);
         }
 
@@ -1295,6 +1306,9 @@ impl<Scene:SceneT> WidgetContainer<Scene>
                         }
                     }
                 }
+
+                self.update_view(widget_origin);
+
             },
             Event::Undo => {
                 let change = self.state.undo(&mut *self.data);

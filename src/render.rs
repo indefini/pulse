@@ -259,7 +259,7 @@ impl Render {
     fn prepare_passes_objects_per_mmr(
         &mut self,
         camera : &CameraIdMat,
-        mmr : &[MatrixMeshRender])
+        mmr : &[MatrixMeshRender]) -> usize
     {
         let load = Arc::new(Mutex::new(0));
         for (_,p) in self.passes.iter_mut()
@@ -267,15 +267,18 @@ impl Render {
             p.passes.clear();
         }
 
-        self.add_mmr(camera, mmr);
+        self.add_mmr(camera, mmr)
     }
 
+    // return the number of objects that could not be added,
+    // because we could not find a pass.
     fn add_mmr(
         &mut self,
         camera : &CameraIdMat,
-        mmr : &[MatrixMeshRender])
+        mmr : &[MatrixMeshRender]) -> usize
     {
         let load = Arc::new(Mutex::new(0));
+        let mut not_added = 0;
 
         for m in mmr {
             let pass = render::get_pass_from_mesh_render(
@@ -290,7 +293,13 @@ impl Render {
             if let Some(cam_pass) = pass {
                 cam_pass.add_mmr(m.clone());
             }
+            else {
+                println!("TODO, could not get pass for this MeshRender");
+                not_added +=1;
+            }
         }
+
+        not_added
     }
 
     pub fn draw(
@@ -324,8 +333,8 @@ impl Render {
 
         self.clean_passes();
         println!("OOOOBBBB :::::::::::::: {}", objects.len());
-        self.add_mmr(camera, objects);
-        self.add_mmr(camera, cameras);
+        not_loaded += self.add_mmr(camera, objects);
+        not_loaded += self.add_mmr(camera, cameras);
 
         {
             let mmr = self.grid.to_mmr();
@@ -415,7 +424,7 @@ impl Render {
             //self.prepare_passes_objects_per(ld);
             //self.prepare_passes_objects_per(draggers);
             println!("dragger :::::::::::::: {}", draggers.len());
-            self.prepare_passes_objects_per_mmr(camera, draggers);
+            not_loaded += self.prepare_passes_objects_per_mmr(camera, draggers);
 
 
             /*
@@ -541,7 +550,7 @@ impl GameRender {
     fn prepare_passes_objects_per_mmr(
         &mut self,
         camera : &CameraIdMat,
-        mmr : &[MatrixMeshRender])
+        mmr : &[MatrixMeshRender]) 
     {
         let load = Arc::new(Mutex::new(0));
         for (_,p) in self.passes.iter_mut()
@@ -583,9 +592,9 @@ impl GameRender {
         loading : Arc<Mutex<usize>>
         ) -> bool
     {
+        let mut not_yet_loaded = 0;
         self.prepare_passes_objects_per_mmr(camera, objects);
 
-        let mut not_yet_loaded = 0;
         for p in self.passes.values()
         {
             let r = p.draw_frame(&self.resource, loading.clone());
