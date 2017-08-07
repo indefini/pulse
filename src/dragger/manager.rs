@@ -51,8 +51,8 @@ pub enum State
 pub enum Kind
 {
     Translate,
+    Rotate,
     Scale,
-    Rotate
 }
 
 pub enum Operation
@@ -271,7 +271,7 @@ impl DraggerManager
     pub fn set_orientation(&mut self, ori : transform::Orientation, camera_position : &vec::Vec3) {
         self.ori = ori.as_quat();
         for d in &mut self.draggers[self.current_group] {
-            if self.current_group == 2usize {
+            if self.current_group == 1usize {
                 d.face_camera(camera_position, self.ori);
             }
             else {
