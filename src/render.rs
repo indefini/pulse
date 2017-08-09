@@ -2,11 +2,15 @@ use std::collections::HashMap;
 use std::rc::Rc;
 use std::sync::{Arc, Mutex};
 use libc::c_int;
-use dormin::render::{RenderPass,TransformCamera,TransformMeshRender, MatrixMeshRender, CameraIdMat};
+use uuid;
+
+use dormin::render::{TransformCamera,TransformMeshRender, MatrixMeshRender};
 use dormin::{resource, camera, vec, mesh, mesh_render, geometry, shader, render, fbo};
 use dormin::resource::ResTT;
-
 use dormin::material;
+
+type CameraIdMat = render::CameraIdMat<uuid::Uuid>;
+type RenderPass = render::RenderPass<uuid::Uuid>;
 
 pub struct Render
 {
@@ -480,9 +484,10 @@ impl Render {
     }
 }
 
-pub struct GameRender
+use data::SceneT;
+pub struct GameRender<S:SceneT>
 {
-    passes : HashMap<String, Box<RenderPass>>, //TODO check
+    passes : HashMap<String, Box<render::RenderPass<S::Id>>>, //TODO check
 
     resource: Rc<resource::ResourceGroup>,
 
@@ -497,13 +502,13 @@ pub struct GameRender
     //camera_ortho : Rc<RefCell<camera::Camera>>,
 }
 
-impl GameRender {
+impl<S:SceneT> GameRender<S> {
 
     //TODO remove dragger and put "view_objects"
     pub fn new(//factory: &mut factory::Factory,
                resource : Rc<resource::ResourceGroup>
                //dragger : Arc<RwLock<object::Object>>,
-               ) -> GameRender
+               ) -> GameRender<S>
     {
         /*
         let camera_ortho = Rc::new(RefCell::new(factory.create_camera()));
@@ -549,7 +554,7 @@ impl GameRender {
 
     fn prepare_passes_objects_per_mmr(
         &mut self,
-        camera : &CameraIdMat,
+        camera : &render::CameraIdMat<S::Id>,
         mmr : &[MatrixMeshRender]) 
     {
         let load = Arc::new(Mutex::new(0));
@@ -563,7 +568,7 @@ impl GameRender {
 
     fn add_mmr(
         &mut self,
-        camera : &CameraIdMat,
+        camera : &render::CameraIdMat<S::Id>,
         mmr : &[MatrixMeshRender])
     {
         let load = Arc::new(Mutex::new(0));
@@ -587,7 +592,7 @@ impl GameRender {
 
     pub fn draw(
         &mut self,
-        camera : &CameraIdMat,
+        camera : &render::CameraIdMat<S::Id>,
         objects : &[MatrixMeshRender],
         loading : Arc<Mutex<usize>>
         ) -> bool

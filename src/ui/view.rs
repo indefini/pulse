@@ -166,7 +166,7 @@ impl CameraView
         self.transform.position = def + doff;
     }
 
-    pub fn to_cam_id_mat(&self) -> render::CameraIdMat
+    pub fn to_cam_id_mat(&self) -> render::CameraIdMat<uuid::Uuid>
     {
         let local = self.transform.get_computed_local_matrix();
         let per = self.property.get_perspective();

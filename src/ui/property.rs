@@ -685,7 +685,7 @@ macro_rules! property_show_impl(
 
 property_show_impl!(vec::Vec3,[x,y,z]);
 property_show_impl!(vec::Quat,[x,y,z,w]);
-property_show_impl!(transform::Transform,[position,orientation]);
+property_show_impl!(transform::Transform,[position,orientation,scale]);
 
 property_show_impl!(mesh_render::MeshRender,[mesh,material], ShouldUpdate::Mesh);
 property_show_impl!(resource::ResTT<T>,T,[name], ShouldUpdate::Mesh);

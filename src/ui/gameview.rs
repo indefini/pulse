@@ -26,7 +26,7 @@ pub trait GameViewTrait<S:SceneT> : ui::Widget<S> {
     fn request_update(&self);
 }
 
-impl<S> ui::Widget<S> for GameView {
+impl<S:SceneT> ui::Widget<S> for GameView<S> {
  
     fn set_visible(&mut self, b : bool)
     {
@@ -52,11 +52,11 @@ impl<S> ui::Widget<S> for GameView {
     }
 }
 
-pub struct GameView
+pub struct GameView<S:SceneT>
 {
     window : *const ui::Evas_Object,
     pub glview : *const ui::JkGlview,
-    render : Box<GameRender>,
+    render : Box<GameRender<S>>,
     pub scene : uuid::Uuid,
     name : String,
     pub state : i32,
@@ -69,15 +69,15 @@ pub struct GameView
 
 
 
-impl GameView {
+impl<S:SceneT> GameView<S> {
     pub fn new(
         win : *const ui::Evas_Object,
         scene : uuid::Uuid,
         //data : *const Box<Data<Scene>>,
         data : *const c_void,
-        render : Box<GameRender>,
+        render : Box<GameRender<S>>,
         config : ui::WidgetConfig
-        ) -> Box<GameView>
+        ) -> Box<GameView<S>>
     {
         /*
         let camera = Rc::new(RefCell::new(factory.create_camera()));
@@ -113,10 +113,10 @@ impl GameView {
                 win,
                 //mem::transmute(&*v.render),
                 mem::transmute(&*v),
-                gv_init_cb,
-                gv_draw_cb,
-                gv_resize_cb,
-                gv_key_down,
+                gv_init_cb::<S>,
+                gv_draw_cb::<S>,
+                gv_resize_cb::<S>,
+                gv_key_down::<S>,
                 ) };
 
         println!("TODO uncomment not visible because of this {}, {}", file!(), line!());
@@ -182,15 +182,15 @@ impl GameView {
     }
 }
 
-pub extern fn gv_init_cb(v : *const c_void) {
-    let gv : &mut GameView = unsafe { mem::transmute(v) };
+pub extern fn gv_init_cb<S:SceneT>(v : *const c_void) {
+    let gv : &mut GameView<S> = unsafe { mem::transmute(v) };
     //println!("AAAAAAAAAAAAAAAAAAAAAA gv init cb {}", (*gv).name);
     gv.init();
 }
 
-pub extern fn request_update_again_gv(data : *const c_void) -> bool
+pub extern fn request_update_again_gv<S:SceneT>(data : *const c_void) -> bool
 {
-    let gv : &mut GameView =  unsafe {mem::transmute(data)};
+    let gv : &mut GameView<S> =  unsafe {mem::transmute(data)};
 
     if let Ok(lr) = gv.loading_resource.try_lock() {
         if *lr == 0 {
@@ -203,28 +203,28 @@ pub extern fn request_update_again_gv(data : *const c_void) -> bool
 }
 
 
-pub extern fn gv_draw_cb(v : *const c_void)
+pub extern fn gv_draw_cb<S:SceneT>(v : *const c_void)
 {
-    let gv : &mut GameView = unsafe { mem::transmute(v) };
+    let gv : &mut GameView<S> = unsafe { mem::transmute(v) };
     //println!("draw {}", (*gv).name);
     let draw_not_done = gv.draw();
 
     if draw_not_done && gv.state == 0 {
         unsafe {
-            ui::ecore_animator_add(request_update_again_gv, mem::transmute(v));
+            ui::ecore_animator_add(request_update_again_gv::<S>, mem::transmute(v));
         }
     }
 }
 
-pub extern fn gv_resize_cb(v : *const c_void, w : c_int, h : c_int) {
+pub extern fn gv_resize_cb<S:SceneT>(v : *const c_void, w : c_int, h : c_int) {
     unsafe {
-        let gv : &mut GameView = mem::transmute(v);
+        let gv : &mut GameView<S> = mem::transmute(v);
         //println!("resize {}", (*gv).name);
         gv.resize(w, h);
     }
 }
 
-extern fn gv_key_down(
+extern fn gv_key_down<S:SceneT>(
     data : *const c_void,
     modifier : c_int,
     keyname : *const c_char,
@@ -232,7 +232,7 @@ extern fn gv_key_down(
     keycode : c_uint,
     timestamp : c_int)
 {
-    let gv : &mut GameView = unsafe { mem::transmute(data) };
+    let gv : &mut GameView<S> = unsafe { mem::transmute(data) };
     gv.input.add_key(keycode as u8);
 }
 

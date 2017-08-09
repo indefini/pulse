@@ -223,7 +223,7 @@ fn elm_object_text_set(
 }
 
 pub extern fn init_cb<S:SceneT>(data: *const c_void) -> () 
-    where ui::view2::View2<render::GameRender,S> : ui::view2::ViewT<S>
+    where ui::view2::View2<render::GameRender<S>,S> : ui::view2::ViewT<S>
 {
     let app_data : &AppCbData<S> = unsafe { &*(data as *const AppCbData<S>) };
     let container_arw = app_data.container.clone();
@@ -429,7 +429,7 @@ fn init_action<S:SceneT>(container : &Arw<WidgetContainer<S>>, win : *const Wind
 }
 
 fn init_gameview<S:SceneT>(container_arw : Arw<WidgetContainer<S>>, gameview_config : &WidgetConfig)
-    where ui::view2::View2<render::GameRender,S> : ui::view2::ViewT<S>
+    where ui::view2::View2<render::GameRender<S>,S> : ui::view2::ViewT<S>
 {
     let op_scene = {
         let container = &mut *container_arw.write().unwrap();
@@ -1856,7 +1856,7 @@ fn create_gameview_window<Scene:SceneT>(
     scene_id : Scene::Id,
     config : &WidgetConfig
     ) -> Box<ui::gameview::GameViewTrait<Scene>> 
-    where ui::view2::View2<render::GameRender,Scene> : ui::view2::ViewT<Scene>
+    where ui::view2::View2<render::GameRender<Scene>,Scene> : ui::view2::ViewT<Scene>
 {
     let win = unsafe {
         ui::jk_window_new(
