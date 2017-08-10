@@ -120,7 +120,7 @@ pub trait SceneT : ToId<<Self as SceneT>::Id> + Clone + 'static + PropertyShow {
 
     fn set_camera(&self, ob : Option<Self::Object>)
     {
-        println!("TODO, {}, {}", file!(), line!());
+        unimplemented!("TODO, {}, {}", file!(), line!());
     }
 
     fn get_parent(&self, o : Self::Object) -> Option<Self::Object>
