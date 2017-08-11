@@ -204,23 +204,19 @@ extern fn add_comp<S:SceneT+'static>(data : *const c_void, name : *const c_char)
     let s = str::from_utf8(s).unwrap();
     println!("TODO add component : {}", s);
 
-    let wcb : & ui::WidgetCbData<S> = unsafe {mem::transmute(data)};
-    let v : &ui::View = unsafe {mem::transmute(wcb.widget)};
-//    let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
-
+    let wcb : & ui::WidgetCbData<S> = unsafe {&* (data as *const ui::WidgetCbData<S>)};
     let container : &mut ui::WidgetContainer<S> = &mut *wcb.container.write().unwrap();
 
+    let id = container.views[wcb.index].get_id();
+
     let change = container.state.add_component(s, &mut *container.data);
-    container.handle_change(&change, (v as &Widget<S>).get_id());
+    container.handle_change(&change, id);
 }
 
 pub extern fn add_component<S:SceneT+'static>(data : *const c_void, name : *const c_char)
 {
     let wcb : & ui::WidgetCbData<S> = unsafe {mem::transmute(data)};
-    let v : &ui::View = unsafe {mem::transmute(wcb.widget)};
-    //let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
     let container : &mut ui::WidgetContainer<S> = &mut *wcb.container.write().unwrap();
-
 
     let s = unsafe {CStr::from_ptr(name).to_bytes()};
     let s = str::from_utf8(s).unwrap();
@@ -235,7 +231,6 @@ pub extern fn add_component<S:SceneT+'static>(data : *const c_void, name : *cons
 
         cmd.show();
     }
-
 }
 
 
