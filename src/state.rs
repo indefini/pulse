@@ -432,7 +432,6 @@ impl<S:SceneT+'static> State<S> {
         ) -> operation::Change<S::Id>
     {
         println!("TODO add component {} {}", file!(), line!());
-        /*
         let o = if let Some(o) = self.context.selected.get(0) {
             o.clone()
         }
@@ -441,12 +440,15 @@ impl<S:SceneT+'static> State<S> {
             return operation::Change::None;
         };
 
+        use dormin::mesh_render;
         let cp = if component_name == "MeshRender" {
-            box component::CompData::MeshRender(mesh_render::MeshRender::with_names_only("model/skeletonmesh.mesh", "material/simple.mat"))
+            box mesh_render::MeshRender::with_names_only("model/skeletonmesh.mesh", "material/simple.mat");
         }
         else {
             return operation::Change::None;
         };
+
+        /*
 
         let vs = Vec::new();
 
