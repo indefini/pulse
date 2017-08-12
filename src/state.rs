@@ -431,34 +431,31 @@ impl<S:SceneT+'static> State<S> {
         rec : &mut Data<S>
         ) -> operation::Change<S::Id>
     {
-        println!("TODO add component {} {}", file!(), line!());
+        println!("!!!!!!!!!!!!!!!!!!!TODO add component {} {}", file!(), line!());
         let o = if let Some(o) = self.context.selected.get(0) {
             o.clone()
+        }
+        else
+        {
+            println!("TODO display error message, or set this as cannot be executed command if nothing is selected {} {}", file!(), line!());
+            return operation::Change::None;
+        };
+
+        let s = if let Some(s) = self.context.scene {
+            s.clone()
         }
         else
         {
             return operation::Change::None;
         };
 
-        use dormin::mesh_render;
-        let cp = if component_name == "MeshRender" {
-            box mesh_render::MeshRender::with_names_only("model/skeletonmesh.mesh", "material/simple.mat");
-        }
-        else {
-            return operation::Change::None;
-        };
-
-        /*
-
         let vs = Vec::new();
 
         self.request_operation(
             vs,
-            operation::OperationData::AddComponent(o.clone(), cp),
+            operation::OperationData::AddComponent(s.clone(), o.clone(), component_name.to_owned()),
             rec
             )
-            */
-        operation::Change::None
     }
 
     pub fn set_scene_camera(

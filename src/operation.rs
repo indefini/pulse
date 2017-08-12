@@ -24,6 +24,7 @@ pub enum OperationData<Scene : SceneT>
     SetSceneCamera(Scene::Id, Option<Scene::Object>, Option<Scene::Object>),
     //TODO
     //AddComponent(Scene::Object, Box<CompData>),
+    AddComponent(Scene::Id, Scene::Object, String),
     OldNewVec(Vec<Box<Any>>, Box<Any>),
 
     //To check
@@ -389,6 +390,16 @@ impl<S:SceneT> OperationTrait for Operation<S>
                 //return Change::ComponentChanged(ob.id.clone(), compo.get_kind_string());
             },
                 */
+            OperationData::AddComponent(ref s, ref o, ref name)  => {
+                //TODO
+                println!("TODO add component is not working of course, {}, {}", file!(), line!());
+                if let Some(scene) = rec.get_scene_mut(*s) {
+                    scene.add_component(o.clone(), name);
+                }
+                else {
+                    panic!("cannot get scene");
+                }
+            },
             _ => {
                 unimplemented!();
             }
@@ -501,6 +512,10 @@ impl<S:SceneT> OperationTrait for Operation<S>
                 //return Change::ComponentChanged(ob.id.clone(), compo.get_kind_string());
             },
             */
+            OperationData::AddComponent(ref s, ref o, ref name)  => {
+                //TODO
+                println!("TODO add component UNDO is not working of course, {}, {}", file!(), line!());
+            },
             _ => {
                 unimplemented!();
             }

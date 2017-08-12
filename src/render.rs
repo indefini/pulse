@@ -336,9 +336,9 @@ impl Render {
         fbo::Fbo::cgl_use_end();
 
         self.clean_passes();
-        println!("OOOOBBBB :::::::::::::: {}", objects.len());
         not_loaded += self.add_mmr(camera, objects);
         not_loaded += self.add_mmr(camera, cameras);
+        println!("OOOOBBBB :::::::::::::: {}, {}", objects.len(), not_loaded);
 
         {
             let mmr = self.grid.to_mmr();
@@ -406,7 +406,7 @@ impl Render {
         }
 
         let sel_len = selected.len();
-        println!("selllll :::::::::::::: {}", sel_len);
+        println!("selllll :::::::::::::: {}, {}", sel_len, not_loaded);
 
         if sel_len > 0 {
             let l = vec![self.quad_outline.to_mmr()];
@@ -427,9 +427,8 @@ impl Render {
             //ld.push_back(self.dragger.clone());
             //self.prepare_passes_objects_per(ld);
             //self.prepare_passes_objects_per(draggers);
-            println!("dragger :::::::::::::: {}", draggers.len());
+            println!("dragger :::::::::::::: {}, {}", draggers.len(), not_loaded);
             not_loaded += self.prepare_passes_objects_per_mmr(camera, draggers);
-
 
             /*
             fn get_camera_resize_w(camera : &camera::Camera, m : &matrix::Matrix4, factor : f64) -> f64
@@ -475,6 +474,9 @@ impl Render {
                     load.clone()
                     );
                 not_loaded = not_loaded + not;
+                if not > 0  {
+                    println!("investigate why something is not loaded not > 0");
+                }
             }
             //*/
         }

@@ -204,6 +204,11 @@ pub trait SceneT : ToId<<Self as SceneT>::Id> + Clone + 'static + PropertyShow {
         {
             unimplemented!()
         }
+
+    fn add_component(&mut self, o : Self::Object, compopent : &str)
+    {
+            unimplemented!()
+    }
 }
 
 impl<S:SceneT> Data<S> {
