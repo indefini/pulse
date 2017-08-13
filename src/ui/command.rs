@@ -225,9 +225,9 @@ pub extern fn add_component<S:SceneT+'static>(data : *const c_void, name : *cons
 
         cmd.clean();
 
-        cmd.add_ptr("MeshRender", ui::command::add_comp::<S>, data);
-        cmd.add_ptr("Armature", ui::command::add_comp::<S>, data);
-        cmd.add_ptr("Player", ui::command::add_comp::<S>, data);
+        for i in &S::get_existing_components() {
+            cmd.add_ptr(i, ui::command::add_comp::<S>, data);
+        }
 
         cmd.show();
     }

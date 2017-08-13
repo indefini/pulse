@@ -209,6 +209,11 @@ pub trait SceneT : ToId<<Self as SceneT>::Id> + Clone + 'static + PropertyShow {
     {
             unimplemented!()
     }
+
+    fn get_existing_components() -> Vec<&'static str>
+    {
+        unimplemented!()
+    }
 }
 
 impl<S:SceneT> Data<S> {

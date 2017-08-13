@@ -1262,7 +1262,7 @@ impl<Scene:SceneT> WidgetContainer<Scene>
                         t.select_objects(ids);
                     }
                 }
-                println!("selected changed");
+                println!("selected changed : {} ", sel.len());
 
                 if sel.is_empty() {
                     if let Some(ref mut p) = self.property.widget {

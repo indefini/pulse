@@ -206,24 +206,24 @@ impl Control
             if let Some(mt) = scene.get_object_mt(o.clone()) {
                 if let Some(mesh) = mt.mesh.get_ref(mm) {
 
-            let mt = intersection::MeshTransform::with_transform(mesh, &t);
-            let ir = intersection::ray_mesh_transform(&r, &mt);
-            if ir.hit {
-                let length = (ir.position - r.start).length2();
-                match closest_obj {
-                    None => {
-                        closest_obj = Some(o.clone());
-                        found_length = length;
-                    }
-                    Some(_) => {
-                        if length < found_length {
-                            closest_obj = Some(o.clone());
-                            found_length = length;
+                    let mt = intersection::MeshTransform::with_transform(mesh, &t);
+                    let ir = intersection::ray_mesh_transform(&r, &mt);
+                    if ir.hit {
+                        let length = (ir.position - r.start).length2();
+                        match closest_obj {
+                            None => {
+                                closest_obj = Some(o.clone());
+                                found_length = length;
+                            }
+                            Some(_) => {
+                                if length < found_length {
+                                    closest_obj = Some(o.clone());
+                                    found_length = length;
+                                }
+                            }
                         }
                     }
                 }
-            }
-            }
             }
         }
 
@@ -304,7 +304,7 @@ impl Control
                 let x : f64 = curx as f64;
                 let y : f64 = cury as f64;
 
-                let r = camera.to_camera2_transform().ray_from_screen(x as f64, y as f64, 10000f64);
+                let r = camera.to_camera2_transform().ray_from_screen(x as f64, y as f64, 100f64);
 
                 let update =
                     self.dragger.mouse_move_hover(r, button, &*self.resource) || button == 1;
