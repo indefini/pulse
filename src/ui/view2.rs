@@ -73,7 +73,10 @@ impl<R:'static, S:SceneT+'static> View2<R,S> where View2<R,S> : ViewT<S> {
             //camera : camera todo
         };
 
-        let gldata = box GlViewData::new(d, &mut *v as *mut View2<R,S> as *mut ViewT<S>);
+        let gldata = box GlViewData::new(
+            d,
+            &mut *v as *mut View2<R,S> as *mut ViewT<S>,
+            &mut *v as *mut View2<R,S> as *mut ui::gameview::GameViewTrait<S>);
 
         v.glview = unsafe { ui::jk_glview_new(
                 win,
@@ -102,11 +105,6 @@ impl<R:'static, S:SceneT+'static> View2<R,S> where View2<R,S> : ViewT<S> {
         }
     }
     
-    pub fn request_update(&self)
-    {
-        unsafe { ui::jk_glview_request_update(self.glview); }
-    }
-
     pub fn set_visible(&mut self, b : bool)
     {
         if b {
@@ -125,12 +123,9 @@ pub extern fn gv_init_cb<S:SceneT>(v : *const c_void) {
     }
 }
 
-extern fn request_update_again_view2<Scene>(data : *const c_void) -> bool
+extern fn request_update_again_view2<Scene:SceneT>(data : *const c_void) -> bool
 {
-    //let gv : &mut View2 =  unsafe {mem::transmute(data)};
-    let gv : &mut Box<ViewT<Scene>> =  unsafe {mem::transmute(data)};
-
-    //TODO
+    //TODO check if loading is over before trying to render
     /*
     //if let Ok(lr) = (*gv).loading_resource.try_lock() {
     if let Ok(lr) = gv.loading_resource.try_lock() {
@@ -140,35 +135,37 @@ extern fn request_update_again_view2<Scene>(data : *const c_void) -> bool
             return false;
         }
     }
+    //true
     */
-    true
+
+    unsafe {
+        let gldata : &GlViewData<Scene> = &*(data as *const GlViewData<Scene>) ;
+
+        let id = (*gldata.view).get_scene_id();
+        if let Some(scene) = (*gldata.dis).get_scene(id) {
+            (*gldata.gameview).request_update();
+        }
+    }
+
+    false
 }
 
 
 pub extern fn gv_draw_cb<S:SceneT>(v : *const c_void) //where Dispatcher : DataT<S>
 {
     unsafe {
-        //let gv : *mut View2 = mem::transmute(v);
-        //let gv : *mut Box<ViewT<Scene>> = mem::transmute(v);
-        //println!("draw {}", (*gv).name);
-        //TODO TODO //TODO
-        //let draw_not_done = (*gv).draw();
         
         let gldata : &GlViewData<S> = &*(v as *const GlViewData<S>) ;
 
         let id = (*gldata.view).get_scene_id();
         if let Some(scene) = (*gldata.dis).get_scene(id) {
 
-        //let scene = gldata.dis.get_scene((*gldata.view).get_scene_id());
-        (*gldata.view).draw(scene);
-        }
+            let draw_not_done = (*gldata.view).draw(scene);
 
-        //TODO
-        /*
-        if draw_not_done && (*gv).state == 0 {
-                ui::ecore_animator_add(request_update_again_view2, mem::transmute(v));
+            if draw_not_done {
+                ui::ecore_animator_add(request_update_again_view2::<S>, v);
+            }
         }
-        */
     }
 }
 
@@ -272,14 +269,16 @@ impl DataT<Rc<RefCell<scene::Scene>>> for Dispatcher {
 struct GlViewData<Scene:SceneT> {
     dis : *const Data<Scene>,
     view : *mut ViewT<Scene>,
+    gameview : *mut ui::gameview::GameViewTrait<Scene>,
 }
 
 impl<S:SceneT> GlViewData<S> {
-    fn new(d : *const Data<S>, view : *mut ViewT<S>) -> GlViewData<S>
+    fn new(d : *const Data<S>, view : *mut ViewT<S>, gameview : *mut ui::gameview::GameViewTrait<S>) -> GlViewData<S>
     {
         GlViewData {
             dis : d,
             view : view,
+            gameview : gameview
         }
     }
 }
