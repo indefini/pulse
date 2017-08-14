@@ -515,6 +515,12 @@ impl<S:SceneT> OperationTrait for Operation<S>
             OperationData::AddComponent(ref s, ref o, ref name)  => {
                 //TODO
                 println!("TODO add component UNDO is not working of course, {}, {}", file!(), line!());
+                if let Some(scene) = rec.get_scene_mut(*s) {
+                    scene.remove_component(o.clone(), name);
+                }
+                else {
+                    panic!("cannot get scene");
+                }
             },
             _ => {
                 unimplemented!();

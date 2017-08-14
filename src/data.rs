@@ -207,7 +207,12 @@ pub trait SceneT : ToId<<Self as SceneT>::Id> + Clone + 'static + PropertyShow {
 
     fn add_component(&mut self, o : Self::Object, compopent : &str)
     {
-            unimplemented!()
+       unimplemented!()
+    }
+
+    fn remove_component(&mut self, o : Self::Object, compopent : &str)
+    {
+        unimplemented!()
     }
 
     fn get_existing_components() -> Vec<&'static str>
