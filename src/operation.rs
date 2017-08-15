@@ -25,6 +25,7 @@ pub enum OperationData<Scene : SceneT>
     //TODO
     //AddComponent(Scene::Object, Box<CompData>),
     AddComponent(Scene::Id, Scene::Object, String),
+    RemoveComponent(Scene::Id, Scene::Object, String),
     OldNewVec(Vec<Box<Any>>, Box<Any>),
 
     //To check
@@ -400,6 +401,15 @@ impl<S:SceneT> OperationTrait for Operation<S>
                     panic!("cannot get scene");
                 }
             },
+            OperationData::RemoveComponent(ref s, ref o, ref name)  => {
+                //TODO
+                if let Some(scene) = rec.get_scene_mut(*s) {
+                    scene.remove_component(o.clone(), name);
+                }
+                else {
+                    panic!("cannot get scene");
+                }
+            },
             _ => {
                 unimplemented!();
             }
@@ -514,7 +524,6 @@ impl<S:SceneT> OperationTrait for Operation<S>
             */
             OperationData::AddComponent(ref s, ref o, ref name)  => {
                 //TODO
-                println!("TODO add component UNDO is not working of course, {}, {}", file!(), line!());
                 if let Some(scene) = rec.get_scene_mut(*s) {
                     scene.remove_component(o.clone(), name);
                 }
@@ -522,6 +531,15 @@ impl<S:SceneT> OperationTrait for Operation<S>
                     panic!("cannot get scene");
                 }
             },
+            OperationData::RemoveComponent(ref s, ref o, ref name)  => {
+                if let Some(scene) = rec.get_scene_mut(*s) {
+                    scene.add_component(o.clone(), name);
+                }
+                else {
+                    panic!("cannot get scene");
+                }
+            },
+
             _ => {
                 unimplemented!();
             }

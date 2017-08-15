@@ -712,6 +712,7 @@ pub extern fn key_down<S:SceneT>(
                     ("remove selected22", ui::command::remove_selected2::<S>),
                     ("set camera2", ui::command::set_camera2::<S>),
                     ("add component", ui::command::add_component::<S>),
+                    ("remove component", ui::command::remove_component::<S>),
                     ("copy selected", ui::command::copy_selected::<S>),
                     ];
 

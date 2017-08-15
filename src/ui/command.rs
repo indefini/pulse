@@ -1,13 +1,6 @@
 use std::sync::{RwLock, Arc};
-use std::collections::HashMap;
 use libc::{c_char, c_void, c_int};
 use std::mem;
-use std::collections::{LinkedList};//,Deque};
-use std::ptr;
-use std::cell::{RefCell};
-use std::rc::Weak;
-use std::rc::Rc;
-use uuid::Uuid;
 use std::ffi::CString;
 use std::ffi::CStr;
 use std::str;
@@ -227,6 +220,43 @@ pub extern fn add_component<S:SceneT+'static>(data : *const c_void, name : *cons
 
         for i in &S::get_existing_components() {
             cmd.add_ptr(i, ui::command::add_comp::<S>, data);
+        }
+
+        cmd.show();
+    }
+}
+
+
+extern fn remove_comp<S:SceneT+'static>(data : *const c_void, name : *const c_char)
+{
+    let s = unsafe {CStr::from_ptr(name).to_bytes()};
+    let s = str::from_utf8(s).unwrap();
+    println!("TODO remove component : {}", s);
+
+    let wcb : & ui::WidgetCbData<S> = unsafe {&* (data as *const ui::WidgetCbData<S>)};
+    let container : &mut ui::WidgetContainer<S> = &mut *wcb.container.write().unwrap();
+
+    let id = container.views[wcb.index].get_id();
+
+    let change = container.state.remove_component(s, &mut *container.data);
+    container.handle_change(&change, id);
+}
+
+pub extern fn remove_component<S:SceneT+'static>(data : *const c_void, name : *const c_char)
+{
+    let wcb : & ui::WidgetCbData<S> = unsafe {mem::transmute(data)};
+    let container : &mut ui::WidgetContainer<S> = &mut *wcb.container.write().unwrap();
+
+    let s = unsafe {CStr::from_ptr(name).to_bytes()};
+    let s = str::from_utf8(s).unwrap();
+
+    if let Some(ref cmd) = container.command {
+
+        cmd.clean();
+
+        //TODO only show the components the object have
+        for i in &S::get_existing_components() {
+            cmd.add_ptr(i, ui::command::remove_comp::<S>, data);
         }
 
         cmd.show();

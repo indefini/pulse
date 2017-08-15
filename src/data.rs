@@ -106,7 +106,7 @@ pub trait SceneT : ToId<<Self as SceneT>::Id> + Clone + 'static + PropertyShow {
     fn get_name(&self) -> String;
     fn set_name(&mut self, s : String);
 
-    fn save(&self);
+    fn save(&mut self);
 
     fn add_objects(&mut self, parents : &[Option<Self::Id>], obs : &[Self::Object])
     {
@@ -201,6 +201,11 @@ pub trait SceneT : ToId<<Self as SceneT>::Id> + Clone + 'static + PropertyShow {
 
     fn get_property_show_from_object_copy(&self, o : Self::Object, name :&str) 
         -> Option<(Box<PropertyShow>, String)>
+        {
+            unimplemented!()
+        }
+    fn get_property_show_from_object_copy_vec(&self, o : Self::Object) 
+        -> Vec<Box<PropertyShow>>
         {
             unimplemented!()
         }
@@ -563,9 +568,9 @@ impl<S:SceneT> SceneT for Rc<RefCell<S>> {
         self.borrow_mut().set_name(s);
     }
 
-    fn save(&self)
+    fn save(&mut self)
     {
-        self.borrow().save();
+        self.borrow_mut().save();
     }
 
     fn get_cameras_vec(&self) -> Vec<matrix::Matrix4>

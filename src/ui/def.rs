@@ -623,7 +623,7 @@ pub extern fn exit_cb<S:SceneT>(data: *const c_void) -> ()
     let container = &mut *app_data.container.write().unwrap();
 
     if let Some(s) = container.state.context.scene {
-        let scene = container.data.get_scene(s).unwrap();
+        let scene = container.data.get_scene_mut(s).unwrap();
         println!("going to save: {}", scene.get_name());
         scene.save();
     }
