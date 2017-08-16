@@ -37,6 +37,13 @@ extern {
         parent: *const PropertyValue,
         ) -> *const PropertyValue;
 
+    fn property_box_frame_add(
+        ps : *const JkPropertyBox,
+        cb_data : *const c_void,
+        pv: *const PropertyValue,
+        parent: *const PropertyValue,
+        ) -> *const PropertyValue;
+
     fn property_box_vec_item_add(
         ps : *const JkPropertyBox,
         cb_data : *const c_void,
@@ -96,6 +103,28 @@ impl<Scene:SceneT> PropertyBox<Scene>
     {
         self.current_id.set(Some(pid));
         self._set_prop(p, title);
+    }
+
+    pub fn set_prop_vec(
+        &self,
+        psv : &[Box<PropertyShow>],
+        pid : Scene::Id)
+    {
+        self.current_id.set(Some(pid));
+        unsafe { property_box_clear(self.jk_property); }
+        *self.nodes.borrow_mut() = NodeChildren::None;
+
+        for p in psv {
+            p.create_widget_inside("", self);
+            /*
+            let s = "fdsfds".to_owned();
+
+            if let Some(pv) = p.create_widget_itself(s.as_str()) {
+                self.add_frame(s.as_str(), pv);
+                p.create_widget_inside(s.as_str(), self);
+            }
+            */
+        }
     }
 
     fn _set_prop(&self, p : &PropertyShow, title : &str)
@@ -242,6 +271,26 @@ impl<Scene:SceneT> PropertyWidget for PropertyBox<Scene>
 
         unsafe {
             property_box_single_item_add(
+                self.jk_property,
+                mem::transmute(box Rc::downgrade(&node)),
+                item,
+                parent_value);
+        }
+    }
+
+    fn add_frame(&self, path : &str, item : *const PropertyValue)
+    {
+        let (parent, node) = self.add_common(path, item);
+
+        let parent_value = if let Some(ref n) = parent {
+            n.borrow().value
+        }
+        else {
+            ptr::null()
+        };
+
+        unsafe {
+            property_box_frame_add(
                 self.jk_property,
                 mem::transmute(box Rc::downgrade(&node)),
                 item,

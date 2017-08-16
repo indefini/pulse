@@ -779,6 +779,10 @@ impl PropertyWidget for PropertyList
 
         self.pv.borrow_mut().insert(field.to_owned(), item);
     }
+    fn add_frame(&self, field : &str, item : *const PropertyValue)
+    {
+        unimplemented!();
+    }
 
     fn add_option(&self, field : &str, is_some : bool) -> *const PropertyValue
     {

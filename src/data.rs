@@ -466,6 +466,26 @@ impl<S:SceneT> Data<S> {
         None
     }
 
+    pub fn get_property_show_copy_vec(&self, object_id : S::Id) 
+        -> Vec<Box<PropertyShow>>
+    {
+        println!("TODO or erase {}, {}", file!(), line!());
+        for s in self.scenes.values() {
+            /*
+            if s.to_id() != scene_id {
+                //continue;
+            }
+            */
+
+            if let Some(ref o) = s.find_object_with_id(object_id) {
+                return s.get_property_show_from_object_copy_vec(o.clone())
+            }
+
+        }
+
+        vec![]
+    }
+
 
 }
 

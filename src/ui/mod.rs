@@ -288,6 +288,7 @@ pub enum ShouldUpdate
 
 pub trait PropertyWidget {
 
+    fn add_frame(&self, field : &str, item : *const PropertyValue);
     fn add_simple_item(&self, field : &str, item : *const PropertyValue);
     fn add_option(&self, field : &str, is_some : bool) -> *const PropertyValue;
     fn add_vec(&self, field : &str, len : usize);
