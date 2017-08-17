@@ -105,25 +105,25 @@ impl<Scene:SceneT> PropertyBox<Scene>
         self._set_prop(p, title);
     }
 
-    pub fn set_prop_vec(
+    pub fn set_prop_hash(
         &self,
-        psv : &[Box<PropertyShow>],
+        psv : &HashMap<String, Box<PropertyShow>>,
         pid : Scene::Id)
     {
         self.current_id.set(Some(pid));
         unsafe { property_box_clear(self.jk_property); }
         *self.nodes.borrow_mut() = NodeChildren::None;
 
-        for p in psv {
-            p.create_widget_inside("", self);
-            /*
-            let s = "fdsfds".to_owned();
+        for (name,p) in psv {
+            //p.create_widget_inside("", self);
+            ///*
+            let s = name.clone();//"fdsfds".to_owned();
 
             if let Some(pv) = p.create_widget_itself(s.as_str()) {
                 self.add_frame(s.as_str(), pv);
                 p.create_widget_inside(s.as_str(), self);
             }
-            */
+            //*/
         }
     }
 

@@ -210,6 +210,12 @@ pub trait SceneT : ToId<<Self as SceneT>::Id> + Clone + 'static + PropertyShow {
             unimplemented!()
         }
 
+    fn get_property_show_from_object_copy_hash(&self, o : Self::Object)
+        -> HashMap<String, Box<PropertyShow>>
+        {
+            unimplemented!()
+        }
+
     fn add_component(&mut self, o : Self::Object, compopent : &str)
     {
        unimplemented!()
@@ -466,7 +472,7 @@ impl<S:SceneT> Data<S> {
         None
     }
 
-    pub fn get_property_show_copy_vec(&self, object_id : S::Id) 
+    pub fn get_property_show_copy_vec(&self, object_id : S::Id)
         -> Vec<Box<PropertyShow>>
     {
         println!("TODO or erase {}, {}", file!(), line!());
@@ -484,6 +490,26 @@ impl<S:SceneT> Data<S> {
         }
 
         vec![]
+    }
+
+    pub fn get_property_show_copy_hash(&self, object_id : S::Id)
+        -> HashMap<String, Box<PropertyShow>>
+    {
+        println!("TODO or erase {}, {}", file!(), line!());
+        for s in self.scenes.values() {
+            /*
+            if s.to_id() != scene_id {
+                //continue;
+            }
+            */
+
+            if let Some(ref o) = s.find_object_with_id(object_id) {
+                return s.get_property_show_from_object_copy_hash(o.clone())
+            }
+
+        }
+
+        HashMap::new()
     }
 
 

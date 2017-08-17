@@ -1294,9 +1294,9 @@ impl<Scene:SceneT> WidgetContainer<Scene>
                                 //if let Some(ppp) = self.data.get_property_show_copy(oid) {
                                  //   p.set_prop(&*ppp, oid, "object");
                                 //}
-                                let vvv = self.data.get_property_show_copy_vec(oid);
+                                let vvv = self.data.get_property_show_copy_hash(oid);
                                 if !vvv.is_empty() {
-                                    p.set_prop_vec(&vvv, oid);
+                                    p.set_prop_hash(&vvv, oid);
                                 }
                                 else {
                                     println!("could not find property user copy");
