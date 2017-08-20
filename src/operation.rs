@@ -38,7 +38,8 @@ pub struct Operation<S: SceneT>
 {
     pub objects : Vec<Box<S::Object>>,
     pub name : Vec<String>,
-    pub change : OperationData<S>
+    pub change : OperationData<S>,
+    serialized_data : Option<String>
     //pub old : Box<Any>,
     //pub new : Box<Any>,
 }
@@ -271,7 +272,8 @@ impl<S:SceneT> Operation<S>
         Operation {
             objects : objects,
             name : name,
-            change : change
+            change : change,
+            serialized_data : None
         }
     }
 

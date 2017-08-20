@@ -115,7 +115,7 @@ pub trait SceneT : ToId<<Self as SceneT>::Id> + Clone + 'static + PropertyShow {
 
     fn remove_objects(&mut self, parents : &[Option<Self::Id>], obs : &[Self::Object])
     {
-        println!("TODO, {}, {}", file!(), line!());
+        unimplemented!("TODO, {}, {}", file!(), line!());
     }
 
     fn set_camera(&self, ob : Option<Self::Object>)

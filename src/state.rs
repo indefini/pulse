@@ -126,13 +126,18 @@ impl<S:SceneT+'static> State<S> {
     {
         println!("state remove sel");
 
-        let vec = self.context.selected.to_vec();
 
         let sid = if let Some(ref s) = self.context.scene {
             s.clone()
         }
         else {
             return operation::Change::None;
+        };
+
+        let vec : Vec<S::Object> = {
+            let s = data.get_scene(sid.clone()).unwrap();
+            //self.context.selected.to_vec();
+            self.context.selected.iter().map(|x| s.get_full_object(x.clone())).collect()
         };
 
         let parent =
