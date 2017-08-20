@@ -58,7 +58,7 @@ impl MeshTransform
 
 pub trait SceneT : ToId<<Self as SceneT>::Id> + Clone + 'static + PropertyShow {
     type Id : Default + Eq + Clone + Hash + Copy + Debug;
-    type Object : ToId<Self::Id> + Clone + PropertyGet; //TODO remove PropertyGet
+    type Object : ToId<Self::Id> + Clone + PropertyGet + Debug; //TODO remove PropertyGet
     fn new_empty(name : &str, count : usize) -> Self;
     fn new_from_file(name : &str, count : usize) -> Self;
     fn init_for_play(&mut self, resource : &resource::ResourceGroup);
@@ -227,6 +227,11 @@ pub trait SceneT : ToId<<Self as SceneT>::Id> + Clone + 'static + PropertyShow {
     }
 
     fn get_existing_components() -> Vec<&'static str>
+    {
+        unimplemented!()
+    }
+
+    fn get_full_object(&self, o : Self::Object) -> Self::Object
     {
         unimplemented!()
     }

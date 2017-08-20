@@ -126,7 +126,7 @@ impl<S:SceneT+'static> State<S> {
     {
         println!("state remove sel");
 
-        let list = self.context.selected.to_vec();
+        let vec = self.context.selected.to_vec();
 
         let sid = if let Some(ref s) = self.context.scene {
             s.clone()
@@ -135,17 +135,13 @@ impl<S:SceneT+'static> State<S> {
             return operation::Change::None;
         };
 
-        let mut vec = Vec::new();
-        let mut parent = Vec::new();
+        let parent =
         {
             let s = data.get_scene(sid.clone()).unwrap();
+            vec.iter().map(|o| s.get_parent(o.clone()).map(|x| x.to_id())).collect()
+        };
 
-            for o in &list {
-                vec.push(o.clone());
-                let parent_id = s.get_parent(o.clone()).map(|x| x.to_id());
-                parent.push(parent_id);
-            }
-        }
+        println!("vec : {:?}", vec);
 
         return self.request_operation(
             vec![],
