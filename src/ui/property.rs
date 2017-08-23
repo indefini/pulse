@@ -602,6 +602,7 @@ macro_rules! property_show_methods(
 
             fn update_property(&self, widget : &$crate::ui::PropertyWidget, all_path: &str, path : Vec<String>)
             {
+                println!(" MACRO UPDATE PROP {}, {:?}", all_path, path);
                 let mut pp = String::from(all_path);
                 if !path.is_empty() && path[0] == "*" {
                     pp = pp.replace("/*", "");

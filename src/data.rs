@@ -458,8 +458,8 @@ impl<S:SceneT> Data<S> {
 
     //pub fn get_property_show_copy(&mut self, object_id : S::Id, property : &str) 
         //-> Option<(Box<PropertyShow>, String)>
-    pub fn get_property_show_copy(&self, object_id : S::Id) 
-        -> Option<Box<PropertyShow>>
+    pub fn get_property_show_copy(&self, object_id : S::Id, name : &str) 
+        -> Option<(Box<PropertyShow>, String)>
     {
         println!("TODO or erase {}, {}", file!(), line!());
         for s in self.scenes.values() {
@@ -470,7 +470,7 @@ impl<S:SceneT> Data<S> {
             */
 
             if let Some(ref o) = s.find_object_with_id(object_id) {
-                return s.get_property_show_from_object_copy(o.clone(), "").map(|x| x.0);
+                return s.get_property_show_from_object_copy(o.clone(), name).map(|x| x);
             }
 
         }

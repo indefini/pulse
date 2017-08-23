@@ -138,6 +138,7 @@ impl<Scene:SceneT> PropertyBox<Scene>
     pub fn update_object_property(&self, object : &PropertyShow, prop : &str)
     {
         let yep = ui::make_vec_from_str(prop);
+        println!("          update object_property ................ {}",prop);
         object.update_property(self, prop, yep);
     }
 

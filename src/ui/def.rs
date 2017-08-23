@@ -944,7 +944,7 @@ impl<Scene:SceneT> WidgetContainer<Scene>
 
         match *change {
             operation::Change::DirectChange(ref name) => {
-                println!("hangle change DIRECT");
+                println!("hangle change DIRECT : {}", name);
                 let o = match self.get_selected_object() {
                     Some(ob) => ob,
                     None => {
@@ -977,8 +977,12 @@ impl<Scene:SceneT> WidgetContainer<Scene>
 
                 if let Some(ref p) = self.property.widget {
                     if widget_origin != p.id {
-                        if let Some(pu) = self.data.get_property_show_copy(o.to_id()) {
-                             p.update_object_property(&*pu, name);
+                        if let Some((pu, local_name)) = self.data.get_property_show_copy(o.to_id(), name) {
+                            println!("updating name : {}, local :{}", name, local_name);
+                             //p.update_object_property(&*pu, name);
+                             //
+                            let yep = ui::make_vec_from_str(&local_name);
+                             pu.update_property(&**p as &PropertyWidget, name, yep);
                          }
                     }
                 }
@@ -1008,7 +1012,7 @@ impl<Scene:SceneT> WidgetContainer<Scene>
                             if let Some(ref mut p) = self.property.widget {
                                 if widget_origin != p.id {
                                     println!("hangle change, calling update objects");
-                                    if let Some(pu) = self.data.get_property_show_copy(*id) {
+                                    if let Some((pu, local_name)) = self.data.get_property_show_copy(*id, name) {
                                         p.update_object_property(&*pu, name);
                                     }
                                 }
@@ -1032,7 +1036,7 @@ impl<Scene:SceneT> WidgetContainer<Scene>
                                     println!("update object property, this needs more info than just update the value, must indicate it is a vec change.
                                              so we dont remove and add all children again, and so the scroller doesnt make big jump");
                                     //p.update_object(&*ob, "");
-                                    if let Some(pu) = self.data.get_property_show_copy(*id) {
+                                    if let Some((pu, local_name)) = self.data.get_property_show_copy(*id, name) {
                                     p.vec_add(&*pu, name, index);
                                     }
                                 }
@@ -1054,7 +1058,7 @@ impl<Scene:SceneT> WidgetContainer<Scene>
                                 if widget_origin != p.id {
                                     println!("update object property, this needs more info than just update the value, must indicate it is a vec change.
                                              so we dont remove and add all children again, and so the scroller doesnt make big jump");
-                                    if let Some(pu) = self.data.get_property_show_copy(*id) {
+                                    if let Some((pu, local_name)) = self.data.get_property_show_copy(*id, name) {
                                     p.vec_del(&*pu, name, index);
                                     }
                                 }
@@ -1070,7 +1074,7 @@ impl<Scene:SceneT> WidgetContainer<Scene>
                     if id == o.to_id()  {
                         if let Some(ref mut p) = self.property.widget {
                             if widget_origin != p.id {
-                                if let Some(pu) = self.data.get_property_show_copy(id) {
+                                if let Some((pu, local_name)) = self.data.get_property_show_copy(id, comp_name) {
                                     p.update_object(&*pu, "");
                                 }
                             }
@@ -1445,7 +1449,7 @@ impl<Scene:SceneT> WidgetContainer<Scene>
 
     pub fn handle_change_new_id(&self, widget_id : Uuid, pid : Scene::Id, name : &str)
     {
-        if let Some(ppp) = self.data.get_property_show_copy(pid) {
+        if let Some((ppp, local_name)) = self.data.get_property_show_copy(pid, name) {
             if let Some(w) = self.visible_prop.get(&pid) {
 
                 if let Some(w) = w.upgrade() {

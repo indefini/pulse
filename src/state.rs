@@ -221,7 +221,7 @@ impl<S:SceneT+'static> State<S> {
             s.set_position(o.clone(), sp[i] + translation);
         }
 
-        return operation::Change::DirectChange("position".to_owned());
+        return operation::Change::DirectChange("transform/position".to_owned());
     }
 
     pub fn request_scale(
@@ -236,7 +236,7 @@ impl<S:SceneT+'static> State<S> {
             s.set_scale(o.clone(), sp[i] * scale);
         }
 
-        return operation::Change::DirectChange("scale".to_owned());
+        return operation::Change::DirectChange("transform/scale".to_owned());
     }
 
     pub fn request_rotation(
@@ -251,7 +251,7 @@ impl<S:SceneT+'static> State<S> {
             s.set_orientation(o.clone(), so[i] * transform::Orientation::new_with_quat(&rotation));
         }
 
-        operation::Change::DirectChange("orientation/*".to_owned())
+        operation::Change::DirectChange("transform/orientation/*".to_owned())
     }
 
     pub fn request_operation_property_old_new_dontcheckequal(
