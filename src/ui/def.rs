@@ -1156,7 +1156,7 @@ impl<Scene:SceneT> WidgetContainer<Scene>
             let context = &self.state.context;;
             match *op {
                 dragger::Operation::Translation(v) => {
-                    let prop = vec!["position".to_owned()];
+                    let prop = vec!["transform/position".to_owned()];
                     let cxpos = &self.state.saved_positions;;
                     let mut saved_positions = Vec::with_capacity(cxpos.len());
                     for p in cxpos {
@@ -1174,7 +1174,7 @@ impl<Scene:SceneT> WidgetContainer<Scene>
                     (prop, change)
                 },
                 dragger::Operation::Scale(v) => {
-                    let prop = vec!["scale".to_owned()];
+                    let prop = vec!["transform/scale".to_owned()];
                     let cxsc = self.state.saved_scales.clone();
                     let mut saved_scales = Vec::with_capacity(cxsc.len());
                     for p in &cxsc {
@@ -1192,7 +1192,7 @@ impl<Scene:SceneT> WidgetContainer<Scene>
                     (prop, change)
                 },
                 dragger::Operation::Rotation(q) => {
-                    let prop = vec!["orientation".to_owned(), "*".to_owned()];
+                    let prop = vec!["transform/orientation".to_owned(), "*".to_owned()];
                     let cxoris = self.state.saved_oris.clone();
                     let mut saved_oris = Vec::with_capacity(cxoris.len());
                     for p in &cxoris {

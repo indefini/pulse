@@ -404,19 +404,17 @@ impl<S:SceneT+'static> State<S> {
             return operation::Change::None;
         };
 
-        let mut vec = Vec::new();
-        let mut parents = Vec::new();
+        let vec : Vec<S::Object> = {
+            let s = data.get_scene(sid.clone()).unwrap();
+            //self.context.selected.to_vec();
+            self.context.selected.iter().map(|x| s.get_full_object(x.clone())).collect()
+        };
+
+        let parents =
         {
             let s = data.get_scene(sid.clone()).unwrap();
-
-            for o in &self.context.selected {
-                println!("COPY is not working because of this TODO");
-                //TODO vec.push(Arc::new(RwLock::new(factory.copy_object(&*ob))));
-                let parent_id = s.get_parent(o.clone()).map(|x| x.to_id());
-
-                parents.push(parent_id);
-            }
-        }
+            vec.iter().map(|o| s.get_parent(o.clone()).map(|x| x.to_id())).collect()
+        };
 
         let vs = Vec::new();
         return self.request_operation(

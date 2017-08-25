@@ -1,4 +1,3 @@
-use std::sync::{RwLock, Arc};
 use libc::{c_char, c_void, c_int};
 use std::mem;
 use std::ffi::CString;
@@ -9,7 +8,6 @@ use ui::Window;
 use ui;
 use ui::Widget;
 //use control::Control;
-use operation;
 use data::SceneT;
 
 #[repr(C)]
@@ -123,8 +121,6 @@ pub extern fn remove_selected2<S:SceneT+'static>(data : *const c_void, name : *c
 pub extern fn copy_selected<S:SceneT+'static>(data : *const c_void, name : *const c_char)
 {
     let wcb : & ui::WidgetCbData<S> = unsafe {mem::transmute(data)};
-    let v : &ui::View = unsafe {mem::transmute(wcb.widget)};
-    //let container : &mut Box<ui::WidgetContainer> = unsafe {mem::transmute(wcb.container)};
     let container : &mut ui::WidgetContainer<S> = &mut *wcb.container.write().unwrap();
 
     println!("if borrow panic check this code, {}, {} ", file!(), line!());
@@ -137,8 +133,8 @@ pub extern fn copy_selected<S:SceneT+'static>(data : *const c_void, name : *cons
 
     //let mut control = v.control.borrow_mut();
     let change = container.state.copy_selected_objects(&mut *container.data);
-
-    container.handle_change(&change, (v as &Widget<S>).get_id());
+    let id = container.views[wcb.index].get_id();
+    container.handle_change(&change, id);
 }
 
 

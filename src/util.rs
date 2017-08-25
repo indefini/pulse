@@ -72,7 +72,7 @@ pub fn pass_slice()
             s.len() as size_t); }
 }
 
-pub fn join_string(path : &Vec<String>) -> String
+pub fn join_string(path : &[String]) -> String
 {
     let mut s = String::new();
     let mut first = true;
@@ -87,7 +87,7 @@ pub fn join_string(path : &Vec<String>) -> String
     s
 }
 
-pub fn join_str(path : &Vec<&str>) -> String
+pub fn join_str(path : &[&str]) -> String
 {
     let mut s = String::new();
     let mut first = true;
