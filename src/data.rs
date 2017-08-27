@@ -235,6 +235,11 @@ pub trait SceneT : ToId<<Self as SceneT>::Id> + Clone + 'static + PropertyShow {
     {
         unimplemented!()
     }
+
+    fn create_copy_of_full_object(&self, o : Self::Object) -> Self::Object
+    {
+        unimplemented!()
+    }
 }
 
 impl<S:SceneT> Data<S> {

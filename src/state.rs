@@ -407,7 +407,7 @@ impl<S:SceneT+'static> State<S> {
         let vec : Vec<S::Object> = {
             let s = data.get_scene(sid.clone()).unwrap();
             //self.context.selected.to_vec();
-            self.context.selected.iter().map(|x| s.get_full_object(x.clone())).collect()
+            self.context.selected.iter().map(|x| s.create_copy_of_full_object(x.clone())).collect()
         };
 
         let parents =
